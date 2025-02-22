@@ -1,15 +1,24 @@
 //productRoutes.js
-import express from 'express';
-import multer from 'multer';
-import { addProduct } from '../controllers/productController.js';
-import { protectAdmin } from '../middleware/authMiddleware.js';
+import express from "express";
+import multer from "multer";
+import { createProduct, updateProduct, deleteProduct, getProducts } from "../controllers/productController.js";
+
+// Use memory storage for multer and enforce a 5 MB file size limit per image
+const storage = multer.memoryStorage();
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5 MB
 
 const router = express.Router();
-const upload = multer();  // Using multer to handle multipart/form-data
 
-// POST /api/admin/products
-router.post('/', protectAdmin, upload.array('images', 10), addProduct);
+// GET: List products with combined search, sort, and filter
+router.get("/", getProducts);
 
-// (Add routes for editing and soft deleting products as needed)
+// POST: Create a new product with multiple images
+router.post("/", upload.array("images", 10), createProduct);
+
+// PUT: Update an existing product (optional new images)
+router.put("/:id", upload.array("images", 10), updateProduct);
+
+// DELETE: Soft delete a product
+router.delete("/:id", deleteProduct);
 
 export default router;
