@@ -1,13 +1,24 @@
 //categoryRoutes.js
-import express from 'express';
-import { addCategory, editCategory, deleteCategory, listCategories } from '../controllers/categoryController.js';
-import { protectAdmin } from '../middleware/authMiddleware.js';
+import express from "express";
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} from "../controllers/categoryController.js";
 
 const router = express.Router();
 
-router.post('/', protectAdmin, addCategory);
-router.put('/:id', protectAdmin, editCategory);
-router.delete('/:id', protectAdmin, deleteCategory);
-router.get('/', protectAdmin, listCategories);
+// GET: List categories with search and pagination
+router.get("/", getCategories);
+
+// POST: Create a new category
+router.post("/", createCategory);
+
+// PUT: Update an existing category by ID
+router.put("/:id", updateCategory);
+
+// DELETE: Soft delete a category by ID
+router.delete("/:id", deleteCategory);
 
 export default router;
