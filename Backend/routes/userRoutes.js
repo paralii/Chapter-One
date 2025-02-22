@@ -1,17 +1,16 @@
 //userRoutes.js
-import express from 'express';
-import { listUsers, blockUser, unblockUser } from '../controllers/userController.js';
-import { protectAdmin } from '../middleware/authMiddleware.js';
+import express from "express";
+import { getUsers, blockUser, unblockUser } from "../controllers/userController.js";
 
 const router = express.Router();
 
-// GET /api/admin/users?search=...&page=...&limit=...
-router.get('/', protectAdmin, listUsers);
+// GET: List users with search and pagination
+router.get("/", getUsers);
 
-// PUT /api/admin/users/:id/block
-router.put('/:id/block', protectAdmin, blockUser);
+// PATCH: Block a user by ID
+router.patch("/:id/block", blockUser);
 
-// PUT /api/admin/users/:id/unblock
-router.put('/:id/unblock', protectAdmin, unblockUser);
+// PATCH: Unblock a user by ID
+router.patch("/:id/unblock", unblockUser);
 
 export default router;

@@ -10,6 +10,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import productRoutes from './routes/productRoutes.js';
+
+import userRoutes from "./routes/userRoutes.js";
 import connectDB from './config/db.js';
 
 dotenv.config();
@@ -28,7 +30,7 @@ app.use('/admin', adminRoutes);
 app.use('/admin/users', userRoutes);
 app.use('/admin/categories', categoryRoutes);
 app.use('/admin/products', productRoutes);
-
+app.use("/users", userRoutes);
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
