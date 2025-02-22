@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 
+import passport from "./config/passport.js";
 import connectDB from './config/db.js';
 
 dotenv.config();
@@ -20,6 +21,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(passport.initialize());
 
 // Connect to MongoDB
 connectDB();
