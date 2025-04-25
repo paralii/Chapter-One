@@ -9,7 +9,7 @@ const bannerSchema = new mongoose.Schema(
     status: { type: String, enum: ["active", "inactive"], default: "inactive" },
   },
   {
-    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+    timestamps: true,
   }
 );
 

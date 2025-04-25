@@ -1,125 +1,59 @@
 import express from "express";
-import { verifyToken, isAdmin } from "../middleware/authMiddleware.js";
-import * as AdminController from "../controllers/adminController.js";
-import * as categoryController from "../controllers/categoryController.js";
-import * as productController from "../controllers/productController.js";
-import * as inventoryController from "../controllers/inventoryController.js";
-import * as orderController from "../controllers/orderController.js";
-import * as couponController from "../controllers/couponController.js";
-import * as categoryOfferController from "../controllers/categoryOfferController.js";
-import * as productOfferController from "../controllers/productOfferController.js";
-import * as salesReportController from "../controllers/salesReportController.js";
-import * as referralController from "../controllers/referralController.js"; 
-import * as walletController from "../controllers/walletControllers.js"; 
+import { verifyToken, isAdmin } from "../middlewares/authMiddleware.js";
+import * as AdminAuthController from "../controllers/admin/adminAuthController";
+import * as AdminCustomerController from "../controllers/admin/adminCustomerController";
+import * as AdminCategoryController from "../controllers/admin/adminCategoryController";
+import * as AdminProductController from "../controllers/admin/adminProductController";
+import * as AdminOrderController from "../controllers/admin/adminOrderController.js";
+import * as AdminInventoryController from '../controllers/admin/adminInventoryController.js';
+import { upload, processImages } from "../middleware/uploadMiddleware.js";
 
-import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-router.post("/login", AdminController.adminLogin);
-router.post("/logout", AdminController.adminLogout);
-router.post("/refresh-token", AdminController.refreshAccessToken);
+// ===================== ADMIN AUTHENTICATION =====================
+router.post("/login", AdminAuthController.adminLogin);
+router.post("/logout", AdminAuthController.adminLogout);
+router.post("/refresh-token", AdminAuthController.refreshAdminToken);
 
-router.get("/users", verifyToken, isAdmin, AdminController.getAllUsers);
-router.post("/users", verifyToken, isAdmin, AdminController.createUser);
-router.get("/users/count", verifyToken, isAdmin, AdminController.userCount);
-router.get("/users/:id", verifyToken, isAdmin, AdminController.getUserById);
-router.put("/users/:id", verifyToken, isAdmin, AdminController.updateUser);
-router.patch(
-  "/users/:id/toggle-block",
-  verifyToken,
-  isAdmin,
-  AdminController.toggleBlockUser
-);
-router.delete("/users/:id", verifyToken, isAdmin, AdminController.deleteUser);
+// ===================== CUSTOMER MANAGEMENT =====================
+router.get("/customers", verifyToken, isAdmin, AdminCustomerController.getAllCustomers);
+router.get("/customers/:id", verifyToken, isAdmin, AdminCustomerController.getCustomerById);
+router.get("/customers/count", verifyToken, isAdmin, AdminCustomerController.userCount);
+router.post("/customers", verifyToken, isAdmin, AdminCustomerController.createCustomer);
+router.patch("/customers/:id/toggle-block", verifyToken, isAdmin, AdminCustomerController.toggleBlockCustomer);
+router.put("/customers/:id", verifyToken, isAdmin, AdminCustomerController.updateCustomer);
+router.delete("/customers/:id", verifyToken, isAdmin, AdminCustomerController.deleteCustomer);
 
-router.get(
-  "/categories",
-  verifyToken,
-  isAdmin,
-  categoryController.getCategories
-);
-router.post(
-  "/categories",
-  verifyToken,
-  isAdmin,
-  categoryController.createCategory
-);
-router.put(
-  "/categories/:id",
-  verifyToken,
-  isAdmin,
-  categoryController.updateCategory
-);
-router.delete(
-  "/categories/:id",
-  verifyToken,
-  isAdmin,
-  categoryController.deleteCategory
-);
+// ===================== CATEGORY MANAGEMENT =====================
+router.get("/categories", verifyToken, isAdmin, AdminCategoryController.getCategories);
+router.post("/categories", verifyToken, isAdmin, AdminCategoryController.createCategory);
+router.put("/categories/:id", verifyToken, isAdmin, AdminCategoryController.updateCategory);
+router.delete("/categories/:id", verifyToken, isAdmin, AdminCategoryController.deleteCategory);
+router.get("/:category", AdminCategoryController.getBooksByCategory);
 
-router.get("/:category", categoryController.getBooksByCategory);
+// ===================== PRODUCT MANAGEMENT =====================
+router.get("/products", verifyToken, isAdmin, AdminProductController.getProducts);
+router.post("/products",verifyToken, isAdmin, upload, processImages, AdminProductController.createProduct);
+router.get("/products/:id",verifyToken, isAdmin, AdminProductController.getProductById);
+router.put("/products/:id",verifyToken, isAdmin, upload, processImages, AdminProductController.updateProduct);
+router.patch("/products/:id/toggle",verifyToken, isAdmin, AdminProductController.toggleProductListing);
 
-router.get("/products", verifyToken, isAdmin, productController.getProducts);
-router.post(
-  "/products",
-  verifyToken,
-  isAdmin,
-  upload.array("images", 10),
-  productController.createProduct
-);
-router.get(
-  "/products/:id",
-  verifyToken,
-  isAdmin,
-  productController.getProductById
-);
-router.put(
-  "/products/:id",
-  verifyToken,
-  isAdmin,
-  upload.array("images", 10),
-  productController.updateProduct
-);
-router.patch(
-  "/products/:id/toggle",
-  verifyToken,
-  isAdmin,
-  productController.toggleProductListing
-);
+// ===================== ORDER MANAGEMENT =====================
+router.get("/orders", verifyToken, isAdmin, AdminOrderController.listAllOrders);
+router.get("/orders/:id", verifyToken, isAdmin, AdminOrderController.getOrderById);
+router.patch("/orders/:id/status", verifyToken, isAdmin, AdminOrderController.updateOrderStatus);
+router.patch("/orders/item/delivered", verifyToken, isAdmin, AdminOrderController.markItemDelivered);
+router.delete("/orders/:id", verifyToken, isAdmin, AdminOrderController.softDeleteOrder);
+router.get("/orders/:id/invoice", verifyToken, isAdmin, AdminOrderController.downloadAdminInvoice);
+router.post("/orders/return/verify", verifyToken, isAdmin, AdminOrderController.verifyReturnRequest);
 
-router.get("/orders", verifyToken, isAdmin, orderController.listOrdersAdmin);
-router.put(
-  "/orders/:id/status",
-  verifyToken,
-  isAdmin,
-  orderController.updateOrderStatus
-);
-router.put(
-  "/orders/:orderId/verify-return",
-  verifyToken,
-  isAdmin,
-  orderController.verifyReturnRequest
-);
+// ===================== INVENTORY MANAGEMENT =====================
+router.get('/', verifyToken, isAdmin, AdminInventoryController.getAllInventory);
+router.post('/update', verifyToken, isAdmin, AdminInventoryController.updateProductStock);
+router.get('/low-stock', verifyToken, isAdmin, AdminInventoryController.getLowStockProducts);
+router.get('/report', verifyToken, isAdmin, AdminInventoryController.getInventoryReport);
 
-router.get(
-  "/inventory",
-  verifyToken,
-  isAdmin,
-  inventoryController.getInventory
-);
-router.put(
-  "/inventory/:id",
-  verifyToken,
-  isAdmin,
-  inventoryController.updateStock
-);
-router.post(
-  "/inventory/:id/add-stock",
-  verifyToken,
-  isAdmin,
-  inventoryController.addStock
-);
 
 router.post("/coupons/create", verifyToken, isAdmin, couponController.createCoupon);
 router.delete("/coupons/:id", verifyToken, isAdmin, couponController.deleteCoupon);

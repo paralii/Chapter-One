@@ -1,4 +1,4 @@
-export const errorMiddleware = (err, req, res, next) => {
+export default errorMiddleware = (err, req, res, next) => {
   console.error(err.stack);
 
   if (res.headersSent) {

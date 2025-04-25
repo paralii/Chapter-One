@@ -9,6 +9,10 @@ const userSchema = new mongoose.Schema(
     isBlock: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
+    profileImage: {
+      type: String,
+      default: "https://example.com/default-avatar.png",
+    },
   },
   { timestamps: true }
 );

@@ -1,16 +1,62 @@
-import User from "../models/User.js";
+import User from "../../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { generateOTP } from "../utils/otpGenerator.js";
-import { sendOTPEmail, sendResetPasswordEmail } from "../utils/emailService.js";
+import dotenv from "dotenv";
+import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTokens.js";
+import setAuthCookies from "../../utils/setAuthCookies.js";
+import { generateOTP } from "../../utils/services/otpGenerator.js";
+import { sendOTPEmail } from "../../utils/services/emailService.js";
+import { validationResult } from "express-validator"; 
+
+dotenv.config();
+
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedPassword = password.trim();
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) return res.status(400).json({ message: "User with this email does not exist" });
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: "Please verify your email first" });
+    }
+
+    if (user.isBlock) {
+      return res.status(403).json({ message: "Your account is blocked" });
+    }
+
+    const isMatch = await bcrypt.compare(normalizedPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect password, please try again" });
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user, false);
+    setAuthCookies(res, accessToken, refreshToken);
+    res.status(200).json({ user, message: "Login successful" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const logout = (req, res) => {
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+  res.status(200).json({ message: "Logged out successfully" });
+};
+
+export const refreshUserToken = (req, res) => refreshAccessToken(req, res, "user");
 
 export const userSignup = async (req, res) => {
   const { firstname, lastname, email, password } = req.body;
   try {
     let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: "User already exists " });
-    }
+    if (user) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOTP();
@@ -57,10 +103,7 @@ export const verifyOTP = async (req, res) => {
     }
 
     await user.save();
-
-    res
-      .status(200)
-      .json({ message: "OTP verified, account created successfully" });
+    res.status(200).json({ message: "OTP verified, account created successfully" });
   } catch (err) {
     return res.status(400).json({ message: "OTP expired or invalid" });
   }
@@ -73,9 +116,7 @@ export const resendOTP = async (req, res) => {
     if (!user) return res.status(400).json({ message: "User not found" });
 
     const otp = generateOTP();
-    const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, {
-      expiresIn: "2m",
-    });
+    const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, { expiresIn: "2m" });
 
     console.log("resend OTP:", otp);
     await sendOTPEmail(email, otp);
@@ -93,16 +134,12 @@ export const forgotPassword = async (req, res) => {
     if (!user) return res.status(400).json({ message: "User not found" });
 
     const otp = generateOTP();
-    const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, {
-      expiresIn: "5m",
-    });
+    const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, { expiresIn: "5m" });
 
     console.log("forgotPassword OTP:", otp);
     await sendOTPEmail(email, otp);
 
-    res
-      .status(200)
-      .json({ message: "OTP sent to email for password reset", otpToken });
+    res.status(200).json({ message: "OTP sent to email for password reset", otpToken });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -125,20 +162,5 @@ export const resetPassword = async (req, res) => {
     res.status(200).json({ message: "Password has been reset successfully" });
   } catch (err) {
     return res.status(400).json({ message: "OTP expired or invalid" });
-  }
-};
-
-export const softDeleteUser = async (req, res) => {
-  const { userId } = req.params;
-  try {
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.isDeleted = true;
-    await user.save();
-
-    res.status(200).json({ message: "User soft deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
   }
 };
