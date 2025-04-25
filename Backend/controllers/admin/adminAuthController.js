@@ -1,7 +1,7 @@
 import Admin from "../../models/Admin.js";
 import bcrypt from "bcryptjs";
-import { generateTokens, refreshAccessToken } from "../utils/generateTokens.js";
-import setAuthCookies from "../utils/setAuthCookies.js";
+import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTokens.js";
+import setAuthCookies from "../../utils/setAuthCookies.js";
 
 export const adminLogin = async (req, res) => {
   const { email, password } = req.body;

@@ -1,4 +1,4 @@
-export default googleAuthCallback = (req, res) => {
+export default function googleAuthCallback (req, res)  {
   if (!req.user || !req.user.tokens) {
     return res.status(401).json({ message: "Authentication failed" });
   }

@@ -15,7 +15,7 @@ const calculateShippingCost = (city) => {
 };
 
 // Checkout for the authenticated user
-export default checkout = async (req, res) => {
+export default async function checkout (req, res) {
   const { address_id } = req.body; // Address ID for shipping
 
   try {

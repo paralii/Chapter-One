@@ -1,25 +1,26 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import passport from "passport";
-import { verifyToken } from "../middleware/authMiddleware.js";
 
 import * as userAuthController from "../controllers/user/userAuthController.js";
-import * as userValidation from "../middleware/validators.js";
 import * as userProductController from "../controllers/user/userProductController.js";
 import * as userCategoryController from "../controllers/user/userCategoryController.js";
 import googleAuthCallback from "../controllers/user/googleAuthController.js";
 import * as userProfileController from "../controllers/user/userProfileController.js";
 import * as userAddressController from "../controllers/user/userAddressController.js";
-import { processProfileImage } from "../../middlewares/profileImageMiddleware.js";
 import * as userCartController from "../controllers/user/userCartController.js";
 import * as userOrderController from "../controllers/user/userOrderController.js";
 import checkout from "../controllers/user/userCheckoutController.js";
 
-import * as orderController from "../controllers/orderController.js";
-import * as paymentController from "../controllers/paymentController.js";
-import * as couponController from "../controllers/couponController.js";
-import * as wishlistController from "../controllers/wishlistController.js";
-import * as walletController from "../controllers/walletControllers.js";
+import { verifyToken } from "../middlewares/authMiddleware.js";
+import * as userValidation from "../middlewares/validators.js";
+import { processProfileImage } from "../middlewares/profileImageMiddleware.js";
+
+// import * as orderController from "../controllers/orderController.js";
+// import * as paymentController from "../controllers/paymentController.js";
+// import * as couponController from "../controllers/couponController.js";
+// import * as wishlistController from "../controllers/wishlistController.js";
+// import * as walletController from "../controllers/walletControllers.js";
 
 
 const router = express.Router();
@@ -55,7 +56,7 @@ router.post("/request-email-change", verifyToken, userValidation.validateEmailCh
 router.post("/confirm-email-change", verifyToken, userValidation.validateConfirmEmailChange, userProfileController.confirmEmailChange);
 
 // ===================== ADDRESS =====================
-router.post("/addresses", verifyToken, userValidation.validateAddAddress, userAddressController.addAddress);
+router.post("/addresses", verifyToken, userValidation.validateAddress, userAddressController.addAddress);
 router.put("/addresses/:id", verifyToken, userValidation.validateUpdateAddress, userAddressController.updateAddress);
 router.delete("/addresses/:id", verifyToken, userAddressController.deleteAddress);
 router.get("/addresses", verifyToken, userAddressController.getAllUserAddresses);
@@ -81,30 +82,30 @@ router.put("/orders/return", verifyToken, userOrderController.returnOrderItem);
 router.get("/orders/invoice/:id", verifyToken, userOrderController.downloadInvoice);
 
 
-router.post(
-  "/create-order",
-  verifyToken,
-  paymentController.createRazorpayOrder
-);
-router.post(
-  "/verify-payment",
-  verifyToken,
-  paymentController.verifyPaymentSignature
-);
+// router.post(
+//   "/create-order",
+//   verifyToken,
+//   paymentController.createRazorpayOrder
+// );
+// router.post(
+//   "/verify-payment",
+//   verifyToken,
+//   paymentController.verifyPaymentSignature
+// );
 
-router.post("/apply", verifyToken, couponController.applyCoupon);
-router.post("/remove", verifyToken, couponController.removeCoupon);
-router.get("/list", verifyToken, couponController.listCoupons);
+// router.post("/apply", verifyToken, couponController.applyCoupon);
+// router.post("/remove", verifyToken, couponController.removeCoupon);
+// router.get("/list", verifyToken, couponController.listCoupons);
 
-router.get("/wishlist", verifyToken, wishlistController.getWishlist);
-router.post("/wishlist", verifyToken, wishlistController.addToWishlist);
-router.delete(
-  "/wishlist/:product_id",
-  verifyToken,
-  wishlistController.removeFromWishlist
-);
+// router.get("/wishlist", verifyToken, wishlistController.getWishlist);
+// router.post("/wishlist", verifyToken, wishlistController.addToWishlist);
+// router.delete(
+//   "/wishlist/:product_id",
+//   verifyToken,
+//   wishlistController.removeFromWishlist
+// );
 
-router.get("/wallet", verifyToken, walletController.getWallet);
+// router.get("/wallet", verifyToken, walletController.getWallet);
 
 
 export default router;

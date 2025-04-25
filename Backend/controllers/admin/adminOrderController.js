@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import Order from "../models/Order.js";
-import User from "../models/User.js";
-import Wallet from "../models/Wallet.js";
-import Product from "../models/Product.js";
-import { creditWallet } from "./user/userWalletController.js";
-import { generateInvoicePDF } from "../utils/invoiceGenerator.js";
+import Order from "../../models/Order.js";
+import User from "../../models/User.js";
+import Wallet from "../../models/Wallet.js";
+import Product from "../../models/Product.js";
+import { creditWallet } from "../user/userWalletController.js";
+import { generateInvoicePDF } from "../../utils/generateInvoicePDF.js";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
@@ -27,6 +27,11 @@ export const listAllOrders = async (req, res) => {
   try {
     const { search = "", page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Validate page and limit values
+    if (isNaN(page) || isNaN(limit) || parseInt(page) < 1 || parseInt(limit) < 1) {
+      return res.status(400).json({ success: false, message: "Invalid page or limit" });
+    }
 
     const userMatch = await User.find({
       $or: [
@@ -55,6 +60,7 @@ export const listAllOrders = async (req, res) => {
 
     res.json({ success: true, orders, total });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: "Error fetching orders" });
   }
 };
@@ -71,6 +77,7 @@ export const getOrderById = async (req, res) => {
 
     res.json({ success: true, order });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: "Error fetching order details" });
   }
 };
@@ -82,8 +89,14 @@ export const updateOrderStatus = async (req, res) => {
 
   try {
     const { status } = req.body;
-    const order = await Order.findOne({ _id: req.params.id, isDeleted: false }).session(session);
 
+    // Validate status
+    const validStatuses = ["placed", "processed", "shipped", "delivered", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const order = await Order.findOne({ _id: req.params.id, isDeleted: false }).session(session);
     if (!order) return res.status(404).json({ success: false, message: "Order not found" });
     if (order.status === "cancelled") return res.status(400).json({ success: false, message: "Cancelled orders can't be updated" });
 
@@ -94,6 +107,7 @@ export const updateOrderStatus = async (req, res) => {
     res.json({ success: true, message: `Order status updated to ${status}` });
   } catch (err) {
     await session.abortTransaction();
+    console.error(err);
     res.status(500).json({ success: false, message: "Error updating order status" });
   } finally {
     session.endSession();
@@ -104,8 +118,8 @@ export const updateOrderStatus = async (req, res) => {
 export const markItemDelivered = async (req, res) => {
   try {
     const { orderId, productId } = req.body;
-    const order = await Order.findOne({ _id: orderId, isDeleted: false });
 
+    const order = await Order.findOne({ _id: orderId, isDeleted: false });
     if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
     const item = order.items.find(i => i.product_id.toString() === productId);
@@ -113,6 +127,11 @@ export const markItemDelivered = async (req, res) => {
 
     if (["cancelled", "returned", "delivered"].includes(item.status)) {
       return res.status(400).json({ success: false, message: `Item already ${item.status}` });
+    }
+
+    // Check if the order is cancelled
+    if (order.status === "cancelled") {
+      return res.status(400).json({ success: false, message: "Order is cancelled, items can't be delivered" });
     }
 
     item.status = "delivered";
@@ -126,6 +145,7 @@ export const markItemDelivered = async (req, res) => {
 
     res.json({ success: true, message: "Item marked as delivered" });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: "Error marking item delivered" });
   }
 };
@@ -147,10 +167,14 @@ export const downloadAdminInvoice = async (req, res) => {
     }
 
     res.download(invoicePath, async err => {
-      if (err) return res.status(500).json({ success: false, message: "Download failed" });
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ success: false, message: "Download failed" });
+      }
       await fsPromises.unlink(invoicePath).catch(() => {});
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: "Error generating invoice" });
   }
 };
@@ -172,6 +196,7 @@ export const softDeleteOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Delivered orders can't be deleted" });
     }
 
+    // Handle item restocking
     for (const item of order.items) {
       if (item.status === "ordered") {
         await Product.findByIdAndUpdate(item.product_id, {
@@ -190,6 +215,7 @@ export const softDeleteOrder = async (req, res) => {
     res.json({ success: true, message: "Order soft deleted" });
   } catch (err) {
     await session.abortTransaction();
+    console.error(err);
     res.status(500).json({ success: false, message: "Error deleting order" });
   } finally {
     session.endSession();
@@ -236,9 +262,9 @@ export const verifyReturnRequest = async (req, res) => {
     }
   } catch (err) {
     await session.abortTransaction();
+    console.error(err);
     res.status(500).json({ success: false, message: "Error verifying return", error: err.message });
   } finally {
     session.endSession();
   }
 };
- 

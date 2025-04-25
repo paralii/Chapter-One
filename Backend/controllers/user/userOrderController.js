@@ -1,8 +1,8 @@
-import Order from "../models/Order.js";
-import Product from "../models/Product.js";
-import Address from "../models/Address.js";
-import Wallet from "../models/Wallet.js";
-import { generateInvoicePDF } from "../utils/invoiceGenerator.js";
+import Order from "../../models/Order.js";
+import Product from "../../models/Product.js";
+import Address from "../../models/Address.js";
+import Wallet from "../../models/Wallet.js";
+import { generateInvoicePDF } from "../../utils/generateInvoicePDF.js";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
@@ -165,19 +165,24 @@ export const cancelOrderOrItem = async (req, res) => {
       if (!item) {
         return res.status(404).json({ message: "Item not found in order" });
       }
-      if (item.status !== 'placed') {
-        return res.status(400).json({ success: false, message: 'Only items not yet shipped can be cancelled' });
+      if (item.status !== 'ordered') {
+        return res.status(400).json({ success: false, message: 'Only items that are still "ordered" can be cancelled' });
       }
-      if (["cancelled", "returned"].includes(item.status)) {
-        return res.status(400).json({ message: `Item already ${item.status}` });
+      if (item.status === "cancelled") {
+        return res.status(400).json({ message: "Item already cancelled" });
       }
-      if (item.status !== "ordered") {
-        return res.status(400).json({ message: "Item not cancellable" });
+      if (item.status === "returned") {
+        return res.status(400).json({ message: "Item already returned" });
       }
+      if (item.status === "delivered") {
+        return res.status(400).json({ message: "Delivered items cannot be cancelled" });
+      }
+
       item.status = "cancelled";
       item.cancelReason = reason;
       await Product.findByIdAndUpdate(productId, { $inc: { available_quantity: item.quantity } });
 
+      // Handle refund if online payment
       if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Paid") {
         await refundToWallet(userId, item.total, `Refund for cancelled item from Order ${order.orderID}`);
       }
@@ -211,6 +216,7 @@ export const cancelOrderOrItem = async (req, res) => {
     res.status(500).json({ message: "Error processing cancellation" });
   }
 };
+
 
 // 5. Return Delivered Item
 export const returnOrderItem = async (req, res) => {
