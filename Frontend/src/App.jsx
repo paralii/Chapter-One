@@ -1,10 +1,12 @@
 // src/App.jsx
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import CustomAlert from "./components/common/CustomAlert";
+import UserPrivateRoute from "./components/User/UserPrivateRoute";
+import AdminPrivateRoute from "./components/Admin/AdminPrivateRoute";
 
 // --- User Authentication ---
 import Login from "./pages/User/Authentication/Login";
@@ -16,42 +18,48 @@ import ResetPassword from "./pages/User/Authentication/ResetPassword";
 
 // --- User Pages ---
 import Home from "./pages/User/Home";
-import UserProfile from "./pages/User/UserProfile";
-import EmailChangeOTPVerification from "./components/User/Profile/EmailchangeOTPVerification";
-import ProductList from "./pages/User/Product/ProductList";
-import ProductDetail from "./pages/User/Product/ProductDetail";
-import CartPage from "./pages/User/Cart";
-import Checkout from "./pages/User/Checkout";
-import OrderSuccess from "./components/User/Order/OrderSuccess";
-import ContactUs from "./pages/User/ContactUs";
-import WalletHistory from "./components/User/Profile/UserWalletHistory";
-import Wishlist from "./pages/User/Wishlist";
+import ProductList from "./pages/User/ProductList";
+import ProductDetail from "./pages/User/ProductDetail";
+import UserProfileDashboard from "./pages/User/Profile/UserProfileDashboard";
+import UserEditProfile from "./pages/User/Profile/UserEditProfile";
+import UserPasswordManagement from "./pages/User/Profile/UserPasswordManagement";
+import UserAddresses from "./pages/User/Profile/UserAddresses";
+import AddEditAddress from "./pages/User/Profile/AddEditAddress";
+import UserOrder from "./pages/User/Profile/UserOrder";
+import UserWallet from "./pages/User/Profile/UserWalletHistory";
+import Cart from "./pages/User/Profile/Cart";
+import Checkout from "./pages/User/Profile/Checkout";
+import OrderDetails from "./pages/User/Order/OrderDetails";
+import OrderSuccess from "./pages/User/Order/OrderSuccess";
+import Wishlist from "./pages/User/Profile/Wishlist";
 // --- Admin Authentication & Dashboard ---
 import AdminSignin from "./pages/Admin/AdminSignin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 
 // --- Admin Management Pages ---
 import CategoryManagement from "./pages/Admin/CategoryManagement";
-import CouponManagement from "./pages/Admin/CouponManagement";
-import InventoryManagement from "./pages/Admin/InventoryManagement";
-import OfferManagement from "./pages/Admin/OfferManagement";
-import OrderManagement from "./pages/Admin/OrderManagement";
 import ProductManagement from "./pages/Admin/ProductManagement";
-import ReferralManagement from "./pages/Admin/ReferralManagement";
-import SalesReport from "./pages/Admin/SalesReport";
 import UserManagement from "./pages/Admin/UserManagement";
-import OrderDetails from "./pages/User/OrderDetails";
+import OrderManagement from "./pages/Admin/OrderManagement";
+import InventoryManagement from "./pages/Admin/InventoryManagement";
+import CouponManagement from "./pages/Admin/CouponManagement";
+import OfferManagement from "./pages/Admin/OfferManagement";
+import ReferralManagment from "./pages/Admin/ReferralManagement";
+import SalesReport from "./pages/Admin/SalesReport";
 
-
-import { SearchProvider  } from './context/SearchContext';
+import { SearchProvider } from './context/SearchContext';
 axios.defaults.withCredentials = true;
 
 function App() {
+  const location = useLocation();
+  const state = location.state;
+  const navigate = useNavigate();
+
   return (
-    <>
-    <SearchProvider >
-    <CustomAlert />
-      <Routes>
+    <SearchProvider>
+      <CustomAlert />
+
+      <Routes location={state?.backgroundLocation || location}>
         {/* --- Public User Routes --- */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -60,41 +68,58 @@ function App() {
         <Route path="/verify-otp" element={<OTPVerification />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-        {/* --- Protected User Routes --- */}
-        <Route path="/profile" element={<UserProfile />} />
         <Route path="/products" element={<ProductList />} />
         <Route path="/products/:id" element={<ProductDetail />} />
-        <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/contactus" element={<ContactUs />} />
 
-        <Route path="/cart" element={<CartPage />} />
+        {/* --- Protected User Routes --- */}
+        <Route element={<UserPrivateRoute />}>
+          <Route path="/profile" element={<UserProfileDashboard />} />
+          <Route path="/profile/edit" element={<UserEditProfile />} />
+          <Route path="/profile/password-management" element={<UserPasswordManagement />} />
+          <Route path="/order-success" element={<OrderSuccess />} />
+          <Route path="/profile/addresses" element={<UserAddresses />} />
+          <Route path="/profile/addresses/add" element={<AddEditAddress />} />
+          <Route path="/profile/addresses/edit/:id" element={<AddEditAddress />} />
+          <Route path="/profile/orders" element={<UserOrder />} />
+          <Route path="/orders/:id" element={<OrderDetails />} />
+          <Route path="/profile/wallet" element={<UserWallet />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+        </Route>
 
-        <Route path="/checkout" element={<Checkout />} />
-        
-        <Route path="/wishlist" element={<Wishlist/>} />
-        <Route path="/order-details" element={<OrderDetails />} />
-        <Route path="/confirm-email-change" element={<EmailChangeOTPVerification />} />
-        <Route path="/wallet" element={<WalletHistory />} />
-
-        {/* --- Admin Public Route --- */}
+        {/* --- Public Admin Route --- */}
         <Route path="/admin/login" element={<AdminSignin />} />
 
-        {/* --- Admin Protected Routes --- */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/category-management" element={<CategoryManagement />} />
-        <Route path="/admin/coupon-management" element={<CouponManagement />} />
-        <Route path="/admin/inventory-management" element={<InventoryManagement />} />
-        <Route path="/admin/offer-management" element={<OfferManagement />} />
-        <Route path="/admin/order-management" element={<OrderManagement />} />
-        <Route path="/admin/product-management" element={<ProductManagement />} />
-        <Route path="/admin/referral-management" element={<ReferralManagement />} />
-        <Route path="/admin/sales-report" element={<SalesReport />} />
-        <Route path="/admin/user-management" element={<UserManagement />} />
+        {/* --- Protected Admin Routes --- */}
+        <Route element={<AdminPrivateRoute />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/category-management" element={<CategoryManagement />} />
+          <Route path="/admin/product-management" element={<ProductManagement />} />
+          <Route path="/admin/user-management" element={<UserManagement />} />
+          <Route path="/admin/order-management" element={<OrderManagement />} />
+          <Route path="/admin/inventory-management" element={<InventoryManagement />} />
+          <Route path="/admin/coupon-management" element={<CouponManagement />} />
+          <Route path="/admin/offer-management" element={<OfferManagement />} />
+          <Route path="/admin/referral-management" element={<ReferralManagment />} />
+          <Route path="/admin/sales-report" element={<SalesReport />} />
+
+        </Route>
       </Routes>
-      <ToastContainer position="top-center"/>
-    </SearchProvider >
-    </>
+
+      {/* --- Modal Routes (Background Routes Handling) --- */}
+      {state?.backgroundLocation && (
+        <Routes>
+          <Route path="/signup" element={<Signup onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/login" element={<Login onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/verify-otp" element={<OTPVerification onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/forgot-password" element={<ForgotPassword onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/reset-password/:token" element={<ResetPassword onClose={() => navigate(state.backgroundLocation)} />} />
+        </Routes>
+      )}
+
+      <ToastContainer position="top-center" />
+    </SearchProvider>
   );
 }
 

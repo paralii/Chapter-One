@@ -4,7 +4,7 @@ export default function googleAuthCallback (req, res)  {
   }
 
   const { accessToken, refreshToken } = req.user.tokens;
-
+  const user = req.user;
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "development", 

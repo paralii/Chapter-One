@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { resetPassword } from "../../../redux/authSlice";
+import { resetPassword, resetResetPasswordMessage } from "../../../redux/authSlice";
 import { Eye, EyeOff } from "lucide-react";
 
-const ResetPassword = () => {
+const ResetPassword = ({ onClose = () => {}}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,8 +15,9 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const { otp } = location.state || {};
 
-  const { loading, error, signupMessage } = useSelector((state) => state.auth);
+  const { loading, error, resetPasswordMessage } = useSelector((state) => state.auth);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -25,10 +26,13 @@ const ResetPassword = () => {
     };
   }, []);
 
-  // ✅ Success Message Handling
   useEffect(() => {
-    if (signupMessage) {
-      toast.success(signupMessage || "Password reset successful!");
+    dispatch(resetResetPasswordMessage());
+  }, [dispatch]);
+  
+  useEffect(() => {
+    if (resetPasswordMessage) {
+      toast.success(resetPasswordMessage || "Password reset successful!");
       setTimeout(() => {
         navigate("/login", {
           state: { backgroundLocation: location.state?.backgroundLocation || "/" },
@@ -36,9 +40,8 @@ const ResetPassword = () => {
         });
       }, 2000);
     }
-  }, [signupMessage, navigate, location]);
+  }, [resetPasswordMessage, navigate, location]);
 
-  // ✅ Token Expiry / Error Handling
   useEffect(() => {
     if (error && typeof error === "string") {
       toast.error(error);
@@ -49,6 +52,13 @@ const ResetPassword = () => {
       }
     }
   }, [error, navigate]);
+
+  useEffect(() => {
+    if (!token || !otp) {
+      navigate("/forgot-password", { replace: true });
+    }
+  }, [token, otp, navigate]);
+
 
   const isStrongPassword = (password) => {
     const regex =
@@ -70,8 +80,9 @@ const ResetPassword = () => {
       );
       return;
     }
+    console.log("Resetting with values:", { otp, otpToken: token, newPassword });
 
-    dispatch(resetPassword({ token, newPassword }));
+    dispatch(resetPassword({ otpToken: token, otp, newPassword }));
   };
 
   return (

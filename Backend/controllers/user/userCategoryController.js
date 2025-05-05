@@ -1,4 +1,6 @@
 import Product from "../../models/Product.js";
+import Category from "../../models/Category.js"; 
+import mongoose from "mongoose";
 
 export const getCategoriesUser = async (req, res) => {
   const { search = "", sort = "desc", page = 1, limit = 16, isDeleted } = req.query;
@@ -37,15 +39,23 @@ export const getCategoriesUser = async (req, res) => {
 export const getBooksByCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const books = await Product.find({ category });
+    const { page = 1, limit = 10 } = req.query;
 
-    if (!books.length) {
-      return res.status(404).json({ message: "No books found in this category" });
-    }
+    const categoryId = new mongoose.Types.ObjectId(category);
+    console.log("Category ID:", category);
 
-    res.status(200).json(books);
+    const skip = (page - 1) * limit;
+
+    const books = await Product.find({ category_id: categoryId })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Product.countDocuments({ category_id: categoryId });
+
+    res.status(200).json({ products: books, total });
   } catch (error) {
     console.error("Error fetching books by category:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+

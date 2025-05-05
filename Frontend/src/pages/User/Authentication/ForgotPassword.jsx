@@ -4,7 +4,7 @@ import { forgotPassword } from "../../../redux/authSlice";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
-function ForgotPassword() {
+function ForgotPassword({ onClose = () => {}}) {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
 
@@ -37,12 +37,14 @@ function ForgotPassword() {
     const resultAction = await dispatch(forgotPassword({ email }));
     if (forgotPassword.fulfilled.match(resultAction)) {
       const { otpToken } = resultAction.payload;
-      toast.success("Reset link sent!");
-      navigate("/reset-password", {
+      localStorage.setItem("otpToken", otpToken);
+      toast.success("OTP sent to your email for password reset");
+      navigate("/verify-otp", {
         state: {
           email,
+          from: "forgot-password",
           otpToken,
-          backgroundLocation: location.state?.backgroundLocation || "/",
+          backgroundLocation:  "/",
         },
         replace: true,
       });
@@ -83,10 +85,11 @@ function ForgotPassword() {
         </div>
 
         {error && (
-          <p className="text-red-500 text-sm text-center mb-3">
-            {typeof error === "object" ? JSON.stringify(error) : error}
-          </p>
-        )}
+  <p className="text-red-500 text-sm text-center mb-3">
+    {typeof error === "object" ? error.message || "Something went wrong." : error}
+  </p>
+)}
+
 
         <div className="mb-4">
           <input

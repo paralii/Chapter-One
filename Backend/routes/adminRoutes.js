@@ -7,7 +7,11 @@ import * as AdminProductController from "../controllers/admin/adminProductContro
 import * as AdminOrderController from "../controllers/admin/adminOrderController.js";
 import * as AdminInventoryController from '../controllers/admin/adminInventoryController.js';
 import { uploadProductImages, processProductImages } from "../middlewares/uploadMiddleware.js";
+import * as AdminCouponController from "../controllers/admin/adminCouponController.js";
+import * as salesReportController from "../controllers/admin/salesReportController.js";
 
+// import { getSalesReport, generateSalesReportCSV } from "../controllers/admin/salesReportController.js";
+// import { getSalesReport, generateSalesReportPDF, generateSalesReportExcel } from "../controllers/admin/salesReportController.js";
 
 const router = express.Router();
 
@@ -17,111 +21,56 @@ router.post("/logout", AdminAuthController.adminLogout);
 router.post("/refresh-token", AdminAuthController.refreshAdminToken);
 
 // ===================== CUSTOMER MANAGEMENT =====================
-router.get("/customers", verifyToken, isAdmin, AdminCustomerController.getAllCustomers);
-router.get("/customers/:id", verifyToken, isAdmin, AdminCustomerController.getCustomerById);
-router.get("/customers/count", verifyToken, isAdmin, AdminCustomerController.userCount);
-router.post("/customers", verifyToken, isAdmin, AdminCustomerController.createCustomer);
-router.patch("/customers/:id/toggle-block", verifyToken, isAdmin, AdminCustomerController.toggleBlockCustomer);
-router.put("/customers/:id", verifyToken, isAdmin, AdminCustomerController.updateCustomer);
-router.delete("/customers/:id", verifyToken, isAdmin, AdminCustomerController.deleteCustomer);
+router.get("/customers", verifyToken("admin"), isAdmin, AdminCustomerController.getAllCustomers);
+router.get("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerController.getCustomerById);
+router.get("/customers/count", verifyToken("admin"), isAdmin, AdminCustomerController.userCount);
+router.post("/customers", verifyToken("admin"), isAdmin, AdminCustomerController.createCustomer);
+router.patch("/customers/:id/toggle-block", verifyToken("admin"), isAdmin, AdminCustomerController.toggleBlockCustomer);
+router.put("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerController.updateCustomer);
+router.delete("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerController.deleteCustomer);
 
 // ===================== CATEGORY MANAGEMENT =====================
-router.get("/categories", verifyToken, isAdmin, AdminCategoryController.getCategories);
-router.post("/categories", verifyToken, isAdmin, AdminCategoryController.createCategory);
-router.put("/categories/:id", verifyToken, isAdmin, AdminCategoryController.updateCategory);
-router.delete("/categories/:id", verifyToken, isAdmin, AdminCategoryController.deleteCategory);
-router.get("/:category", AdminCategoryController.getBooksByCategory);
+router.get("/categories", verifyToken("admin"), isAdmin, AdminCategoryController.getCategories);
+router.post("/categories", verifyToken("admin"), isAdmin, AdminCategoryController.createCategory);
+router.put("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.updateCategory);
+router.delete("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.deleteCategory);
+router.get("/categories/:category", AdminCategoryController.getBooksByCategory);
 
 // ===================== PRODUCT MANAGEMENT =====================
-router.get("/products", verifyToken, isAdmin, AdminProductController.getProducts);
-router.post("/products",verifyToken, isAdmin, uploadProductImages, processProductImages, AdminProductController.createProduct);
-router.get("/products/:id",verifyToken, isAdmin, AdminProductController.getProductById);
-router.put("/products/:id",verifyToken, isAdmin, uploadProductImages, processProductImages, AdminProductController.updateProduct);
-router.patch("/products/:id/toggle",verifyToken, isAdmin, AdminProductController.toggleProductListing);
+router.get("/products", verifyToken("admin"), isAdmin, AdminProductController.getProducts);
+router.post("/products",verifyToken("admin"), isAdmin, uploadProductImages, processProductImages, AdminProductController.createProduct);
+router.get("/products/:id",verifyToken("admin"), isAdmin, AdminProductController.getProductById);
+router.put("/products/:id",verifyToken("admin"), isAdmin, uploadProductImages, processProductImages, AdminProductController.updateProduct);
+router.patch("/products/:id/toggle",verifyToken("admin"), isAdmin, AdminProductController.toggleProductListing);
+router.patch("/products/:id/",verifyToken("admin"), isAdmin, AdminProductController.deleteProduct);
 
 // ===================== ORDER MANAGEMENT =====================
-router.get("/orders", verifyToken, isAdmin, AdminOrderController.listAllOrders);
-router.get("/orders/:id", verifyToken, isAdmin, AdminOrderController.getOrderById);
-router.patch("/orders/:id/status", verifyToken, isAdmin, AdminOrderController.updateOrderStatus);
-router.patch("/orders/item/delivered", verifyToken, isAdmin, AdminOrderController.markItemDelivered);
-router.delete("/orders/:id", verifyToken, isAdmin, AdminOrderController.softDeleteOrder);
-router.get("/orders/:id/invoice", verifyToken, isAdmin, AdminOrderController.downloadAdminInvoice);
-router.post("/orders/return/verify", verifyToken, isAdmin, AdminOrderController.verifyReturnRequest);
+router.get("/orders", verifyToken("admin"), isAdmin, AdminOrderController.listAllOrders);
+router.get("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.getOrderById);
+router.patch("/orders/:id/status", verifyToken("admin"), isAdmin, AdminOrderController.updateOrderStatus);
+router.patch("/orders/item/delivered", verifyToken("admin"), isAdmin, AdminOrderController.markItemDelivered);
+router.delete("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.softDeleteOrder);
+router.get("/orders/:id/invoice", verifyToken("admin"), isAdmin, AdminOrderController.downloadAdminInvoice);
+router.post("/orders/return/verify", verifyToken("admin"), isAdmin, AdminOrderController.verifyReturnRequest);
 
 // ===================== INVENTORY MANAGEMENT =====================
-router.get('/', verifyToken, isAdmin, AdminInventoryController.getAllInventory);
-router.post('/update', verifyToken, isAdmin, AdminInventoryController.updateProductStock);
-router.get('/low-stock', verifyToken, isAdmin, AdminInventoryController.getLowStockProducts);
-router.get('/report', verifyToken, isAdmin, AdminInventoryController.getInventoryReport);
+router.get('/', verifyToken("admin"), isAdmin, AdminInventoryController.getAllInventory);
+router.post('/update', verifyToken("admin"), isAdmin, AdminInventoryController.updateProductStock);
+router.get('/low-stock', verifyToken("admin"), isAdmin, AdminInventoryController.getLowStockProducts);
+router.get('/report', verifyToken("admin"), isAdmin, AdminInventoryController.getInventoryReport);
 
+// ===================== COUPON MANAGEMENT =====================
+router.post("/coupons/create", verifyToken("admin"), isAdmin, AdminCouponController.createCoupon);
+router.put("/coupons/:couponId/update", verifyToken("admin"), isAdmin, AdminCouponController.updateCoupon);
+router.delete("/coupons/:couponId/delete", verifyToken("admin"), isAdmin, AdminCouponController.deleteCoupon);
+router.get("/coupons", verifyToken("admin"), isAdmin, AdminCouponController.getCoupons);  // Fetch all active coupons
+router.get("/coupons/:couponId", verifyToken("admin"), isAdmin, AdminCouponController.getCouponById); // Fetch coupon by ID
 
-// router.post("/coupons/create", verifyToken, isAdmin, couponController.createCoupon);
-// router.delete("/coupons/:id", verifyToken, isAdmin, couponController.deleteCoupon);
+// ===================== SALES REPORT =====================
+router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport); // Fetch report data (dashboard view)
+router.get("/sales-report/pdf", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportPDF); // Download PDF
+router.get("/sales-report/excel", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportExcel); // Download Excel
 
-// router.get("/product-offers", productOfferController.getProductOffers);
-// router.post(
-//   "/product-offer",
-//   verifyToken,
-//   isAdmin,
-//   productOfferController.createProductOffer
-// );
-// router.delete(
-//   "/product-offer/:id",
-//   verifyToken,
-//   isAdmin,
-//   productOfferController.deleteProductOffer
-// );
-
-// router.get("/category-offers", categoryOfferController.getCategoryOffers);
-// router.post(
-//   "/category-offer",
-//   verifyToken,
-//   isAdmin,
-//   categoryOfferController.createCategoryOffer
-// );
-// router.delete(
-//   "/category-offer/:id",
-//   verifyToken,
-//   isAdmin,
-//   categoryOfferController.deleteCategoryOffer
-// );
-
-// router.get("/daily", verifyToken, isAdmin, salesReportController.getDailySales);
-// router.get(
-//   "/weekly",
-//   verifyToken,
-//   isAdmin,
-//   salesReportController.getWeeklySales
-// );
-// router.get(
-//   "/yearly",
-//   verifyToken,
-//   isAdmin,
-//   salesReportController.getYearlySales
-// );
-// router.get(
-//   "/custom",
-//   verifyToken,
-//   isAdmin,
-//   salesReportController.getCustomSales
-// );
-// router.get("/", verifyToken, isAdmin, salesReportController.getSalesReport);
-// router.get(
-//   "/download/pdf",
-//   verifyToken,
-//   isAdmin,
-//   salesReportController.downloadSalesReportPdf
-// );
-// router.get(
-//   "/download/excel",
-//   verifyToken,
-//   isAdmin,
-//   salesReportController.downloadSalesReportExcel
-// );
-// router.post("/referral/generate-coupon", verifyToken, isAdmin, referralController.generateReferralCoupon);
-
-// router.get("/wallet/:userId", verifyToken, isAdmin, walletController.getWalletByUserId);
-// router.get("/wallet/:userId/transactions", verifyToken, isAdmin, walletController.getWalletTransactionsByUserId);
 
 
 export default router;

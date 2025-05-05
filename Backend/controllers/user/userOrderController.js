@@ -6,6 +6,7 @@ import { generateInvoicePDF } from "../../utils/generateInvoicePDF.js";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
+import Cart from "../../models/Cart.js";
 import mongoose from "mongoose";
 
 const INVOICE_DIR = path.resolve("invoices");
@@ -17,94 +18,91 @@ const generateOrderID = () => {
 
 // 1. Place Order 
 export const placeOrder = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-  
-    try {
-      const userId = req.user._id;
-      const {
-        address_id,
-        items,
-        shipping_chrg = 0,
-        discount = 0,
-        paymentMethod,
-        razorpay_order_id, // For online payments
-      } = req.body;
-  
-      // 1. Validate items
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: "No items to order" });
-      }
-  
-      // 2. Validate address
-      const address = await Address.findOne({ _id: address_id, user_id: userId }).session(session);
-      if (!address) {
-        return res.status(400).json({ message: "Invalid or unauthorized address" });
-      }
-  
-      // 3. Process items: validate stock, calculate totals
-      let subtotal = 0;
-      const orderItems = [];
-  
-      for (const item of items) {
-        const product = await Product.findById(item.product_id).session(session);
-        if (!product || product.isDeleted) {
-          return res.status(400).json({ message: `Product not available: ${item.product_id}` });
-        }
-  
-        if (product.available_quantity < item.quantity) {
-          return res.status(400).json({ message: `Insufficient stock for: ${product.title}` });
-        }
-  
-        const price = product.price;
-        const total = price * item.quantity;
-        subtotal += total;
-  
-        // Deduct stock
-        product.available_quantity -= item.quantity;
-        await product.save({ session });
-  
-        orderItems.push({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price,
-          total,
-        });
-      }
-  
-      // 4. Calculate net amount
-      const netAmount = subtotal + shipping_chrg - discount;
-  
-      // 5. Create order document
-      const order = new Order({
-        orderID: generateOrderID(),
-        user_id: userId,
-        address_id,
-        paymentMethod: paymentMethod || "COD",
-        paymentStatus: paymentMethod === "ONLINE" ? "Pending" : "Paid",
-        razorpay_order_id: paymentMethod === "ONLINE" ? razorpay_order_id : undefined,
-        shipping_chrg,
-        discount,
-        total: subtotal,
-        netAmount,
-        items: orderItems,
-      });
-  
-      await order.save({ session });
-  
-      // 6. Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
-  
-      res.status(201).json({ message: "Order placed successfully", order });
-    } catch (err) {
-      // Rollback transaction on error
-      await session.abortTransaction();
-      session.endSession();
-      console.error("Order placement failed:", err);
-      res.status(500).json({ message: "Internal server error" });
+  try {
+    const userId = req.user._id;
+    const {
+      address_id,
+      items,
+      shipping_chrg,
+      discount,
+      paymentMethod,
+      razorpay_order_id, // For online payments
+    } = req.body;
+
+    // 1. Validate items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "No items to order" });
     }
-  };
+
+    // 2. Validate address
+    const address = await Address.findOne({ _id: address_id, user_id: userId });
+    if (!address) {
+      return res.status(400).json({ message: "Invalid or unauthorized address" });
+    }
+
+    // 3. Process items: validate stock, calculate totals
+    let subtotal = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+      const product = await Product.findById(item.product_id);
+      if (!product || product.isDeleted) {
+        return res.status(400).json({ message: `Product not available: ${item.product_id}` });
+      }
+
+      if (product.available_quantity < item.quantity) {
+        return res.status(400).json({ message: `Insufficient stock for: ${product.title}` });
+      }
+
+      const price = product.price;
+      const total = price * item.quantity;
+      subtotal += total;
+
+      // Deduct stock
+      product.available_quantity -= item.quantity;
+      await product.save(); // No transaction session here
+
+      orderItems.push({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price,
+        total,
+      });
+    }
+
+    // 4. Calculate net amount
+    const netAmount = subtotal + shipping_chrg - discount;
+
+    // 5. Create order document
+    const order = new Order({
+      orderID: generateOrderID(),
+      user_id: userId,
+      address_id,
+      paymentMethod: paymentMethod || "COD",
+      paymentStatus: paymentMethod === "ONLINE" ? "Pending" : "Paid",
+      razorpay_order_id: paymentMethod === "ONLINE" ? razorpay_order_id : undefined,
+      shipping_chrg,
+      discount,
+      total: subtotal,
+      netAmount,
+      items: orderItems,
+    });
+
+    await order.save();
+    // 6. Clear the user's cart
+await Cart.findOneAndUpdate(
+  { user_id: userId },
+  { $set: { items: [] } }
+);
+
+
+    res.status(201).json({ message: "Order placed successfully", order });
+  } catch (err) {
+    console.error("Order placement failed:", err);
+    res.status(500).json({ message: "Internal server error", error: err.message });
+  }
+};
+
   
 
 // 2. List Orders for User
@@ -165,20 +163,20 @@ export const cancelOrderOrItem = async (req, res) => {
       if (!item) {
         return res.status(404).json({ message: "Item not found in order" });
       }
-      if (item.status !== 'ordered') {
+      if (item.status !== 'Pending') {
         return res.status(400).json({ success: false, message: 'Only items that are still "ordered" can be cancelled' });
       }
-      if (item.status === "cancelled") {
+      if (item.status === "Cancelled") {
         return res.status(400).json({ message: "Item already cancelled" });
       }
-      if (item.status === "returned") {
+      if (item.status === "Returned") {
         return res.status(400).json({ message: "Item already returned" });
       }
-      if (item.status === "delivered") {
+      if (item.status === "Delivered") {
         return res.status(400).json({ message: "Delivered items cannot be cancelled" });
       }
 
-      item.status = "cancelled";
+      item.status = "Cancelled";
       item.cancelReason = reason;
       await Product.findByIdAndUpdate(productId, { $inc: { available_quantity: item.quantity } });
 
@@ -188,19 +186,19 @@ export const cancelOrderOrItem = async (req, res) => {
       }
 
     } else {
-      if (order.status === "cancelled" || order.status === "delivered") {
+      if (order.status === "Cancelled" || order.status === "Delivered") {
         return res.status(400).json({ message: "Order already processed" });
       }
-      order.status = "cancelled";
+      order.status = "Cancelled";
       for (const item of order.items) {
-        if (item.status === "ordered") {
-          item.status = "cancelled";
+        if (item.status === "Pending") {
+          item.status = "Cancelled";
           item.cancelReason = reason;
           await Product.findByIdAndUpdate(item.product_id, { $inc: { available_quantity: item.quantity } });
 
           if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Paid") {
             const refundableAmount = order.items.reduce((sum, item) => {
-              return item.status === "cancelled" ? sum + item.total : sum;
+              return item.status === "Cancelled" ? sum + item.total : sum;
             }, 0);
             if (refundableAmount > 0) {
               await refundToWallet(userId, refundableAmount, `Refund for cancelled Order ${order.orderID}`);
@@ -233,14 +231,14 @@ export const returnOrderItem = async (req, res) => {
     if (!item) {
       return res.status(404).json({ message: "Item not found in order" });
     }
-    if (item.status === "returned") {
+    if (item.status === "Returned") {
       return res.status(400).json({ success: false, message: 'Item already in return process or returned' });
     }
-    if (item.status !== "delivered") {
+    if (item.status !== "Delivered") {
       return res.status(400).json({  success: false, message: 'Only delivered items can be returned' });
     }
 
-    item.status = "returned";
+    item.status = "Returned";
     item.returnReason = reason;
 
     if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Paid") {

@@ -1,8 +1,8 @@
 import crypto from "crypto";
 import razorpay from "../../utils/razorpay.js";
-import Order from "../models/Order.js";
+import Order from "../../models/Order.js";
 import mongoose from "mongoose";
-import Wallet from "../models/Wallet.js";
+import Wallet from "../../models/Wallet.js";
 
 export const createRazorpayOrder = async (req, res) => {
   try {
@@ -13,12 +13,13 @@ export const createRazorpayOrder = async (req, res) => {
     }
 
     const options = {
-      amount: amount * 100, // Razorpay uses paise
+      amount: Math.round(amount * 100), // Razorpay uses paise
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     };
 
     const order = await razorpay.orders.create(options);
+    console.log("Razorpay order created:", order);
     res.status(200).json({ success: true, order });
   } catch (err) {
     console.error("Razorpay order creation failed:", err);
@@ -27,33 +28,34 @@ export const createRazorpayOrder = async (req, res) => {
 };
 
 export const verifyPayment = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
   
     try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-  
+      let { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+      console.log(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+      razorpay_order_id = razorpay_order_id.trim();
+      razorpay_payment_id = razorpay_payment_id.trim();
+      razorpay_signature = razorpay_signature.trim();
+      
+      console.log(`checking`,razorpay_order_id, razorpay_payment_id, razorpay_signature);
+
       const generatedSignature = crypto
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest("hex");
-  
+      console.log("Generated signature:", generatedSignature);
       if (generatedSignature !== razorpay_signature) {
         return res.status(400).json({ success: false, message: "Invalid signature" });
       }
   
       // 🔍 Find order by Razorpay order ID
-      const order = await Order.findOne({ razorpay_order_id }).session(session);
+      const order = await Order.findOne({ razorpay_order_id });
       if (!order) {
-        await session.abortTransaction();
-        session.endSession();
         return res.status(404).json({ success: false, message: "Order not found" });
       }
-  
+      console.log('order',order);
       // 🛑 Prevent double verification
       if (order.paymentStatus === "Paid") {
-        await session.commitTransaction();
-        session.endSession();
         return res.status(200).json({ success: true, message: "Payment already verified" });
       }
   
@@ -62,16 +64,12 @@ export const verifyPayment = async (req, res) => {
       order.payment_id = razorpay_payment_id;
       order.status = "confirmed"; // optional - you can change this based on your order lifecycle
   
-      await order.save({ session });
+      await order.save();
   
-      await session.commitTransaction();
-      session.endSession();
   
       res.status(200).json({ success: true, message: "Payment verified and order updated" });
   
     } catch (err) {
-      await session.abortTransaction();
-      session.endSession();
       console.error("Payment verification failed:", err);
       res.status(500).json({ message: "Internal server error" });
     }

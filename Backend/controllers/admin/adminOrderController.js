@@ -84,33 +84,44 @@ export const getOrderById = async (req, res) => {
 
 // Admin update overall order status
 export const updateOrderStatus = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const { status } = req.body;
+    console.log("Updating order status to:", status);
+    
+    const validOrderStatuses = ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled", "Returned"];
+    if (!validOrderStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid order status" });
+    }
+    
+    console.log("Finding order with ID:", req.params.id);
+    const order = await Order.findOne({ _id: req.params.id, isDeleted: false });
+    console.log("Order found:", order);
 
-    // Validate status
-    const validStatuses = ["placed", "processed", "shipped", "delivered", "cancelled"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    const order = await Order.findOne({ _id: req.params.id, isDeleted: false }).session(session);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
-    if (order.status === "cancelled") return res.status(400).json({ success: false, message: "Cancelled orders can't be updated" });
+    if (order.status === "Cancelled") {
+      return res.status(400).json({ success: false, message: "Cancelled orders can't be updated" });
+    }
 
+
+    // Update order status
     order.status = status;
-    await order.save({ session });
+    order.items.forEach(item => {
+      if (status === "Shipped" || status === "OutForDelivery" || status === "Delivered") {
+        // Assuming the item status should match the order status for shipping
+        item.status = status;
+      }
+      // Handle any other item-specific updates based on status
+    });
 
-    await session.commitTransaction();
+    await order.save();
+
     res.json({ success: true, message: `Order status updated to ${status}` });
   } catch (err) {
-    await session.abortTransaction();
     console.error(err);
     res.status(500).json({ success: false, message: "Error updating order status" });
-  } finally {
-    session.endSession();
   }
 };
 
@@ -125,21 +136,21 @@ export const markItemDelivered = async (req, res) => {
     const item = order.items.find(i => i.product_id.toString() === productId);
     if (!item) return res.status(404).json({ success: false, message: "Item not found" });
 
-    if (["cancelled", "returned", "delivered"].includes(item.status)) {
+    if (["Cancelled", "Returned", "Delivered"].includes(item.status)) {
       return res.status(400).json({ success: false, message: `Item already ${item.status}` });
     }
 
     // Check if the order is cancelled
-    if (order.status === "cancelled") {
+    if (order.status === "Cancelled") {
       return res.status(400).json({ success: false, message: "Order is cancelled, items can't be delivered" });
     }
 
-    item.status = "delivered";
+    item.status = "Delivered";
     await order.save();
 
-    const allDelivered = order.items.every(i => i.status === "delivered");
-    if (allDelivered && order.status !== "delivered") {
-      order.status = "delivered";
+    const allDelivered = order.items.every(i => i.status === "Delivered");
+    if (allDelivered && order.status !== "Delivered") {
+      order.status = "Delivered";
       await order.save();
     }
 

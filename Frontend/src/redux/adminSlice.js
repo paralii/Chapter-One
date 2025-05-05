@@ -9,8 +9,10 @@ export const adminLogin = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${API_BASE}/admin/login`, credentials, { withCredentials: true });
+      console.log("Login response:", response.data); // Log the response data
       return response.data.admin; 
     } catch (err) {
+      console.error("Login error:", err.response?.data);  // Log the error response for debugging
       return rejectWithValue(err.response?.data || "Login failed");
     }
   }
@@ -51,6 +53,9 @@ const adminSlice = createSlice({
     logoutAdmin(state) {
       state.admin = null;
     },
+    clearAdminError(state) {
+      state.error = null; // Clear error state
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -80,5 +85,5 @@ const adminSlice = createSlice({
   },
 });
 
-export const { logoutAdmin } = adminSlice.actions;
+export const { logoutAdmin, clearAdminError } = adminSlice.actions;
 export default adminSlice.reducer;

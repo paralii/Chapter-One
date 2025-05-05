@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
 
-function Login({ onClose }) {
+function Login({ onClose = () => {}}) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,6 +17,10 @@ function Login({ onClose }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+  });
 
   const { loading } = useSelector((state) => state.auth);
 
@@ -27,9 +31,29 @@ function Login({ onClose }) {
     };
   }, []);
 
+  const validateForm = () => {
+    let isValid = true;
+    let newErrors = { email: "", password: "" };
+
+    if (!email.trim()) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    }
+    if (!password.trim()) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    }
+    
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLocked) return toast.warn("Please wait before trying again.");
+
+    if (!validateForm()) return;
 
     try {
       const resultAction = await dispatch(loginUser({ email, password, rememberMe }));
@@ -38,6 +62,7 @@ function Login({ onClose }) {
         toast.success("Login successful!");
         setAttempts(0);
         onClose();
+        navigate("/");
       } else {
         setAttempts((prev) => prev + 1);
         toast.error(resultAction.payload?.message || "Login failed");
@@ -80,38 +105,50 @@ function Login({ onClose }) {
           &times;
         </button>
 
-        <h1 className="text-2xl font-bold text-black mb-6 font-Inter">
-          Sign In
-        </h1>
 
         <form onSubmit={handleSubmit} className="w-full">
-          <div className="w-full h-12 rounded-xl mb-4 flex items-center px-4 bg-[#edece9]">
+
+        <h1 className="text-[22px] sm:text-[26px] font-bold text-center mb-5 font-Outfit">
+            Sign In
+          </h1>
+
+          <div className="mb-4">
             <input
               type="email"
               placeholder="Email"
-              className="w-full h-full bg-transparent border-none outline-none text-base text-black font-Inter"
+              className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors(prev => ({ ...prev, email: "" }));
+              }}
             />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>
+            )}
           </div>
 
-          <div className="w-full h-12 rounded-xl mb-4 flex items-center px-4 bg-[#edece9] relative">
+          <div className="mb-4 relative">
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className="w-full h-full bg-transparent border-none outline-none text-base text-black font-Inter pr-10"
+              className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 pr-12 text-[16px] outline-none font-Inter"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrors(prev => ({ ...prev, password: "" }));
+              }}
             />
             <button
               type="button"
-              className="absolute right-3 text-gray-500"
+              className="absolute right-4 top-6 transform -translate-y-1/2 text-gray-500"
               onClick={() => setShowPassword((prev) => !prev)}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
+            {errors.password && (
+              <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>
+            )}
           </div>
 
           <div className="flex items-center mb-4">

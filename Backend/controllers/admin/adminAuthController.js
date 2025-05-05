@@ -25,7 +25,7 @@ export const adminLogin = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens(admin, true);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken, "admin");
     res.status(200).json({ admin, message: "Admin login successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -33,8 +33,8 @@ export const adminLogin = async (req, res) => {
 };
 
 export const adminLogout = (req, res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  res.clearCookie("accessToken_admin");
+  res.clearCookie("refreshToken_admin");
   res.status(200).json({ message: "Admin logged out successfully" });
 };
 

@@ -1,37 +1,53 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { verifyOTP, resendOTP } from "../../../redux/authSlice";
+import { verifyOTP, resendOtpForVerify, verifyForgotPasswordOTP, resendForgotPasswordOTP } from "../../../redux/authSlice";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 const OTPVerification = () => {
   const [otpDigits, setOtpDigits] = useState(Array(6).fill(""));
-  const [timeLeft, setTimeLeft] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(10);
   const [isResendActive, setIsResendActive] = useState(false);
   const [otpToken, setOtpToken] = useState(null);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { state } = useLocation();
-  const { loading } = useSelector((state) => state.auth);
+  const location = useLocation();
+  const state = location.state || {};
+    const { loading } = useSelector((state) => state.auth);
 
   const email = state?.email;
   const initialOtpToken = state?.otpToken;
-
-  // useEffect(() => {
-  //   if (!email || !initialOtpToken) {
-  //     toast.error("Session expired! Please sign up again.");
-  //     navigate("/signup");
-  //   } else {
-  //     setOtpToken(initialOtpToken);
-  //   }
-  // }, [email, initialOtpToken, navigate]);
+  const from = state?.from;
+  useEffect(() => {
+    console.log('email', email);
+    console.log('initialOtpToken', initialOtpToken);
+    
+    console.log("from (inside useEffect)", from);
+  }, []);
+    useEffect(() => {
+    const storedToken = localStorage.getItem("otpToken");
+    console.log("storedToken", storedToken);
+    if (!email || (!initialOtpToken && !storedToken)) {
+      toast.error("Session expired! Please try again.");
+      navigate(from == "forgot-password" ? "/forgot-password" : "/signup");
+      return;
+    }
+  
+    setOtpToken(initialOtpToken || storedToken);
+  }, [email, initialOtpToken, navigate, from]);
+  
+  
 
   useEffect(() => {
-    const timer = timeLeft > 0 && setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    if (timeLeft <= 0) setIsResendActive(true);
-    return () => clearInterval(timer);
+    if (timeLeft > 0) {
+      const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+      return () => clearInterval(timer);
+    } else {
+      setIsResendActive(true);
+    }
   }, [timeLeft]);
+  
 
   useEffect(() => {
     document.getElementById("otp-0")?.focus();
@@ -46,11 +62,17 @@ const OTPVerification = () => {
   const handleResend = async () => {
     if (!isResendActive) return;
     setIsResendActive(false);
-    setTimeLeft(120);
+    setTimeLeft(10);
     try {
-      const result = await dispatch(resendOTP(email));
-      if (resendOTP.fulfilled.match(result)) {
+      let result;
+      if (from === "forgot-password") {
+        result = await dispatch(resendForgotPasswordOTP({ email }));
+      } else {
+        result = await dispatch(resendOtpForVerify({ otpToken }));
+      }
+      if (resendForgotPasswordOTP.fulfilled.match(result) || resendOtpForVerify.fulfilled.match(result)) {
         setOtpToken(result.payload.otpToken);
+        localStorage.setItem("otpToken", result.payload.otpToken);
         toast.success("New OTP sent to your email!");
         setOtpDigits(Array(6).fill(""));
       } else {
@@ -84,15 +106,41 @@ const OTPVerification = () => {
     if (finalOtp.length !== 6) return toast.error("Please enter a valid 6-digit OTP");
 
     try {
-      const result = await dispatch(verifyOTP({ email, otp: finalOtp, otpToken }));
-      if (verifyOTP.fulfilled.match(result)) {
-        if (result.payload && result.payload.user) {
-          toast.success("OTP verified successfully!");
-          navigate("/");
-        } else {
-          toast.success("OTP verified! Please log in.");
-          navigate("/login");
-        }
+      const otpToken = localStorage.getItem("otpToken");
+      if (!otpToken) throw new Error("OTP token missing or expired");
+  
+      let result;
+if (from == "forgot-password") {
+  result = await dispatch(verifyForgotPasswordOTP({ email, otp: finalOtp, otpToken }));
+} else {
+  result = await dispatch(verifyOTP({ email, otp: finalOtp, otpToken }));
+}
+
+if (
+  (from == "forgot-password" && verifyForgotPasswordOTP.fulfilled.match(result)) ||
+  (from !== "forgot-password" && verifyOTP.fulfilled.match(result))
+) {
+  localStorage.removeItem("otpToken");
+  toast.success("OTP verified successfully!");
+
+  if (from == "forgot-password") {
+    const resetToken = result.payload?.resetToken;
+    if (!resetToken) throw new Error("Reset token missing after OTP verification");
+    navigate(`/reset-password/${resetToken}`,{
+      state:{
+        otp:finalOtp,
+        backgroundLocation:  "/",
+      }
+    });
+  } else {
+    const user = result.payload?.user;
+    if (user) {
+      navigate("/");
+    } else {
+      toast.success("OTP verified! Please log in.");
+      navigate("/login");
+    }
+  } 
       } else {
         throw new Error(result.payload?.message || "Invalid OTP! Please try again.");
       }

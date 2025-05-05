@@ -25,7 +25,7 @@ function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await adminAxios.get(`/users`, {
+      const response = await adminAxios.get(`/customers`, {
         params: { search, page, limit },
       });
       setUsers(response.data.users);
@@ -58,7 +58,7 @@ function UserManagement() {
       `Are you sure you want to ${isBlock ? "Unblock" : "Block"} the user?`,
       async () => {
         try {
-          await adminAxios.patch(`/users/${id}/toggle-block`);
+          await adminAxios.patch(`/customers/${id}/toggle-block`);
           fetchUsers();
           toast.success(`User status ${isBlock ? "Unblocked" : "Blocked"}`);
         } catch (err) {
@@ -73,7 +73,7 @@ function UserManagement() {
       "Are you sure you want to delete this user permanently?",
       async () => {
         try {
-          await adminAxios.delete(`/users/${id}`);
+          await adminAxios.delete(`/customers/${id}`);
           fetchUsers();
           toast.success("User deleted successfully!");
         } catch (err) {
@@ -241,13 +241,13 @@ function UserModal({ isOpen, onClose, mode, userData, onUserUpdated }) {
     try {
       if (mode === "add") {
         await axios.post(
-          `${API_BASE}/admin/users`,
+          `${API_BASE}/admin/customers`,
           { firstname, lastname, email, password },
           { withCredentials: true }
         );
       } else {
         await axios.put(
-          `${API_BASE}/admin/users/${userData._id}`,
+          `${API_BASE}/admin/customers/${userData._id}`,
           { firstname, lastname, email },
           { withCredentials: true }
         );

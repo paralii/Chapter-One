@@ -151,8 +151,8 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
               className="bg-[#654321] text-white px-4 py-2 rounded"
               onClick={async () => {
                 try {
-                  await axios.put(
-                    `${API_BASE}/admin/products/${id}`,
+                  await axios.patch(
+                    `${API_BASE}/admin/products/${id}/toggle`,
                     { isDeleted: !isDeleted },
                     { withCredentials: true }
                   );
@@ -312,7 +312,11 @@ function AddProduct({ onCancel, onLogout }) {
   const [price, setPrice] = useState("");
   const [availableQuantity, setAvailableQuantity] = useState("");
   const [description, setDescription] = useState("");
-  
+  const [highlights, setHighlights] = useState("");
+const [specs, setSpecs] = useState("");
+const [discount, setDiscount] = useState(0);
+const [publisher, setPublisher] = useState("");
+
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -333,8 +337,8 @@ function AddProduct({ onCancel, onLogout }) {
         params: { search: "", page: 1, limit: 100, isDeleted: "true" },
       })
       .then((res) => setCategories(res.data.categories))
-      .catch((err) => console.error(err));
-  }, []);
+      .catch((err) => console.error(err))
+      }, []);
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
@@ -407,6 +411,11 @@ function AddProduct({ onCancel, onLogout }) {
     formData.append("price", price);
     formData.append("available_quantity", availableQuantity);
     formData.append("description", description);
+    formData.append("highlights", highlights);
+formData.append("specs", specs);
+formData.append("discount", discount);
+formData.append("publisher", publisher);
+
     images.forEach((imgObj) => {
       formData.append("images", imgObj.croppedImage);
     });
@@ -571,6 +580,53 @@ function AddProduct({ onCancel, onLogout }) {
               onChange={(e) => setDescription(e.target.value)}
             ></textarea>
           </div>
+          <div className="mb-[33px]">
+  <label className="block text-[#4d4d4d] mb-[2px] font-Outfit text-[20px]">
+    Highlights
+  </label>
+  <textarea
+    className="resize-none bg-[#ececec] border border-[#cbcbcb] rounded-[15px] w-full h-[120px] p-[20px] text-[16px]"
+    value={highlights}
+    onChange={(e) => setHighlights(e.target.value)}
+  />
+</div>
+
+<div className="mb-[33px]">
+  <label className="block text-[#4d4d4d] mb-[2px] font-Outfit text-[20px]">
+    Specifications
+  </label>
+  <textarea
+    className="resize-none bg-[#ececec] border border-[#cbcbcb] rounded-[15px] w-full h-[120px] p-[20px] text-[16px]"
+    value={specs}
+    onChange={(e) => setSpecs(e.target.value)}
+  />
+</div>
+
+<div className="flex flex-col lg:flex-row gap-[16px] mb-[33px]">
+  <div className="flex-1">
+    <label className="block text-[#4d4d4d] mb-[2px] font-Outfit text-[20px]">
+      Discount (%)
+    </label>
+    <input
+      type="number"
+      className="bg-[#ececec] border border-[#cbcbcb] rounded-[15px] w-full h-[59px] px-[20px] text-[16px]"
+      value={discount > 100 ? 100 : discount < 0 ? 0 : discount}
+      onChange={(e) => setDiscount(Number(e.target.value))}
+      />
+  </div>
+  <div className="flex-1">
+    <label className="block text-[#4d4d4d] mb-[2px] font-Outfit text-[20px]">
+      Publisher
+    </label>
+    <input
+      type="text"
+      className="bg-[#ececec] border border-[#cbcbcb] rounded-[15px] w-full h-[59px] px-[20px] text-[16px]"
+      value={publisher}
+      onChange={(e) => setPublisher(e.target.value)}
+    />
+  </div>
+</div>
+
           <div className="flex justify-center gap-4">
             <button
               type="submit"
@@ -626,6 +682,11 @@ function EditProduct({ productId, onCancel, onLogout }) {
   const [availableQuantity, setAvailableQuantity] = useState("");
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState([]);
+  const [highlight, setHighlight] = useState("");
+const [specifications, setSpecifications] = useState("");
+const [discount, setDiscount] = useState("");
+const [publisher, setPublisher] = useState("");
+
   const [error, setError] = useState(null);
 
   // For new images (with cropping)
@@ -643,17 +704,22 @@ function EditProduct({ productId, onCancel, onLogout }) {
   useEffect(() => {
     // Fetch product details and pre-fill fields
     axios
-      .get(`${API_BASE}/user/products/${productId}`, { withCredentials: true })
-      .then((res) => {
-        const prod = res.data;
-        setTitle(prod.title);
-        setCategory(prod.category_id);
-        setAuthorName(prod.author_name);
-        setPrice(prod.price);
-        setAvailableQuantity(prod.available_quantity);
-        setDescription(prod.description);
-        setImagePreviews(prod.product_imgs);
-      })
+  .get(`${API_BASE}/user/products/${productId}`, { withCredentials: true })
+  .then((res) => {
+    const prod = res.data;
+    setTitle(prod.title);
+    setCategory(prod.category_id._id);
+    setAuthorName(prod.author_name);
+    setPrice(prod.price);
+    setAvailableQuantity(prod.available_quantity);
+    setDescription(prod.description);
+    setHighlight(prod.highlights || "");
+    setSpecifications(prod.specs || "");
+    setDiscount(prod.discount || "0");
+    setPublisher(prod.publisher || "");
+    setImagePreviews(prod.product_imgs);
+    console.log("category",category)
+  })
       .catch((err) =>
         setError(err.response?.data?.message || "Error fetching product")
       );
@@ -738,6 +804,11 @@ function EditProduct({ productId, onCancel, onLogout }) {
     formData.append("price", price);
     formData.append("available_quantity", availableQuantity);
     formData.append("description", description);
+    formData.append("highlight", highlight);
+    formData.append("specifications", specifications);
+    formData.append("discount", discount);
+    formData.append("publisher", publisher);
+
     
     if (images.length > 0) {
       if (images.some((img) => !img.croppedImage)) {
@@ -752,7 +823,7 @@ function EditProduct({ productId, onCancel, onLogout }) {
       await axios.put(`${API_BASE}/admin/products/${productId}`, formData, {
         withCredentials: true,
       });
-      onCancel(); // Return to manage view
+      onCancel(); 
     } catch (err) {
       setError(err.response?.data?.error || "Error updating product");
     }
@@ -766,6 +837,7 @@ function EditProduct({ productId, onCancel, onLogout }) {
       console.error("Logout failed:", err.response?.data?.message || err.message);
     }
   };
+  const currentCategoryName = categories.find(cat => cat._id === category)?.name || "Select Category";
 
   return (
     <div className="flex-1 p-10 bg-yellow-50">
@@ -828,19 +900,25 @@ function EditProduct({ productId, onCancel, onLogout }) {
         </div>
         <div className="mb-6">
           <label className="block text-lg mb-1">Category</label>
-          <select
-            className="w-full p-3 border rounded-lg"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            required
-          >
-            <option value="">Select Category</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat._id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+
+<select
+  className="w-full p-3 border rounded-lg"
+  value={category}
+  onChange={(e) => setCategory(e.target.value)}
+  required
+>
+  {/* Show the current category name but use _id as value */}
+  <option value={category}>{currentCategoryName}</option>
+
+  {/* Render the rest of the options */}
+  {categories
+    .filter(cat => cat._id !== category) // Avoid duplicate
+    .map((cat) => (
+      <option key={cat._id} value={cat._id}>
+        {cat.name}
+      </option>
+    ))}
+</select>
         </div>
         <div className="mb-6">
           <label className="block text-lg mb-1">Upload Image</label>
@@ -856,22 +934,26 @@ function EditProduct({ productId, onCancel, onLogout }) {
           <div className="mb-6">
             <label className="block text-lg mb-1">New Image Previews</label>
             <div className="grid grid-cols-3 gap-4">
-              {images.map((img, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={img.preview}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-20 object-cover rounded"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-0 bg-black bg-opacity-50 text-white flex items-center justify-center text-xs"
-                    onClick={() => openCropModal(index)}
-                  >
-                    Crop
-                  </button>
+            {images.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {images.map((img, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={img.preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-20 object-cover rounded"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-0 bg-opacity-50 text-black flex items-center justify-center text-xs"
+                        onClick={() => openCropModal(index)}
+                      >
+                        Crop
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         ) : imagePreviews && imagePreviews.length > 0 ? (
@@ -889,6 +971,45 @@ function EditProduct({ productId, onCancel, onLogout }) {
             </div>
           </div>
         ) : null}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  <div>
+    <label className="block text-lg mb-1">Publisher</label>
+    <input
+      type="text"
+      className="w-full p-3 border rounded-lg"
+      value={publisher}
+      onChange={(e) => setPublisher(e.target.value)}
+    />
+  </div>
+  <div>
+    <label className="block text-lg mb-1">Discount (%)</label>
+    <input
+      type="number"
+      className="w-full p-3 border rounded-lg"
+      value={discount}
+      onChange={(e) => setDiscount(e.target.value)}
+    />
+  </div>
+</div>
+
+<div className="mb-6">
+  <label className="block text-lg mb-1">Highlight</label>
+  <textarea
+    className="w-full p-3 border rounded-lg"
+    value={highlight}
+    onChange={(e) => setHighlight(e.target.value)}
+  ></textarea>
+</div>
+
+<div className="mb-6">
+  <label className="block text-lg mb-1">Specifications</label>
+  <textarea
+    className="w-full p-3 border rounded-lg"
+    value={specifications}
+    onChange={(e) => setSpecifications(e.target.value)}
+  ></textarea>
+</div>
+
         <div className="mb-6">
           <label className="block text-lg mb-1">Description</label>
           <textarea

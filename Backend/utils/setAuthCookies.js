@@ -1,17 +1,19 @@
+const setAuthCookies = (res, accessToken, refreshToken, type = "user") => {
+  const accessCookieName = `accessToken_${type}`;
+  const refreshCookieName = `refreshToken_${type}`;
 
-const setAuthCookies = (res, accessToken, refreshToken) => {
-  res.cookie("accessToken", accessToken, {
+  res.cookie(accessCookieName, accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "development",
+    secure: process.env.NODE_ENV !== "development",
     sameSite: "Lax",
-    maxAge: 60 * 60 * 1000,
+    maxAge: 60 * 60 * 1000, // 1 hour
   });
 
-  res.cookie("refreshToken", refreshToken, {
+  res.cookie(refreshCookieName, refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "development",
+    secure: process.env.NODE_ENV !== "development",
     sameSite: "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 

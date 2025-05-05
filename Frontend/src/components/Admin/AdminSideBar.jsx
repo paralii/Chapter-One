@@ -100,6 +100,19 @@ function AdminSidebar() {
             <span className="text-base">Coupon</span>
           </NavLink>
           <NavLink
+            to="/admin/sales-report"
+            className={({ isActive }) => navItemClasses(isActive)}
+          >
+            <div className="mr-2 ml-2 ">
+              <img
+                src="https://cdn.builder.io/api/v1/image/assets/725e3931e5524a72a2f89a378008974f/62c0850b8b04ac44a74da13d5dc8cd1f6c22413704c3edf1f77b1c1a6a374e65?placeholderIfAbsent=true"
+                alt="Coupon icon"
+                className="w-4 h-6 object-contain"
+              />
+            </div>
+            <span className="text-base">Sales Report</span>
+          </NavLink>
+          {/* <NavLink
             to="/admin/inventory-management"
             className={({ isActive }) => navItemClasses(isActive)}
           >
@@ -111,7 +124,7 @@ function AdminSidebar() {
               />
             </div>
             <span className="text-base">Inventory</span>
-          </NavLink>
+          </NavLink> */}
           {/* <NavLink
             to="/admin/referral-management"
             className={({ isActive }) => navItemClasses(isActive)}
@@ -124,19 +137,6 @@ function AdminSidebar() {
               />
             </div>
             <span className="text-base">Referral</span>
-          </NavLink>
-          <NavLink
-            to="/admin/sales-report"
-            className={({ isActive }) => navItemClasses(isActive)}
-          >
-            <div className="mr-2 ml-2 ">
-              <img
-                src="https://cdn.builder.io/api/v1/image/assets/725e3931e5524a72a2f89a378008974f/62c0850b8b04ac44a74da13d5dc8cd1f6c22413704c3edf1f77b1c1a6a374e65?placeholderIfAbsent=true"
-                alt="Coupon icon"
-                className="w-4 h-6 object-contain"
-              />
-            </div>
-            <span className="text-base">Sales Report</span>
           </NavLink>
           <NavLink
             to="/admin/banner"

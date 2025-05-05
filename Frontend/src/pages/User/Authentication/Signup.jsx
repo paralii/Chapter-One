@@ -6,12 +6,13 @@ import { toast } from "react-toastify";
 import GoogleAuthHandler from "../../../components/User/GoogleAuthHandler";
 import { Eye, EyeOff } from "lucide-react";
 
-function Signup({ onClose }) {
+function Signup({ onClose = () => {}}) {
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -49,31 +50,51 @@ function Signup({ onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!emailRegex.test(email)) {
-      toast.error("Please enter a valid email address.");
+  
+    const newErrors = {};
+  
+    if (!firstname.trim()) {
+      newErrors.firstname = "First name is required";
+    } else if (!/^[a-zA-Z]+$/.test(firstname)) {
+      newErrors.firstname = "First name can only contain letters";
+    }
+  
+    if (!lastname.trim()) {
+      newErrors.lastname = "Last name is required";
+    } else if (!/^[a-zA-Z]+$/.test(lastname)) {
+      newErrors.lastname = "Last name can only contain letters";
+    }
+  
+    if (!email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+  
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (!isStrongPassword(password)) {
+      newErrors.password = "Password must be 8+ characters with uppercase, lowercase, number, and symbol.";
+    }
+  
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-
-    if (!isStrongPassword(password)) {
-      toast.error(
-        "Password must be 8+ characters with uppercase, lowercase, number, and symbol."
-      );
-      return;
-    }
-
+  
+    setErrors({}); // clear errors if all good
+  
     try {
       const resultAction = await dispatch(
         signupUser({ firstname, lastname, email, password })
       );
-
+  
       if (signupUser.fulfilled.match(resultAction)) {
         const { otpToken } = resultAction.payload || {};
         toast.success("Signup successful! Check your email for the OTP.");
         navigate("/verify-otp", {
-          state: { email, otpToken },
+          state: { email, otpToken, backgroundLocation: "/" },
         });
-        onClose(); // close modal
       } else {
         const errors = resultAction.payload?.errors;
         if (errors?.length) {
@@ -85,7 +106,7 @@ function Signup({ onClose }) {
     } catch (err) {
       toast.error(err.message || "Something went wrong during signup");
     }
-  };
+  };  
 
   return (
     <div className="w-full h-screen fixed top-0 left-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3">
@@ -103,22 +124,35 @@ function Signup({ onClose }) {
           </h1>
 
           <div className="flex gap-3 mb-4">
-            <input
-              type="text"
-              placeholder="First name"
-              className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
-              value={firstname}
-              onChange={(e) => setFirstname(e.target.value)}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Last name"
-              className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
-              value={lastname}
-              onChange={(e) => setLastname(e.target.value)}
-              required
-            />
+            <div className="w-full">
+              <input
+                type="text"
+                placeholder="First name"
+                className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
+                value={firstname}
+                onChange={(e) => {
+                  setFirstname(e.target.value);
+                  setErrors(prev => ({ ...prev, firstname: "" }));
+                }}
+              />
+              {errors.firstname && (
+                <p className="text-red-500 text-xs mt-1 ml-1">{errors.firstname}</p>
+              )}
+            </div>
+            <div className="w-full">
+              <input
+                type="text"
+                placeholder="Last name"
+                className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
+                value={lastname}
+                onChange={(e) => {setLastname(e.target.value);
+                  setErrors(prev => ({ ...prev, lastname: "" }));
+                }}
+              />
+              {errors.lastname && (
+                <p className="text-red-500 text-xs mt-1 ml-1">{errors.lastname}</p>
+              )}
+            </div>
           </div>
 
           <div className="mb-4">
@@ -127,9 +161,13 @@ function Signup({ onClose }) {
               placeholder="Enter your email"
               className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onChange={(e) => {setEmail(e.target.value);
+                setErrors(prev => ({ ...prev, email: "" }));
+              }}
             />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>
+            )}
           </div>
 
           <div className="mb-1 relative">
@@ -138,8 +176,9 @@ function Signup({ onClose }) {
               placeholder="Enter password"
               className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 pr-12 text-[16px] outline-none font-Inter"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              onChange={(e) => {setPassword(e.target.value);
+                setErrors(prev => ({ ...prev, password: "" }));
+              }}
               autoComplete="new-password"
               onCopy={(e) => e.preventDefault()}
               onCut={(e) => e.preventDefault()}
@@ -152,6 +191,9 @@ function Signup({ onClose }) {
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
+            {errors.password && (
+              <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>
+            )}
           </div>
           <p className="text-xs text-gray-500 leading-snug mb-5 font-Inter px-1">
             Must be at least 8 characters and include uppercase, lowercase, number, and symbol.

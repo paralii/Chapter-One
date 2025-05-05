@@ -2,11 +2,22 @@ import React from "react";
 import { API_BASE } from "../../../config";
 import { FcGoogle } from "react-icons/fc";
 import PropTypes from "prop-types";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchCurrentUser } from "../../redux/authSlice";
+import { useEffect, useState } from "react";
 
 const GoogleAuthHandler = ({ type = "signin" }) => {
-  const handleGoogleAuth = () => {
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);  
+  const [isFetching, setIsFetching] = useState(true);
+  useEffect(() => {
+    dispatch(fetchCurrentUser());
+  }, []);
+  
+  const handleGoogleAuth = async () => {
     window.location.href = `${API_BASE}/user/auth/google`;
   };
+
 
   return (
     <div className="flex justify-center">

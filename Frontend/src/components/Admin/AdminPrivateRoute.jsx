@@ -1,15 +1,11 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 
-const AdminPrivateRoute = ({ children }) => {
-  const { admin } = useSelector((state) => state.admin);
-  const location = useLocation();
+const AdminPrivateRoute = () => {
+  const admin = useSelector((state) => state.admin.admin);
 
-  if (!admin) {
-    return <Navigate to="/admin/login" replace state={{ from: location }} />;
-  }
-  return children;
+  return admin ? <Outlet /> : <Navigate to="/admin/login" />;
 };
 
 export default AdminPrivateRoute;

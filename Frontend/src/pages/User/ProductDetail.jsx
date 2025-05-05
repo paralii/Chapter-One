@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import Navbar from "../../../components/common/Navbar";
-import Footer from "../../../components/common/Footer";
-import LoaderSpinner from "../../../components/common/LoaderSpinner";
+import Navbar from "../../components/common/Navbar";
+import Footer from "../../components/common/Footer";
+import LoaderSpinner from "../../components/common/LoaderSpinner";
 import { useDispatch } from "react-redux";
-import { showAlert } from "../../../redux/alertSlice";
+import { showAlert } from "../../redux/alertSlice";
 import { Heart, Heart as HeartFilled } from "lucide-react";
 import { X } from "lucide-react";
-import { RelatedProductCard } from "../../../components/User/ProductCard";
-// API Helpers
-import { getProducts, getProductById } from "../../../api/user/productAPI";
-import { addToCart } from "../../../api/user/cartAPI";
-import { getWishlist, addToWishlist, removeFromWishlist } from "../../../api/user/wishlistAPI";
+import { RelatedProductCard } from "../../components/User/ProductCard";
+import { getProducts, getProductById } from "../../api/user/productAPI";
+import { getWishlist, addToWishlist, removeFromWishlist } from "../../api/user/wishlistAPI";
+
+import { addToCart } from "../../api/user/cartAPI";
+// import { getWishlist, addToWishlist, removeFromWishlist } from "../../api/user/wishlistAPI";
 
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
@@ -69,13 +70,19 @@ function ProductDetail() {
 
   const fetchWishlistStatus = async () => {
     try {
-      const res = await getWishlist();
-      const wishlistItems = res.data.wishlist || [];
+      const res = await getWishlist(); // Call to fetch the wishlist
+  
+      // Ensure res.data and res.data.wishlist exist and is an array
+      const wishlistItems = Array.isArray(res?.data?.wishlist) ? res.data.wishlist : [];
+  
+      // Now you can safely use .some() on wishlistItems
       setIsInWishlist(wishlistItems.some(item => item._id === id));
     } catch (err) {
       console.error("Error fetching wishlist", err);
     }
   };
+  
+  
 
   useEffect(() => {
     fetchProductDetails();
@@ -97,7 +104,7 @@ function ProductDetail() {
     if (quantity < maxQuantity && quantity < product.available_quantity) {
       setQuantity(quantity + 1);
     } else {
-      dispatch(showAlert("Maximum quantity reached or exceeds available stock."));
+      dispatch(showAlert({message:"Maximum quantity reached or exceeds available stock." , type:"info"}));
     }
   };
 
@@ -108,25 +115,41 @@ function ProductDetail() {
   const handleAddToCart = async () => {
     try {
       await addToCart({ product_id: product._id, quantity });
-      dispatch(showAlert("Product added to cart!"));
+      dispatch(showAlert({message:"Product added to cart!", type:"success"}));
     } catch (error) {
       console.error("Error adding to cart:", error.response?.data || error.message);
-      dispatch(showAlert(error.response?.data?.message || error.message || "Failed to add product to cart."));
+      dispatch(showAlert({message:error.response?.data?.message || error.message || "Failed to add product to cart.", type:"error"}));
     }
   };
 
   const toggleWishlist = async () => {
     try {
       if (isInWishlist) {
-        await removeFromWishlist(product._id);
+        await removeFromWishlist(product._id); // Remove from wishlist if already added
       } else {
-        await addToWishlist(product._id);
+        await addToWishlist(product._id); // Add to wishlist if not in wishlist
       }
-      setIsInWishlist(!isInWishlist);
+      setIsInWishlist(!isInWishlist); // Toggle the wishlist state
     } catch (err) {
-      dispatch(showAlert({message:"Failed to update wishlist", type:"error"}));
+      dispatch(showAlert({ message: "Failed to update wishlist", type: "error" }));
     }
   };
+  
+  const handleBuyNow = () => {
+    const buyNowData = {
+      product_id: product._id,
+      title: product.title,
+      price: product.price,
+      product_imgs: product.product_imgs,
+      quantity,
+    };
+  
+    // Store Buy Now item temporarily
+    localStorage.setItem("buyNowItem", JSON.stringify(buyNowData));
+  
+    navigate("/checkout", { state: { fromBuyNow: true } });
+  };
+  
 
   // Check for discount
   const hasDiscount = product.discount > 0;
@@ -239,9 +262,12 @@ function ProductDetail() {
               Add to Cart
             </button>
             <button
-              className="px-5 py-2 bg-[#41b200] text-white font-semibold rounded-md hover:bg-[#369400] transition">
-              Buy Now
-            </button>
+  onClick={handleBuyNow}
+  className="px-5 py-2 bg-[#41b200] text-white font-semibold rounded-md hover:bg-[#369400] transition"
+>
+  Buy Now
+</button>
+
           </div>
         </div>
       </main>

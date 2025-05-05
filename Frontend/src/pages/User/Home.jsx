@@ -4,7 +4,7 @@ import Navbar from "../../components/common/Navbar";
 import { HomeProductCard } from "../../components/User/ProductCard";
 import Footer from "../../components/common/Footer";
 import { getProducts } from "../../api/user/productAPI";
-import { getCategories } from "../../api/admin/categoryAPI";
+import { getCategories, getBooksByCategory } from "../../api/user/categoryAPI";
 import Login from "../User/Authentication/Login";
 import Signup from "../User/Authentication/Signup";
 import ForgotPassword from "../User/Authentication/ForgotPassword";
@@ -23,17 +23,22 @@ function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState({ name: "All", id: null });
   const [page, setPage] = useState(1); 
   const [totalPages, setTotalPages] = useState(1); 
-  const [categories, setCategories] = useState(["All"]); 
+  const [categories, setCategories] = useState([{ name: "All", id: null }]); 
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   useEffect(() => {
     getCategories().then((res) => {
-      const dynamicCategories = res.data.categories.map((cat) => cat.name);
-      setCategories(["All", ...dynamicCategories]);
+      const categoriesWithId = res.data.categories.map((cat) => ({
+        name: cat.name,
+        id: cat._id, // assuming '_id' is the ObjectId for the category
+      }));
+      setCategories([{ name: "All", id: null }, ...categoriesWithId]);
     });
   }, []);
+  
 
   const search = "";
   const sort = "desc";
@@ -41,26 +46,42 @@ function Home() {
 
   useEffect(() => {
     setLoading(true);
-    getProducts({ search, sort, page, limit })
-      .then((response) => {
+    setError(null);
+  
+    const fetchBooks = async () => {
+      try {
+        let response;
+  
+        if (selectedCategory.id) {
+          console.log("Selected Category:", selectedCategory);
+          response = await getBooksByCategory(selectedCategory.id, page, limit);
+        } else {
+          // Get all products
+          response = await getProducts({ search, sort, page, limit });
+        }
+  
         const productList = Array.isArray(response.data)
           ? response.data
           : response.data.products;
-        const total = response.data.total || 50; 
+  
+        const total = response.data.total || productList.length;
+  
         setProducts(productList);
-        setTotalPages(Math.ceil(total / limit)); 
-        setLoading(false);
-      })
-      .catch((err) => {
+        setTotalPages(Math.ceil(total / limit));
+      } catch (err) {
         const message =
           err.response?.data?.message ||
           err.message ||
           "Something went wrong while fetching books. Please try again.";
         setError(message);
+      } finally {
         setLoading(false);
-      });
-  }, [page]);
-
+      }
+    };
+  
+    fetchBooks();
+  }, [page, selectedCategory.id]);
+  
   const getImageUrl = (url) => {
     if (!url) return "https://via.placeholder.com/150x200?text=No+Image";
     if (url.startsWith("http")) return url;
@@ -70,12 +91,7 @@ function Home() {
       : `${API_BASE}${url}`;
   };
 
-  const filteredProducts =
-    selectedCategory === "All"
-      ? products
-      : products.filter(
-          (p) => p.category?.toLowerCase() === selectedCategory.toLowerCase()
-        );
+
 
   return (
     <>
@@ -83,24 +99,34 @@ function Home() {
         <Navbar />
 
         {/* Category Filter */}
-        <div className="flex justify-center gap-6 mt-4 overflow-x-auto px-2 border-b border-gray-300">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => {
-                setSelectedCategory(category);
-                setPage(1);
-              }}
-              className={`pb-2 text-sm md:text-base font-medium transition-all duration-200 ${
-                selectedCategory === category
-                  ? "border-b-2 border-[#3c2712] text-[#3c2712]"
-                  : "text-gray-500 hover:text-[#3c2712]  cursor-pointer"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-wrap justify-center gap-4 mt-4 px-2 border-b border-gray-300 pb-2">
+  {(showAllCategories ? categories : categories.slice(0, 5)).map((category) => (
+    <button
+      key={category.id}
+      onClick={() => {
+        setSelectedCategory(category);
+        setPage(1);
+      }}
+      className={`px-3 py-1 rounded-full border text-sm md:text-base transition-all duration-200 ${
+        selectedCategory.id === category.id
+          ? "bg-[#3c2712] text-white border-[#3c2712]"
+          : "text-gray-700 border-gray-300 hover:bg-[#f5e7cd]"
+      }`}
+    >
+      {category.name}
+    </button>
+    
+  ))}
+
+  {categories.length > 5 && (
+    <button
+      onClick={() => setShowAllCategories(!showAllCategories)}
+      className="text-sm underline text-[#3c2712] mt-2"
+    >
+      {showAllCategories ? "Show Less" : "Show All Categories"}
+    </button>
+  )}
+</div>
 
         <main className="py-12 px-5 md:px-[117px] flex flex-col gap-12">
           {/* Hero Section */}
@@ -122,26 +148,27 @@ function Home() {
           {/* Best Sellers Section */}
           <section className="best-sellers-section mb-12">
             <div className="section-title font-[Inter] text-[24px] md:text-[30px] font-bold text-[#3c2712] uppercase text-center mb-5 border-b border-[rgba(60,39,18,0.5)] pb-4">
-              {selectedCategory === "All"
+              {selectedCategory.name === "All"
                 ? "Best Sellers"
-                : `Category: ${selectedCategory}`}
+                : `Category: ${selectedCategory.name}`}
             </div>
 
             {loading ? (
               <LoaderSpinner fullPage />
             ) : error ? (
               <FallbackMessage type="error" message={error} />
-            ) : filteredProducts.length === 0 ? (
+            ) : products.length === 0 ? (
               <FallbackMessage message="No books found in this category." />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-                {filteredProducts.map((product) => (
-                  <HomeProductCard
-                    key={product._id}
-                    product={product}
-                    getImageUrl={getImageUrl}
-                  />
-                ))}
+                {products.map((product) => (
+  <HomeProductCard
+    key={product._id}
+    product={product}
+    getImageUrl={getImageUrl}
+  />
+))}
+
               </div>
             )}
           </section>

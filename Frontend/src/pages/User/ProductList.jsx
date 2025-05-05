@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import Navbar from "../../../components/common/Navbar";
-import Footer from "../../../components/common/Footer";
-import Pagination from "../../../components/common/Pagination";
-import { ListProductCard } from "../../../components/User/ProductCard";
-import { getProducts } from "../../../api/user/productAPI";
-import { getCategories } from "../../../api/admin/categoryAPI";
-import { useSearch } from "../../../context/SearchContext";
-import useDebounce from "../../../hooks/useDebounce";
+import Navbar from "../../components/common/Navbar";
+import Footer from "../../components/common/Footer";
+import Pagination from "../../components/common/Pagination";
+import { ListProductCard } from "../../components/User/ProductCard";
+import { getProducts } from "../../api/user/productAPI";
+import { getCategories } from "../../api/admin/categoryAPI";
+import { useSearch } from "../../context/SearchContext";
+import useDebounce from "../../hooks/useDebounce";
 
 const ProductList = () => {
   const { search, setSearch } = useSearch();

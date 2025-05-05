@@ -1,29 +1,29 @@
 import adminAxios from "../adminAxios";
 
 export const getAllUsers = (params) => {
-  return adminAxios.get("/users", { params });
+  return adminAxios.get("/customers", { params });
 };
 
 export const createUser = (userData) => {
-  return adminAxios.post("/users", userData);
+  return adminAxios.post("/customers", userData);
 };
 
 export const getUserCount = () => {
-  return adminAxios.get("/users/count");
+  return adminAxios.get("/customers/count");
 };
 
 export const getUserById = (id) => {
-  return adminAxios.get(`/users/${id}`);
+  return adminAxios.get(`/customers/${id}`);
 };
 
 export const updateUser = (id, userData) => {
-  return adminAxios.put(`/users/${id}`, userData);
+  return adminAxios.put(`/customers/${id}`, userData);
 };
 
 export const toggleBlockUser = (id) => {
-  return adminAxios.patch(`/users/${id}/toggle-block`);
+  return adminAxios.patch(`/customers/${id}/toggle-block`);
 };
 
 export const deleteUser = (id) => {
-  return adminAxios.delete(`/users/${id}`);
+  return adminAxios.delete(`/customers/${id}`);
 };

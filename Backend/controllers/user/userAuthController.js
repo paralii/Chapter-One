@@ -37,7 +37,7 @@ export const login = async (req, res) => {
     }
 
     const { accessToken, refreshToken } = generateTokens(user, false);
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken, "user");
     res.status(200).json({ user, message: "Login successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -45,8 +45,8 @@ export const login = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  res.clearCookie("accessToken_user");
+  res.clearCookie("refreshToken_user");
   res.status(200).json({ message: "Logged out successfully" });
 };
 
@@ -86,6 +86,22 @@ export const verifyOTP = async (req, res) => {
     }
 
     let user = await User.findOne({ email: decoded.email });
+
+    if (decoded.from === "forgot-password") {
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const resetToken = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
+        expiresIn: "15m",
+      });
+
+      return res.status(200).json({
+        message: "OTP verified successfully",
+        resetToken,
+      });
+    }
+
     if (user && user.isVerified) {
       return res.status(400).json({ message: "User already verified" });
     }
@@ -103,9 +119,51 @@ export const verifyOTP = async (req, res) => {
     }
 
     await user.save();
-    res.status(200).json({ message: "OTP verified, account created successfully" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    res.status(200).json({
+      message: "OTP verified, account created successfully",
+      user: {
+        id: user._id,
+        email: user.email,
+        firstname: user.firstname,
+        lastname: user.lastname,
+      },
+      token,
+    });
+
   } catch (err) {
     return res.status(400).json({ message: "OTP expired or invalid" });
+  }
+};
+
+export const resendOtpForVerify = async (req, res) => {
+  const { otpToken } = req.body;
+  if (!otpToken) return res.status(400).json({ message: "Missing OTP token" });
+
+  try {
+    const payload = jwt.verify(otpToken, process.env.JWT_SECRET, { ignoreExpiration: true });
+    const { firstname, lastname, email, password } = payload;
+
+    const user = await User.findOne({ email });
+    if (user) return res.status(400).json({ message: "User already exists" });
+
+    const newOtp = generateOTP();
+    console.log("Resend OTP:", newOtp);
+    const newOtpToken = jwt.sign(
+      { firstname, lastname, email, password, otp: newOtp },
+      process.env.JWT_SECRET,
+      { expiresIn: "2m" } 
+    );
+
+    await sendOTPEmail(email, newOtp);
+
+    res.status(200).json({ message: "OTP resent successfully", otpToken: newOtpToken });
+  } catch (error) {
+    console.error("Resend OTP failed:", error.message);
+    return res.status(400).json({ message: "Invalid or expired OTP token" });
   }
 };
 
@@ -131,15 +189,62 @@ export const forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User not found" });
-
+    if (!user) {
+      return res.status(200).json({ message: "OTP sent to email for password reset" });
+    }    
     const otp = generateOTP();
-    const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, { expiresIn: "5m" });
+    const otpToken = jwt.sign({ email, otp, from: "forgot-password" }, process.env.JWT_SECRET, { expiresIn: "5m" });
 
     console.log("forgotPassword OTP:", otp);
     await sendOTPEmail(email, otp);
 
     res.status(200).json({ message: "OTP sent to email for password reset", otpToken });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const verifyForgotPasswordOTP = async (req, res) => {
+  const { otp, otpToken } = req.body;
+
+  try {
+    const decoded = jwt.verify(otpToken, process.env.JWT_SECRET);
+    if (decoded.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const resetToken = jwt.sign({ email: decoded.email, otp: decoded.otp, from: "forgot-password" }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    return res.status(200).json({ message: "OTP verified, proceed to reset password", resetToken });
+  } catch (err) {
+    return res.status(400).json({ message: "OTP expired or invalid" });
+  }
+};
+
+export const resendForgotPasswordOTP = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const otp = generateOTP();
+    const otpToken = jwt.sign(
+      { email, otp, from: "forgot-password" },
+      process.env.JWT_SECRET,
+      { expiresIn: "5m" }
+    );
+
+    console.log("Resend ForgotPassword OTP:", otp);
+    await sendOTPEmail(email, otp);
+
+    res.status(200).json({ message: "OTP resent for password reset", otpToken });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -161,6 +266,13 @@ export const resetPassword = async (req, res) => {
 
     res.status(200).json({ message: "Password has been reset successfully" });
   } catch (err) {
+    if (err.name === "JsonWebTokenError") {
+      return res.status(400).json({ message: "Invalid token" });
+    } else if (err.name === "TokenExpiredError") {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+    
     return res.status(400).json({ message: "OTP expired or invalid" });
   }
+
 };

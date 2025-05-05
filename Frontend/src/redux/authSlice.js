@@ -10,6 +10,9 @@ export const signupUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${API_BASE}/user/signup`, userData);
+      if (response.data.otpToken) {
+        localStorage.setItem("otpToken", response.data.otpToken);
+      }      
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -19,10 +22,20 @@ export const signupUser = createAsyncThunk(
 
 export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
-  async ({ email, otp, otpToken }, { rejectWithValue }) => {
+  async ({ email, otp }, { rejectWithValue }) => {
     try {
+      const otpToken = localStorage.getItem("otpToken");
+      if (!otpToken) throw new Error("OTP token missing or expired");
+
       console.log("Verifying OTP with:", { email, otp, otpToken });
       const response = await axios.post(`${API_BASE}/user/verify-otp`, { email, otp, otpToken });
+      localStorage.removeItem("otpToken");
+      if (response.data.token && response.data.user) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));        
+      }
+      // localStorage.setItem("token", response.data.token);
+      // localStorage.setItem("user", JSON.stringify(response.data.user));
       return response.data;
     } catch (err) {
       console.error("Error verifying OTP:", err.response);
@@ -32,11 +45,11 @@ export const verifyOTP = createAsyncThunk(
 );
 
 
-export const resendOTP = createAsyncThunk(
-  'auth/resendOTP',
-  async (email, { rejectWithValue }) => {
+export const resendOtpForVerify = createAsyncThunk(
+  'auth/resendOtpForVerify',
+  async ({ otpToken }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/resend-otp`, { email });
+      const response = await axios.post(`${API_BASE}/user/resend-otp-verify`, { otpToken });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to resend OTP');
@@ -80,11 +93,45 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
+
+export const verifyForgotPasswordOTP = createAsyncThunk(
+  'auth/verifyForgotPasswordOTP',
+  async ({ email, otp }, { rejectWithValue }) => {
+    try {
+      const otpToken = localStorage.getItem("otpToken");
+      if (!otpToken) throw new Error("OTP token missing or expired");
+
+      const response = await axios.post(`${API_BASE}/user/verify-forgot-password-otp`, {
+        email,
+        otp,
+        otpToken
+      });
+      localStorage.setItem("otpToken", response.data.otpToken);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: err.message });
+    }
+  }
+);
+
+export const resendForgotPasswordOTP = createAsyncThunk(
+  'auth/resendForgotPasswordOTP',
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_BASE}/user/resend-forgot-password-otp`, { email });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: err.message });
+    }
+  }
+);
+
 export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
-  async ({ token, newPassword }, { rejectWithValue }) => {
+  async ({ otpToken, otp, newPassword }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/reset-password`, { token, newPassword });
+      console.log("Sending reset password request:", { otpToken, otp, newPassword });  // <-- Add this line
+      const response = await axios.post(`${API_BASE}/user/reset-password`, { otpToken, otp, newPassword });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -92,13 +139,27 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
+export const fetchCurrentUser = createAsyncThunk(
+  "auth/fetchCurrentUser",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_BASE}/user/me`, {
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response.data);
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    user: null,
-    otpToken: null, 
+    user: JSON.parse(localStorage.getItem("user")) || null,
+    otpToken: localStorage.getItem("otpToken") || null, 
     signupMessage: '',
+    resetPasswordMessage: null,
     loading: false,
     error: null,
   },
@@ -106,6 +167,14 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null;
     },
+    clearMessages(state) {
+      state.signupMessage = '';
+      state.error = null;
+    },
+    resetResetPasswordMessage(state) {
+      state.resetPasswordMessage = null;
+    }
+        
   },
   extraReducers: (builder) => {
     builder
@@ -116,7 +185,7 @@ const authSlice = createSlice({
       .addCase(signupUser.fulfilled, (state, action) => {
         state.loading = false;
         state.signupMessage = action.payload.message;
-        state.otpToken = action.payload.otpToken; 
+        state.otpToken = action.payload.otpToken;
       })
       .addCase(signupUser.rejected, (state, action) => {
         state.loading = false;
@@ -130,23 +199,24 @@ const authSlice = createSlice({
       .addCase(verifyOTP.fulfilled, (state, action) => {
         state.loading = false;
         state.signupMessage = action.payload.message;
-        state.otpToken = null; 
+        state.otpToken = null;
+        state.user = action.payload.user;  
       })
       .addCase(verifyOTP.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      .addCase(resendOTP.pending, (state) => {
+      .addCase(resendOtpForVerify.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(resendOTP.fulfilled, (state, action) => {
+      .addCase(resendOtpForVerify.fulfilled, (state, action) => {
         state.loading = false;
         state.signupMessage = action.payload.message;
         state.otpToken = action.payload.otpToken; 
       })
-      .addCase(resendOTP.rejected, (state, action) => {
+      .addCase(resendOtpForVerify.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -172,6 +242,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = null;
         state.token = null;
+        state.otpToken = null;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
@@ -195,17 +266,57 @@ const authSlice = createSlice({
       .addCase(resetPassword.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.resetPasswordMessage = null;
       })
       .addCase(resetPassword.fulfilled, (state, action) => {
         state.loading = false;
-        state.signupMessage = action.payload.message;
+        state.resetPasswordMessage = action.payload.message;
       })
       .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload?.message || "Password reset failed";
+      })
+    
+      .addCase(verifyForgotPasswordOTP.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyForgotPasswordOTP.fulfilled, (state, action) => {
+        state.loading = false;
+        state.signupMessage = action.payload.message;
+        state.otpToken = action.payload.otpToken;
+      })
+      .addCase(verifyForgotPasswordOTP.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(resendForgotPasswordOTP.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resendForgotPasswordOTP.fulfilled, (state, action) => {
+        state.loading = false;
+        state.otpToken = action.payload.otpToken;
+        state.message = action.payload.message;
+      })
+      .addCase(resendForgotPasswordOTP.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || "Failed to resend OTP";
+      })
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.status = "succeeded";
+      })
+      .addCase(fetchCurrentUser.rejected, (state) => {
+        state.status = "failed";
+        state.user = null;
       });
+      
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearMessages, resetResetPasswordMessage } = authSlice.actions;
 export default authSlice.reducer;

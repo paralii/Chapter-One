@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     isDeleted: { type: Boolean, default: false },
     profileImage: {
       type: String,
-      default: "https://example.com/default-avatar.png",
+      default: "https://res.cloudinary.com/chapter-one/image/upload/v1746419585/uploads/niizxavwwvje8ji82hmi.jpg",
     },
   },
   { timestamps: true }

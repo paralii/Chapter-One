@@ -11,8 +11,7 @@ dotenv.config();
 // Get user profile
 export const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.userId)
-      .populate("addresses")
+    const user = await User.findById(req.user)
       .select("-password");
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -28,7 +27,7 @@ export const updateUserProfile = async (req, res) => {
     const { firstname, lastname } = req.body;
 
     const updatedUser = await User.findByIdAndUpdate(
-      req.userId,
+      req.user,
       { firstname, lastname },
       { new: true }
     ).select("-password");
@@ -43,7 +42,7 @@ export const updateUserProfile = async (req, res) => {
 export const changeUserPassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user);
     const isMatch = await bcrypt.compare(oldPassword, user.password);
 
     if (!isMatch)
@@ -59,21 +58,16 @@ export const changeUserPassword = async (req, res) => {
 };
 
 // Upload/Update profile image
+// controllers/userProfileController.js
+
 export const uploadProfileImage = async (req, res) => {
-  if (!req.file)
+  if (!req.file || !req.file.path)
     return res.status(400).json({ message: "No image file uploaded" });
 
   try {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "user_profiles",
-      width: 150,
-      height: 150,
-      crop: "fill",
-    });
-
     const user = await User.findByIdAndUpdate(
-      req.userId,
-      { profileImage: result.secure_url },
+      req.user,
+      { profileImage: req.file.path },
       { new: true }
     ).select("-password");
 
@@ -83,14 +77,16 @@ export const uploadProfileImage = async (req, res) => {
   }
 };
 
+
 // Request email change
 export const requestEmailChange = async (req, res) => {
   const { newEmail } = req.body;
   try {
     const otp = generateOTP();
-
+    console.log("Generated OTP:", otp);
+    
     const emailChangeToken = jwt.sign(
-      { newEmail, otp, userId: req.userId },
+      { newEmail, otp, userId: req.user._id },
       process.env.JWT_SECRET,
       { expiresIn: "10m" }
     );
@@ -111,13 +107,11 @@ export const confirmEmailChange = async (req, res) => {
     if (decoded.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-
     const user = await User.findByIdAndUpdate(
       decoded.userId,
       { email: decoded.newEmail.toLowerCase().trim() },
       { new: true }
     ).select("-password");
-
     res.status(200).json({ message: "Email updated", user });
   } catch (err) {
     res.status(400).json({ message: "OTP expired or invalid" });

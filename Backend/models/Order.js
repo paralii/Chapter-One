@@ -7,8 +7,8 @@ const orderSchema = new mongoose.Schema(
     address_id: { type: mongoose.Schema.Types.ObjectId, ref: "Address", required: true },
     status: {
       type: String,
-      enum: ["pending", "shipped", "out for delivery", "delivered", "cancelled"],
-      default: "pending",
+      enum: ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled"],
+      default: "Pending",
     },
     paymentMethod: { type: String, enum: ["COD", "Online"], default: "COD" },
     payment_id: { type: String }, // optional, for online payments
@@ -28,8 +28,8 @@ const orderSchema = new mongoose.Schema(
         total: { type: Number, required: true }, // price * quantity
         status: {
           type: String,
-          enum: ["ordered", "cancelled", "returned", "delivered"],
-          default: "ordered",
+          enum: ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled", "Returned"],
+          default: "Pending",
         },
         refundProcessed: { type: Boolean, default: false },
         cancelReason: { type: String },

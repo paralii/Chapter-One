@@ -22,9 +22,12 @@ export const generateTokens = (user, isAdmin = false) => {
   return { accessToken, refreshToken };
 };
 
-// Refresh access token
+// Refresh access token (reusable for both user and admin)
 export const refreshAccessToken = async (req, res, type = "user") => {
-  const refreshToken = req.cookies.refreshToken;
+  const refreshCookieName = `refreshToken_${type}`;
+  const accessCookieName = `accessToken_${type}`;
+  const refreshToken = req.cookies[refreshCookieName];
+
   if (!refreshToken) {
     return res.status(401).json({ message: "No refresh token provided" });
   }
@@ -55,20 +58,21 @@ export const refreshAccessToken = async (req, res, type = "user") => {
         type === "admin"
       );
 
-      res.cookie("accessToken", accessToken, {
+      res.cookie(accessCookieName, accessToken, {
         httpOnly: true,
         secure: false,
         sameSite: "lax",
         maxAge: 60 * 60 * 1000,
       });
 
-      res.cookie("refreshToken", newRefreshToken, {
+      res.cookie(refreshCookieName, newRefreshToken, {
         httpOnly: true,
         secure: false,
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
+      console.log(`New ${type} access token generated:`, accessToken);
       res.status(200).json({ accessToken, message: "Token refreshed" });
     }
   );

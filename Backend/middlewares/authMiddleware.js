@@ -3,37 +3,42 @@ import User from "../models/User.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-export const verifyToken = async (req, res, next) => {
+export const verifyToken = (type = "user") => async (req, res, next) => {
+  const tokenName = type === "admin" ? "accessToken_admin" : "accessToken_user";
   const token =
-    req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
-
+    req.cookies[tokenName] || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
     console.log("No token provided");
     return res.status(401).json({ message: "Unauthorized: No token provided" });
   }
 
- try {
+  try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      console.log("User not found");
-      return res.status(401).json({ message: "Unauthorized: User not found" });
+    if (type === "admin") {
+      const Admin = (await import("../models/Admin.js")).default;
+      const admin = await Admin.findById(decoded.id);
+      if (!admin || !admin.isAdmin) {
+        return res.status(403).json({ message: "Unauthorized admin" });
+      }
+      req.user = admin;
+    } else {
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        console.log("User not found");
+        return res.status(401).json({ message: "Unauthorized: User not found" });
+      }
+      if (user.isBlock) {
+        console.log("User account is blocked");
+        return res.status(403).json({ message: "Blocked account" });
+      }
+      req.user = user;
     }
-    if (user.isBlock) {
-      console.log("User account is blocked");
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Your account is blocked" });
-    }
-    req.user = user;
+
     next();
   } catch (err) {
-
-    return res
-      .status(403)
-      .json({ message: "Forbidden: Invalid or expired token" });
+    return res.status(403).json({ message: "Forbidden: Invalid or expired token" });
   }
 };
 

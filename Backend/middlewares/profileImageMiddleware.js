@@ -1,39 +1,21 @@
-import sharp from "sharp";
+// middlewares/profileImageUpload.js
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
 
-export const processProfileImage = async (req, res, next) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: "No profile image uploaded" });
-  }
+// Cloudinary config for profile images
+const profileImageStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "profile_images",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [
+      { width: 400, height: 400, crop: "fill", gravity: "face", format: "jpg", quality: 80 },
+    ],
+  },
+});
 
-  try {
-    const file = req.files[0];
-
-    // Resize and convert to buffer
-    const buffer = await sharp(file.buffer)
-      .resize(400, 400)
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    // Upload to Cloudinary
-    cloudinary.uploader
-      .upload_stream(
-        {
-          folder: "profile_images",
-          resource_type: "image",
-          format: "jpeg",
-        },
-        (err, result) => {
-          if (err) {
-            return res.status(500).json({ message: "Cloudinary upload failed", error: err });
-          }
-          req.profileImageUrl = result.secure_url;
-          next();
-        }
-      )
-      .end(buffer); // Pipe the processed image buffer to Cloudinary
-  } catch (err) {
-    console.error("Error processing profile image:", err);
-    return res.status(500).json({ message: "Error processing profile image" });
-  }
-};
+export const uploadProfileImage = multer({
+  storage: profileImageStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
+}).single("profileImage"); // accepts a single file under the field name "profileImage"

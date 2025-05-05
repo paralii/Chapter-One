@@ -18,6 +18,40 @@ export const addAddress = async (req, res) => {
   }
 };
 
+export const getAddressById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Fetch address by address ID and ensure it belongs to the current user
+    const address = await Address.findOne({ _id: id, user_id: userId })
+      .populate('user_id', 'name email'); // populate user data (name, email, etc.)
+
+    if (!address) return res.status(404).json({ message: "Address not found" });
+
+    res.status(200).json({ address });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get address", error });
+  }
+};
+
+// Modify API to get the default address by the user_id
+export const getDefaultAddress = async (req, res) => {
+  try {
+    const userId = req.user._id;  // Get user ID from auth middleware
+
+    const address = await Address.findOne({ user_id: userId, isDefault: true });
+    if (!address) {
+      return res.status(404).json({ message: "Default address not found" });
+    }
+
+    res.status(200).json({ address });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to get default address", error });
+  }
+};
+
+
 // Get all addresses
 export const getAllUserAddresses = async (req, res) => {
   try {
@@ -61,7 +95,14 @@ export const deleteAddress = async (req, res) => {
     const userId = req.user._id;
 
     const deleted = await Address.findOneAndDelete({ _id: id, user_id: userId });
-
+    if (deleted.isDefault) {
+      await Address.findOneAndUpdate(
+        { user_id: userId },
+        { isDefault: true },
+        { sort: { createdAt: -1 } } // Most recent address becomes default
+      );
+    }
+    
     if (!deleted) return res.status(404).json({ message: "Address not found" });
 
     res.status(200).json({ message: "Address deleted" });
