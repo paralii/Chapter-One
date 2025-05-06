@@ -28,6 +28,8 @@ function Home() {
   const [totalPages, setTotalPages] = useState(1); 
   const [categories, setCategories] = useState([{ name: "All", id: null }]); 
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [animationDone, setAnimationDone] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   useEffect(() => {
     getCategories().then((res) => {
@@ -59,13 +61,13 @@ function Home() {
           // Get all products
           response = await getProducts({ search, sort, page, limit });
         }
-  
+        
         const productList = Array.isArray(response.data)
           ? response.data
           : response.data.products;
   
         const total = response.data.total || productList.length;
-  
+        setInitialDataLoaded(true);
         setProducts(productList);
         setTotalPages(Math.ceil(total / limit));
       } catch (err) {
@@ -92,7 +94,10 @@ function Home() {
   };
 
 
-
+  if (!animationDone || !initialDataLoaded) {
+    return <LoaderSpinner onFinish={() => setAnimationDone(true)} />;
+  }
+  
   return (
     <>
       <div className="min-h-screen bg-[#fff8e5]">

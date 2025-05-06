@@ -1,6 +1,13 @@
-import React from "react";
+import React, {useEffect} from "react";
 
-const LoaderSpinner = ({ fullPage = true }) => {
+const LoaderSpinner = ({ fullPage = true, duration = 3800, onFinish  }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onFinish?.(); 
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [duration, onFinish]);
   return (
     <div
       id="preloader"
