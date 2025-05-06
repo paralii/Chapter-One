@@ -12,7 +12,7 @@ import Pagination from "../../components/common/Pagination";
 import OTPVerification from "../../pages/User/Authentication/OTPVerification";
 import ResetPassword from "../../pages/User/Authentication/ResetPassword";
 import FallbackMessage from "../../components/common/FallbackMessage";
-import LoaderSpinner from "../../components/common/LoaderSpinner";
+import BookLoader from "../../components/common/BookLoader";
 const API_BASE = "http://localhost:2211";
 
 function Home() {
@@ -95,7 +95,7 @@ function Home() {
 
 
   if (!animationDone || !initialDataLoaded) {
-    return <LoaderSpinner onFinish={() => setAnimationDone(true)} />;
+    return <BookLoader onFinish={() => setAnimationDone(true)} />;
   }
   
   return (
@@ -159,7 +159,7 @@ function Home() {
             </div>
 
             {loading ? (
-              <LoaderSpinner fullPage />
+              <BookLoader fullPage />
             ) : error ? (
               <FallbackMessage type="error" message={error} />
             ) : products.length === 0 ? (

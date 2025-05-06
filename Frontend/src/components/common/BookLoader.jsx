@@ -1,6 +1,6 @@
 import React, {useEffect} from "react";
 
-const LoaderSpinner = ({ fullPage = true, duration = 3800, onFinish  }) => {
+const BookLoader = ({ fullPage = true, duration = 3800, onFinish  }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onFinish?.(); 
@@ -61,4 +61,4 @@ const LoaderSpinner = ({ fullPage = true, duration = 3800, onFinish  }) => {
   );
 };
 
-export default LoaderSpinner;
+export default BookLoader;

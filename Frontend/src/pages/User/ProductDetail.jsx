@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Navbar from "../../components/common/Navbar";
 import Footer from "../../components/common/Footer";
-import LoaderSpinner from "../../components/common/LoaderSpinner";
+import BookLoader from "../../components/common/BookLoader";
 import { useDispatch } from "react-redux";
 import { showAlert } from "../../redux/alertSlice";
 import { Heart, Heart as HeartFilled } from "lucide-react";
@@ -93,7 +93,7 @@ function ProductDetail() {
     fetchRelatedProducts();
   }, []);
 
-  if (loading) return <LoaderSpinner />;
+  if (loading) return <BookLoader />;
   if (error) return <div className="min-h-screen flex items-center justify-center bg-[#fff8e5] text-red-500">{error}</div>;
   if (!product) return <div className="min-h-screen flex items-center justify-center bg-[#fff8e5]">Product not found.</div>;
 

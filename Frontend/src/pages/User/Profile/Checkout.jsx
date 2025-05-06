@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../../../components/common/Navbar";
 import Footer from "../../../components/common/Footer";
-import LoaderSpinner from "../../../components/common/LoaderSpinner";
+import BookLoader from "../../../components/common/BookLoader";
 import {
   getAddresses,
   addAddress,
@@ -277,7 +277,7 @@ const [lastAppliedCoupon, setLastAppliedCoupon] = useState(null);
   
   
   
-  if (cartLoading) return <LoaderSpinner />;
+  if (cartLoading) return <BookLoader />;
 
   return (
     <div className="min-h-screen bg-yellow-50">
@@ -523,7 +523,7 @@ const [lastAppliedCoupon, setLastAppliedCoupon] = useState(null);
               className="p-4 mt-8 w-full text-lg font-bold bg-lime-600 rounded-2xl text-white"
               disabled={isLoading}
             >
-              {isLoading ? <LoaderSpinner /> : "Place Order"}
+              {isLoading ? <BookLoader /> : "Place Order"}
             </button>
           </div>
         </div>

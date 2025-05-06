@@ -9,7 +9,7 @@ import {
   removeCartItem,
 } from "../../../api/user/cartAPI";
 import { MAX_ALLOWED } from "../../../utils/constants";
-import LoaderSpinner from "../../../components/common/LoaderSpinner";
+import BookLoader from "../../../components/common/BookLoader";
 import { showAlert } from "../../../redux/alertSlice"; // Import the showAlert action
 
 const CartPage = () => {
