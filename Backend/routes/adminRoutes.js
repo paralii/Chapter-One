@@ -47,17 +47,17 @@ router.patch("/products/:id/",verifyToken("admin"), isAdmin, AdminProductControl
 // ===================== ORDER MANAGEMENT =====================
 router.get("/orders", verifyToken("admin"), isAdmin, AdminOrderController.listAllOrders);
 router.get("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.getOrderById);
-router.patch("/orders/:id/status", verifyToken("admin"), isAdmin, AdminOrderController.updateOrderStatus);
+router.put("/orders/:id/status", verifyToken("admin"), isAdmin, AdminOrderController.updateOrderStatus);
 router.patch("/orders/item/delivered", verifyToken("admin"), isAdmin, AdminOrderController.markItemDelivered);
 router.delete("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.softDeleteOrder);
 router.get("/orders/:id/invoice", verifyToken("admin"), isAdmin, AdminOrderController.downloadAdminInvoice);
 router.post("/orders/return/verify", verifyToken("admin"), isAdmin, AdminOrderController.verifyReturnRequest);
 
 // ===================== INVENTORY MANAGEMENT =====================
-router.get('/', verifyToken("admin"), isAdmin, AdminInventoryController.getAllInventory);
-router.post('/update', verifyToken("admin"), isAdmin, AdminInventoryController.updateProductStock);
-router.get('/low-stock', verifyToken("admin"), isAdmin, AdminInventoryController.getLowStockProducts);
-router.get('/report', verifyToken("admin"), isAdmin, AdminInventoryController.getInventoryReport);
+router.get('/inventory', verifyToken("admin"), isAdmin, AdminInventoryController.getAllInventory);
+router.post('/inventory/update', verifyToken("admin"), isAdmin, AdminInventoryController.updateProductStock);
+router.get('/inventory/low-stock', verifyToken("admin"), isAdmin, AdminInventoryController.getLowStockProducts);
+router.get('/inventory/report', verifyToken("admin"), isAdmin, AdminInventoryController.getInventoryReport);
 
 // ===================== COUPON MANAGEMENT =====================
 router.post("/coupons/create", verifyToken("admin"), isAdmin, AdminCouponController.createCoupon);

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getBooksByCategory } from "../../../api/admin/categoryAPI";
 import Navbar from "../../../components/common/Navbar";
 import BookCard from "../../../components/User/ProductCard";
+import BookLoader from "../../components/common/BookLoader";
 
 const CategoryPage = () => {
     const { category } = useParams();
@@ -29,7 +30,7 @@ const CategoryPage = () => {
                 </h2>
 
                 {loading ? (
-                    <p className="text-center text-gray-600">Loading...</p>
+                    <p className="text-center text-gray-600"><BookLoader/></p>
                 ) : books.length > 0 ? (
                     <div className="grid grid-cols-4 gap-6 md:grid-cols-2 sm:grid-cols-1 px-5">
                         {books.map((book) => (

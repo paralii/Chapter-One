@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import Navbar from "../../components/common/Navbar";
-import Footer from "../../components/common/Footer";
-import BookLoader from "../../components/common/BookLoader";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
+import BookLoader from "../../../components/common/BookLoader";
 import { useDispatch } from "react-redux";
-import { showAlert } from "../../redux/alertSlice";
+import { showAlert } from "../../../redux/alertSlice";
 import { Heart, Heart as HeartFilled } from "lucide-react";
-import { X } from "lucide-react";
-import { RelatedProductCard } from "../../components/User/ProductCard";
-import { getProducts, getProductById } from "../../api/user/productAPI";
-import { getWishlist, addToWishlist, removeFromWishlist } from "../../api/user/wishlistAPI";
-
-import { addToCart } from "../../api/user/cartAPI";
-// import { getWishlist, addToWishlist, removeFromWishlist } from "../../api/user/wishlistAPI";
+import { RelatedProductCard } from "../../../components/User/ProductCard";
+import { getProducts, getProductById } from "../../../api/user/productAPI";
+import {
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
+} from "../../../api/user/wishlistAPI";
+import { addToCart } from "../../../api/user/cartAPI";
 
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
@@ -21,7 +22,6 @@ function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
 
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -32,11 +32,17 @@ function ProductDetail() {
   const [activeImage, setActiveImage] = useState("");
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [relatedLoading, setRelatedLoading] = useState(true);
-
+    const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+    const [animationDone, setAnimationDone] = useState(false);
+  
   const maxQuantity = 5;
 
   const getImageUrl = (url) =>
-    url ? (url.startsWith("http") ? url : `${url}`) : "https://via.placeholder.com/150x200?text=No+Image";
+    url
+      ? url.startsWith("http")
+        ? url
+        : `${url}`
+      : "https://via.placeholder.com/150x200?text=No+Image";
 
   const fetchProductDetails = async () => {
     try {
@@ -48,9 +54,12 @@ function ProductDetail() {
         navigate("/products");
         return;
       }
+      setInitialDataLoaded(true);
       setProduct(prod);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Error fetching product");
+      setError(
+        err.response?.data?.message || err.message || "Error fetching product"
+      );
     } finally {
       setLoading(false);
     }
@@ -70,19 +79,16 @@ function ProductDetail() {
 
   const fetchWishlistStatus = async () => {
     try {
-      const res = await getWishlist(); // Call to fetch the wishlist
-  
-      // Ensure res.data and res.data.wishlist exist and is an array
-      const wishlistItems = Array.isArray(res?.data?.wishlist) ? res.data.wishlist : [];
-  
-      // Now you can safely use .some() on wishlistItems
-      setIsInWishlist(wishlistItems.some(item => item._id === id));
+      const res = await getWishlist();
+
+      const wishlistItems = Array.isArray(res?.data?.wishlist)
+        ? res.data.wishlist
+        : [];
+      setIsInWishlist(wishlistItems.some((item) => item._id === id));
     } catch (err) {
       console.error("Error fetching wishlist", err);
     }
   };
-  
-  
 
   useEffect(() => {
     fetchProductDetails();
@@ -93,9 +99,20 @@ function ProductDetail() {
     fetchRelatedProducts();
   }, []);
 
-  if (loading) return <BookLoader />;
-  if (error) return <div className="min-h-screen flex items-center justify-center bg-[#fff8e5] text-red-500">{error}</div>;
-  if (!product) return <div className="min-h-screen flex items-center justify-center bg-[#fff8e5]">Product not found.</div>;
+  if (!animationDone || !initialDataLoaded) {
+    return <BookLoader onFinish={() => setAnimationDone(true)} />;
+  }  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fff8e5] text-red-500">
+        {error}
+      </div>
+    );
+  if (!product)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fff8e5]">
+        Product not found.
+      </div>
+    );
 
   const mainImage = getImageUrl(product.product_imgs?.[0]);
   const smallImages = product.product_imgs?.slice(1, 3).map(getImageUrl) || [];
@@ -104,7 +121,12 @@ function ProductDetail() {
     if (quantity < maxQuantity && quantity < product.available_quantity) {
       setQuantity(quantity + 1);
     } else {
-      dispatch(showAlert({message:"Maximum quantity reached or exceeds available stock." , type:"info"}));
+      dispatch(
+        showAlert({
+          message: "Maximum quantity reached or exceeds available stock.",
+          type: "info",
+        })
+      );
     }
   };
 
@@ -115,26 +137,41 @@ function ProductDetail() {
   const handleAddToCart = async () => {
     try {
       await addToCart({ product_id: product._id, quantity });
-      dispatch(showAlert({message:"Product added to cart!", type:"success"}));
+      dispatch(
+        showAlert({ message: "Product added to cart!", type: "success" })
+      );
     } catch (error) {
-      console.error("Error adding to cart:", error.response?.data || error.message);
-      dispatch(showAlert({message:error.response?.data?.message || error.message || "Failed to add product to cart.", type:"error"}));
+      console.error(
+        "Error adding to cart:",
+        error.response?.data || error.message
+      );
+      dispatch(
+        showAlert({
+          message:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to add product to cart.",
+          type: "error",
+        })
+      );
     }
   };
 
   const toggleWishlist = async () => {
     try {
       if (isInWishlist) {
-        await removeFromWishlist(product._id); // Remove from wishlist if already added
+        await removeFromWishlist(product._id);
       } else {
-        await addToWishlist(product._id); // Add to wishlist if not in wishlist
+        await addToWishlist(product._id);
       }
-      setIsInWishlist(!isInWishlist); // Toggle the wishlist state
+      setIsInWishlist(!isInWishlist);
     } catch (err) {
-      dispatch(showAlert({ message: "Failed to update wishlist", type: "error" }));
+      dispatch(
+        showAlert({ message: "Failed to update wishlist", type: "error" })
+      );
     }
   };
-  
+
   const handleBuyNow = () => {
     const buyNowData = {
       product_id: product._id,
@@ -143,17 +180,14 @@ function ProductDetail() {
       product_imgs: product.product_imgs,
       quantity,
     };
-  
-    // Store Buy Now item temporarily
     localStorage.setItem("buyNowItem", JSON.stringify(buyNowData));
-  
     navigate("/checkout", { state: { fromBuyNow: true } });
   };
-  
 
-  // Check for discount
   const hasDiscount = product.discount > 0;
-  const discountPrice = hasDiscount ? product.price - (product.price * product.discount) / 100 : null;
+  const discountPrice = hasDiscount
+    ? product.price - (product.price * product.discount) / 100
+    : null;
 
   return (
     <div className="min-h-screen bg-[#fff8e5] font-Inter text-[#3c2712]">
@@ -162,8 +196,14 @@ function ProductDetail() {
       {/* Breadcrumbs */}
       <div className="px-4 pt-4 text-sm text-gray-600">
         <nav className="space-x-1">
-          <Link to="/" className="hover:underline">Home</Link> &gt;
-          <Link to="/products" className="hover:underline ml-1">Products</Link> &gt;
+          <Link to="/" className="hover:underline">
+            Home
+          </Link>{" "}
+          &gt;
+          <Link to="/products" className="hover:underline ml-1">
+            Products
+          </Link>{" "}
+          &gt;
           <span className="font-medium ml-1">{product.title}</span>
         </nav>
       </div>
@@ -184,7 +224,9 @@ function ProductDetail() {
                 loading="lazy"
               />
             </Zoom>
-            <div className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded">Click to Zoom</div>
+            <div className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded">
+              Click to Zoom
+            </div>
           </div>
 
           {/* Thumbnails */}
@@ -196,7 +238,11 @@ function ProductDetail() {
                 onClick={() => setActiveImage(img)}
                 alt={`Thumbnail ${idx + 1}`}
                 className={`w-[60px] h-[85px] object-cover rounded-lg border transition-transform cursor-pointer
-                  ${img === activeImage ? "border-[#fca120] scale-105" : "border-[#ffe5b8]"}`}
+                  ${
+                    img === activeImage
+                      ? "border-[#fca120] scale-105"
+                      : "border-[#ffe5b8]"
+                  }`}
                 loading="lazy"
               />
             ))}
@@ -207,17 +253,29 @@ function ProductDetail() {
         <div className="flex-1 space-y-5">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">{product.title}</h1>
-            <button onClick={toggleWishlist} className="text-[#fca120] hover:text-[#e28f00] transition" title={isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}>
-              {isInWishlist ? <HeartFilled className="w-6 h-6 fill-[#fca120]" /> : <Heart className="w-6 h-6" />}
+            <button
+              onClick={toggleWishlist}
+              className="text-[#fca120] hover:text-[#e28f00] transition"
+              title={isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+            >
+              {isInWishlist ? (
+                <HeartFilled className="w-6 h-6 fill-[#fca120]" />
+              ) : (
+                <Heart className="w-6 h-6" />
+              )}
             </button>
           </div>
 
-          <p className="text-sm italic">By {product.author_name || "Unknown Author"}</p>
+          <p className="text-sm italic">
+            By {product.author_name || "Unknown Author"}
+          </p>
 
           <div className="text-sm font-medium">
-            {product.available_quantity > 0
-              ? <span className="text-[#41b200]">In Stock</span>
-              : <span className="text-red-600">Out of Stock</span>}
+            {product.available_quantity > 0 ? (
+              <span className="text-[#41b200]">In Stock</span>
+            ) : (
+              <span className="text-red-600">Out of Stock</span>
+            )}
           </div>
 
           {/* Price */}
@@ -231,26 +289,43 @@ function ProductDetail() {
               ₹{discountPrice || product.price}
             </span>
             {hasDiscount && (
-              <span className="text-sm text-green-600">({product.discount}% OFF)</span>
+              <span className="text-sm text-green-600">
+                ({product.discount}% OFF)
+              </span>
             )}
           </div>
 
           {/* Highlights / Specs */}
           <div className="space-y-2 mt-4 text-sm">
             <h2 className="font-semibold">Product Highlights</h2>
-            <p>{product.highlights || "No highlights available for this product."}</p>
+            <p>
+              {product.highlights ||
+                "No highlights available for this product."}
+            </p>
           </div>
-          
+
           <div className="space-y-2 mt-4 text-sm">
             <h2 className="font-semibold">Product Specs</h2>
-            <p>{product.specs || "No specifications available for this product."}</p>
+            <p>
+              {product.specs || "No specifications available for this product."}
+            </p>
           </div>
 
           {/* Quantity Controls */}
           <div className="flex items-center gap-2 border border-[#fcd385] rounded-md w-fit overflow-hidden">
-            <button onClick={decrementQuantity} className="px-3 py-1 bg-[#fff1d2] hover:bg-[#ffe5b8] border-r border-[#fcd385]">−</button>
+            <button
+              onClick={decrementQuantity}
+              className="px-3 py-1 bg-[#fff1d2] hover:bg-[#ffe5b8] border-r border-[#fcd385]"
+            >
+              −
+            </button>
             <span className="px-4 py-1 bg-white">{quantity}</span>
-            <button onClick={incrementQuantity} className="px-3 py-1 bg-[#fff1d2] hover:bg-[#ffe5b8] border-l border-[#fcd385]">+</button>
+            <button
+              onClick={incrementQuantity}
+              className="px-3 py-1 bg-[#fff1d2] hover:bg-[#ffe5b8] border-l border-[#fcd385]"
+            >
+              +
+            </button>
           </div>
 
           {/* Add to Cart and Buy Now buttons */}
@@ -258,43 +333,48 @@ function ProductDetail() {
             <button
               onClick={handleAddToCart}
               disabled={product.available_quantity <= 0}
-              className="px-5 py-2 bg-[#fca120] text-white font-semibold rounded-md hover:bg-[#e8940d] disabled:opacity-50 transition">
+              className="px-5 py-2 bg-[#fca120] text-white font-semibold rounded-md hover:bg-[#e8940d] disabled:opacity-50 transition"
+            >
               Add to Cart
             </button>
             <button
-  onClick={handleBuyNow}
-  className="px-5 py-2 bg-[#41b200] text-white font-semibold rounded-md hover:bg-[#369400] transition"
->
-  Buy Now
-</button>
-
+              onClick={handleBuyNow}
+              className="px-5 py-2 bg-[#41b200] text-white font-semibold rounded-md hover:bg-[#369400] transition"
+            >
+              Buy Now
+            </button>
           </div>
         </div>
       </main>
 
       {/* Related Products */}
       <section className="max-w-7xl mx-auto px-4 py-8 mt-12">
-  <h2 className="text-2xl font-bold text-[#3c2712] mb-2">Related Products</h2>
-  <p className="text-sm text-gray-600 mb-6">You may also like</p>
+        <h2 className="text-2xl font-bold text-[#3c2712] mb-2">
+          Related Products
+        </h2>
+        <p className="text-sm text-gray-600 mb-6">You may also like</p>
 
-  {relatedLoading ? (
-    <div className="flex justify-center items-center text-lg text-[#fca120]">Loading related products...</div>
-  ) : relatedProducts.length > 0 ? (
-    <div className="flex gap-6 overflow-x-auto pb-2 hide-scrollbar">
-      {relatedProducts.map((prod, i) => (
-        <div
-          key={i}
-          className="min-w-[220px] max-w-[220px] flex-shrink-0 bg-white border border-[#ffe5b8] rounded-xl shadow-sm hover:shadow-md transition-shadow"
-        >
-          <RelatedProductCard product={prod} />
-        </div>
-      ))}
-    </div>
-  ) : (
-    <div className="text-center text-[#fca120]">No related products found.</div>
-  )}
-</section>
-
+        {relatedLoading ? (
+          <div className="flex justify-center items-center text-lg text-[#fca120]">
+            Loading related products...
+          </div>
+        ) : relatedProducts.length > 0 ? (
+          <div className="flex gap-6 overflow-x-auto pb-2 hide-scrollbar">
+            {relatedProducts.map((prod, i) => (
+              <div
+                key={i}
+                className="min-w-[220px] max-w-[220px] flex-shrink-0 bg-white border border-[#ffe5b8] rounded-xl shadow-sm hover:shadow-md transition-shadow"
+              >
+                <RelatedProductCard product={prod} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-[#fca120]">
+            No related products found.
+          </div>
+        )}
+      </section>
 
       <Footer />
     </div>

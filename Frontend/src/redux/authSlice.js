@@ -2,14 +2,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
 axios.defaults.withCredentials = true;
 
 export const signupUser = createAsyncThunk(
   'auth/signupUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/signup`, userData);
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/signup`, userData);
       if (response.data.otpToken) {
         localStorage.setItem("otpToken", response.data.otpToken);
       }      
@@ -27,15 +26,12 @@ export const verifyOTP = createAsyncThunk(
       const otpToken = localStorage.getItem("otpToken");
       if (!otpToken) throw new Error("OTP token missing or expired");
 
-      console.log("Verifying OTP with:", { email, otp, otpToken });
-      const response = await axios.post(`${API_BASE}/user/verify-otp`, { email, otp, otpToken });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/verify-otp`, { email, otp, otpToken });
       localStorage.removeItem("otpToken");
       if (response.data.token && response.data.user) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));        
       }
-      // localStorage.setItem("token", response.data.token);
-      // localStorage.setItem("user", JSON.stringify(response.data.user));
       return response.data;
     } catch (err) {
       console.error("Error verifying OTP:", err.response);
@@ -49,7 +45,7 @@ export const resendOtpForVerify = createAsyncThunk(
   'auth/resendOtpForVerify',
   async ({ otpToken }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/resend-otp-verify`, { otpToken });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/resend-otp-verify`, { otpToken });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to resend OTP');
@@ -61,7 +57,7 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/login`, credentials, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/login`, credentials, { withCredentials: true });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -73,7 +69,7 @@ export const logoutUser = createAsyncThunk(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/logout`, {}, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/logout`, {}, { withCredentials: true });
       return response;
     } catch (err) {
       return rejectWithValue(err);
@@ -85,7 +81,7 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/forgot-password`, { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/forgot-password`, { email });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -101,7 +97,7 @@ export const verifyForgotPasswordOTP = createAsyncThunk(
       const otpToken = localStorage.getItem("otpToken");
       if (!otpToken) throw new Error("OTP token missing or expired");
 
-      const response = await axios.post(`${API_BASE}/user/verify-forgot-password-otp`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/verify-forgot-password-otp`, {
         email,
         otp,
         otpToken
@@ -118,7 +114,7 @@ export const resendForgotPasswordOTP = createAsyncThunk(
   'auth/resendForgotPasswordOTP',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/user/resend-forgot-password-otp`, { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/resend-forgot-password-otp`, { email });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -130,8 +126,7 @@ export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async ({ otpToken, otp, newPassword }, { rejectWithValue }) => {
     try {
-      console.log("Sending reset password request:", { otpToken, otp, newPassword });  // <-- Add this line
-      const response = await axios.post(`${API_BASE}/user/reset-password`, { otpToken, otp, newPassword });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/reset-password`, { otpToken, otp, newPassword });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -143,7 +138,7 @@ export const fetchCurrentUser = createAsyncThunk(
   "auth/fetchCurrentUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE}/user/me`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/user/me`, {
         withCredentials: true,
       });
       return response.data;

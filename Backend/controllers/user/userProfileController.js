@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import cloudinary from "../../config/cloudinary.js";
-import { sendOTPEmail } from "../../utils/services/emailService.js";
+import { sendChangeEmail } from "../../utils/services/emailService.js";
 import { generateOTP } from "../../utils/services/otpGenerator.js";
 
 dotenv.config();
@@ -57,8 +57,7 @@ export const changeUserPassword = async (req, res) => {
   }
 };
 
-// Upload/Update profile image
-// controllers/userProfileController.js
+
 
 export const uploadProfileImage = async (req, res) => {
   if (!req.file || !req.file.path)
@@ -91,7 +90,7 @@ export const requestEmailChange = async (req, res) => {
       { expiresIn: "10m" }
     );
 
-    await sendOTPEmail(newEmail, otp);
+    await sendChangeEmail(newEmail, otp);
     res.status(200).json({ message: "OTP sent", emailChangeToken });
   } catch (err) {
     res.status(500).json({ message: err.message });

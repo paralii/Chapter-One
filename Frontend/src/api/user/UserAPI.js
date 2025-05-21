@@ -1,12 +1,16 @@
 import userAxios from "../userAxios";
 
-
 export const getUserProfile = () => {
   return userAxios.get("/profile");
 };
 
+
 export const updateUserProfile = (profileData) => {
   return userAxios.put("/profile", profileData);
+};
+
+export const changeUserPassword = (oldPassword, newPassword) => {
+  return userAxios.put("/profile/change-password", { oldPassword, newPassword });
 };
 
 export const uploadProfileImage = (formData) => {
@@ -14,7 +18,6 @@ export const uploadProfileImage = (formData) => {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
-
 
 export const requestEmailChange = (newEmail) => {
   return userAxios.post("/profile/request-email-change", { newEmail });
@@ -26,8 +29,4 @@ export const resendOTP = (email) => {
 
 export const confirmEmailChange = (otp, emailChangeToken) => {
   return userAxios.post("/profile/confirm-email-change", { otp, emailChangeToken });
-};
-
-export const changeUserPassword = (oldPassword, newPassword) => {
-  return userAxios.put("/change-password", { oldPassword, newPassword });
 };

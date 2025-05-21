@@ -54,7 +54,6 @@ export const getBooksByCategory = async (req, res) => {
 
     res.status(200).json(books);
   } catch (error) {
-    console.error("Error fetching books by category:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -72,14 +71,16 @@ export const updateCategory = async (req, res) => {
 
 export const deleteCategory = async (req, res) => {
   try {
+    const { isDeleted, isListed } = req.body; 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      { isDeleted: true, isListed: false },
+      { isDeleted, isListed }, 
       { new: true }
     );
+
     if (!category) return res.status(404).json({ message: "Category not found" });
 
-    res.status(200).json({ message: "Category soft-deleted successfully" });
+    res.status(200).json({ message: "Category updated successfully", category });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

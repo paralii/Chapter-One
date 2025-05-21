@@ -173,11 +173,6 @@ function CategoryManagement() {
   
     return (
       <>
-        {/* External Fonts & Icons */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=Roboto:wght@400;600;700&display=swap"
-          rel="stylesheet"
-        />
           <div className="flex min-h-screen bg-[#fffbf0]">
           <AdminSidebar />
           <main className="flex-1 p-5 sm:p-10">

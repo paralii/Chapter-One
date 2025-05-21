@@ -68,7 +68,7 @@ function ForgotPassword({ onClose = () => {}}) {
           type="button"
           className="absolute top-4 right-4 text-xl text-gray-500 hover:text-black"
           onClick={() =>
-            navigate(location.state?.backgroundLocation || "/", { replace: true })
+            navigate("/", { replace: true })
           }
         >
           &times;
@@ -118,8 +118,8 @@ function ForgotPassword({ onClose = () => {}}) {
           <button
             type="button"
             onClick={() =>
-              navigate("/reset-password", {
-                state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+              navigate("/login", {
+                state: { backgroundLocation:"/" },
                 replace: true,
               })
             }

@@ -21,7 +21,7 @@ const Navbar = () => {
   };
   return (
     <header className="bg-[#fff8e5] pt-4 px-4 lg:px-20">
-  <div className="hidden md:flex items-center justify-between mb-4">
+  <div className="hidden md:flex items-center justify-between ">
     <div className="w-1/3">
       <div
         className="logo font-[Outfit] text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#696969] cursor-pointer"
@@ -56,13 +56,13 @@ const Navbar = () => {
         <>
           <button
             className="h-[38px] px-5 rounded-full text-sm font-light text-white bg-[#1c1c1c] cursor-pointer"
-            onClick={() => navigate("/login", { state: { backgroundLocation: location } })}
+            onClick={() => navigate("/login", { state: { backgroundLocation: "/" } })}
           >
             Signin
           </button>
           <button
             className="h-[38px] px-5 rounded-full text-sm font-light text-[#1c1c1c] border border-black bg-transparent cursor-pointer"
-            onClick={() => navigate("/signup", { state: { backgroundLocation: location } })}
+            onClick={() => navigate("/signup", { state: { backgroundLocation: "/" } })}
           >
             Signup
           </button>

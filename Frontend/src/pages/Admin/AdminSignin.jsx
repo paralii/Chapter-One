@@ -22,8 +22,7 @@ function AdminLogin() {
     const result = await dispatch(adminLogin({ email, password }));
 
     if (result.error) {
-      console.log("Login failed:", result.error.message);
-      return;  // Do not navigate to dashboard if login fails
+      return;  
     }
     
     if (result.payload) {

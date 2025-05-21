@@ -4,12 +4,14 @@ import cloudinary from "../../config/cloudinary.js";
 export const createProduct = async (req, res) => {
   try {
     if (!req.uploadedImages || req.uploadedImages.length < 3) {
-      return res.status(400).json({ message: "At least 3 images are required" });
+      return res
+        .status(400)
+        .json({ message: "At least 3 images are required" });
     }
 
     const productData = {
       ...req.body,
-      product_imgs: req.uploadedImages, 
+      product_imgs: req.uploadedImages,
     };
 
     const product = new Product(productData);
@@ -26,11 +28,22 @@ export const updateProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    const { price, stock } = req.body;
+    req.body.price = Number(req.body.price);
+    req.body.available_quantity = Number(req.body.available_quantity);
+    req.body.discount = Number(req.body.discount);
+    req.body.category_id = new mongoose.Types.ObjectId(req.body.category_id);
+
+
+    if (req.uploadedImages && req.uploadedImages.length >= 3) {
+      req.body.product_imgs = req.uploadedImages;
+    }
+
+    if (isNaN(price)) return res.status(400).json({ message: "Invalid or missing price" });
+
     if (price !== undefined && price <= 0)
       return res.status(400).json({ message: "Invalid price" });
-    if (stock !== undefined && stock < 0)
-      return res.status(400).json({ message: "Invalid stock quantity" });
+    if (available_quantity !== undefined && available_quantity < 0)
+      return res.status(400).json({ message: "Invalid available quantity" });
 
     // If there are new images in the request, process them
     if (req.uploadedImages && req.uploadedImages.length >= 3) {
@@ -43,7 +56,9 @@ export const updateProduct = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json({ message: "Product updated successfully", updatedProduct });
+    res
+      .status(200)
+      .json({ message: "Product updated successfully", updatedProduct });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -59,7 +74,9 @@ export const toggleProductListing = async (req, res) => {
     await product.save();
 
     res.status(200).json({
-      message: `Product ${product.isDeleted ? "soft-deleted" : "restored"} successfully`,
+      message: `Product ${
+        product.isDeleted ? "soft-deleted" : "restored"
+      } successfully`,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -84,51 +101,50 @@ export const deleteProduct = async (req, res) => {
 };
 
 export const getProducts = async (req, res) => {
-    const {
-      search = "",
-      page = 1,
-      limit = 10,
-    } = req.query;
-  
-    try {
-      const query = { isDeleted: false };
-  
-      if (search) {
-        query.$or = [
-          { title: { $regex: search, $options: "i" } },
-          { description: { $regex: search, $options: "i" } },
-        ];
-      }
- 
-      const total = await Product.countDocuments(query);
-      const totalPages = Math.ceil(total / limit);
-  
-  
-      const pageNumber = Number(page);
-      const limitNumber = Number(limit);
-      const skip = (pageNumber - 1) * limitNumber;
-  
-      const products = await Product.find(query)
-        .populate("category_id")
-        .collation({ locale: "en", strength: 2 })
-        .skip(skip)
-        .limit(limitNumber);
-  
-      res.status(200).json({ products, total, totalPages });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+  const { search = "", page = 1, limit = 10, isDeleted } = req.query;
+
+  try {
+    const query = { isDeleted: false };
+
+    if (isDeleted !== undefined) {
+      query.isDeleted = isDeleted === "true";
     }
-  };
-  
-  export const getProductById = async (req, res) => {
-    try {
-      const product = await Product.findById(req.params.id).populate("category_id");
-      if (!product || product.isDeleted) {
-        return res.status(404).json({ message: "Product not available" });
-      }
-      res.status(200).json(product);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
     }
-  };
-  
+
+    const total = await Product.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const products = await Product.find(query)
+      .populate("category_id")
+      .collation({ locale: "en", strength: 2 })
+      .skip(skip)
+      .limit(limitNumber);
+
+    res.status(200).json({ products, total, totalPages });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getProductById = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).populate(
+      "category_id"
+    );
+    if (!product || product.isDeleted) {
+      return res.status(404).json({ message: "Product not available" });
+    }
+    res.status(200).json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

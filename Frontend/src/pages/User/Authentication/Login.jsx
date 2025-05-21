@@ -2,19 +2,17 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../../../redux/authSlice";
 import GoogleAuthHandler from "../../../components/User/GoogleAuthHandler";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
 
 function Login({ onClose = () => {}}) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [errors, setErrors] = useState({
@@ -56,7 +54,7 @@ function Login({ onClose = () => {}}) {
     if (!validateForm()) return;
 
     try {
-      const resultAction = await dispatch(loginUser({ email, password, rememberMe }));
+      const resultAction = await dispatch(loginUser({ email, password}));
 
       if (loginUser.fulfilled.match(resultAction)) {
         toast.success("Login successful!");
@@ -89,7 +87,7 @@ function Login({ onClose = () => {}}) {
     navigate(path, {
       replace: true,
       state: {
-        backgroundLocation: location.state?.backgroundLocation || "/",
+        backgroundLocation:"/",
       },
     });
   };
@@ -151,7 +149,7 @@ function Login({ onClose = () => {}}) {
             )}
           </div>
 
-          <div className="flex items-center mb-4">
+          {/* <div className="flex items-center mb-4">
             <input
               type="checkbox"
               id="remember"
@@ -162,7 +160,7 @@ function Login({ onClose = () => {}}) {
             <label htmlFor="remember" className="text-sm text-gray-700">
               Remember me
             </label>
-          </div>
+          </div> */}
 
           <button
             type="submit"

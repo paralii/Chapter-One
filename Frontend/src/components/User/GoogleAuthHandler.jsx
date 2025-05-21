@@ -1,5 +1,4 @@
 import React from "react";
-import { API_BASE } from "../../../config";
 import { FcGoogle } from "react-icons/fc";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,7 +14,7 @@ const GoogleAuthHandler = ({ type = "signin" }) => {
   }, []);
   
   const handleGoogleAuth = async () => {
-    window.location.href = `${API_BASE}/user/auth/google`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/user/auth/google`;
   };
 
 

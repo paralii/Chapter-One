@@ -80,8 +80,9 @@ router.delete("/remove/:product_id", verifyToken("user"), userCartController.rem
 router.post("/checkout", verifyToken("user"), userValidation.validateCheckout, checkout);
 
 // ===================== ORDERS =====================
-router.post("/orders", verifyToken("user"), userOrderController.placeOrder);
 router.get("/orders", verifyToken("user"), userOrderController.getUserOrders);
+router.post("/orders/temp", verifyToken("user"), userOrderController.createTempOrder);
+router.post("/orders", verifyToken("user"), userOrderController.placeOrder);
 router.get("/orders/:id", verifyToken("user"), userOrderController.getOrderDetails);
 router.put("/orders/cancel", verifyToken("user"), userOrderController.cancelOrderOrItem);
 router.put("/orders/return", verifyToken("user"), userOrderController.returnOrderItem);

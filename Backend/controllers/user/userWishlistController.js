@@ -33,10 +33,6 @@ export const addToWishlist = async (req, res) => {
   try {
     const { productId } = req.params;
     const userId = req.user._id;
-
-    console.log("User ID:", userId);
-    console.log("Product ID:", productId);
-
     // Validate productId
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ success: false, message: "Invalid product ID" });
@@ -45,7 +41,6 @@ export const addToWishlist = async (req, res) => {
     let wishlist = await Wishlist.findOne({ user_id: userId });
 
     if (!wishlist) {
-      console.log("No wishlist found, creating new one");
       wishlist = new Wishlist({ user_id: userId, products: [] });
     }
 
@@ -61,7 +56,6 @@ export const addToWishlist = async (req, res) => {
     wishlist.products.push(productId); // ✅ Push ObjectId directly
     await wishlist.save();
 
-    console.log("Product added to wishlist");
     res.json({ success: true, message: "Product added to wishlist", wishlist });
   } catch (err) {
     console.error("Error adding to wishlist:", err);

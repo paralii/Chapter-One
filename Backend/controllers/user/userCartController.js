@@ -3,6 +3,8 @@ import Product from "../../models/Product.js";
 import Wishlist from "../../models/Wishlist.js";
 import mongoose from "mongoose";
 
+      const MAX_LIMIT = 5;
+
 // Get cart for the authenticated user
 export const getCart = async (req, res) => {
   try {
@@ -26,14 +28,14 @@ export const addToCart = async (req, res) => {
   try {
     // Fetch product details along with category information
     const product = await Product.findById(product_id).populate("category_id");
-
     // Check if product exists, is not blocked or deleted, and its category is listed
     if (!product || product.isDeleted || product.isBlocked) {
       return res.status(404).json({ message: "Product is unavailable" });
     }
-
     if (!product.category_id || !product.category_id.isListed) {
-      return res.status(404).json({ message: "Product's category is not listed" });
+      return res
+        .status(404)
+        .json({ message: "Product's category is not listed" });
     }
 
     // Validate the requested quantity does not exceed available stock
@@ -60,17 +62,32 @@ export const addToCart = async (req, res) => {
     );
 
     if (itemIndex > -1) {
-      // If the product is already in the cart, update the quantity
       const newQuantity = cart.items[itemIndex].quantity + quantity;
+
       if (newQuantity > product.available_quantity) {
-        return res.status(400).json({ message: "Quantity exceeds available stock" });
+        return res
+          .status(400)
+          .json({ message: "Quantity exceeds available stock" });
       }
+
+      if (newQuantity > MAX_LIMIT) {
+        return res
+          .status(400)
+          .json({ message: "Cannot order more than 5 units of a product" });
+      }
+
       cart.items[itemIndex].quantity = newQuantity;
     } else {
-      // If the product is not in the cart, add it
       if (quantity > product.available_quantity) {
         return res.status(400).json({ message: "Exceeds available stock" });
       }
+
+      if (quantity > MAX_LIMIT) {
+        return res
+          .status(400)
+          .json({ message: "Cannot order more than 5 units of a product" });
+      }
+
       cart.items.push({ product_id, quantity });
     }
 
@@ -78,9 +95,9 @@ export const addToCart = async (req, res) => {
     await cart.save();
 
     // Remove the product from the wishlist if it's added to the cart
-    await Wishlist.findOneAndUpdate(
+    await Wishlist.updateOne(
       { user_id: userId },
-      { $pull: { products: new mongoose.Types.ObjectId(product_id) } }
+      { $pull: { products: product_id } }
     );
 
     // Return the updated cart information
@@ -88,10 +105,11 @@ export const addToCart = async (req, res) => {
   } catch (err) {
     // Handle errors
     console.error(err);
-    res.status(500).json({ message: "An error occurred while adding the product to the cart" });
+    res.status(500).json({
+      message: "An error occurred while adding the product to the cart",
+    });
   }
 };
-
 
 // Update product quantity in cart
 export const updateCartItemQuantity = async (req, res) => {
@@ -108,7 +126,9 @@ export const updateCartItemQuantity = async (req, res) => {
     }
 
     if (!product.category_id || !product.category_id.isListed) {
-      return res.status(404).json({ message: "Product Category is not Listed" });
+      return res
+        .status(404)
+        .json({ message: "Product Category is not Listed" });
     }
 
     let cart = await Cart.findOne({ user_id: req.user._id });
@@ -117,7 +137,9 @@ export const updateCartItemQuantity = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    const itemIndex = cart.items.findIndex((item) => item.product_id.toString() === product_id);
+    const itemIndex = cart.items.findIndex(
+      (item) => item.product_id.toString() === product_id
+    );
 
     if (itemIndex === -1) {
       return res.status(404).json({ message: "Product not in cart" });
@@ -126,21 +148,37 @@ export const updateCartItemQuantity = async (req, res) => {
     const newQuantity = cart.items[itemIndex].quantity + Number(quantity);
 
     if (newQuantity < 1) {
-      return res.status(400).json({ message: "Quantity cannot be less than 1" });
+      return res
+        .status(400)
+        .json({ message: "Quantity cannot be less than 1" });
     }
+
 
     if (newQuantity > product.available_quantity) {
       return res.status(400).json({ message: "Exceeds available stock" });
     }
 
+    if (newQuantity > MAX_LIMIT) {
+      return res
+        .status(400)
+        .json({ message: "Cannot exceed 5 units per product" });
+    }
+
     cart.items[itemIndex].quantity = newQuantity;
     await cart.save();
 
-    await cart.populate("items.product_id", "title price available_quantity product_imgs description");
+    await cart.populate(
+      "items.product_id",
+      "title price available_quantity product_imgs description"
+    );
 
-    res.status(200).json({ message: "Cart item quantity updated successfully", cart });
+    res
+      .status(200)
+      .json({ message: "Cart item quantity updated successfully", cart });
   } catch (err) {
-    res.status(500).json({ message: "Internal Server Error", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 };
 
@@ -174,7 +212,9 @@ export const incrementCartItemQuantity = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    const itemIndex = cart.items.findIndex((item) => item.product_id.toString() === product_id);
+    const itemIndex = cart.items.findIndex(
+      (item) => item.product_id.toString() === product_id
+    );
 
     if (itemIndex === -1) {
       return res.status(404).json({ message: "Product not in cart" });
@@ -182,14 +222,24 @@ export const incrementCartItemQuantity = async (req, res) => {
 
     const product = await Product.findById(product_id);
 
-    if (product && product.available_quantity <= cart.items[itemIndex].quantity) {
-      return res.status(400).json({ message: "Cannot increment. Stock is insufficient." });
+    const currentQuantity = cart.items[itemIndex].quantity;
+
+    if (product && currentQuantity >= product.available_quantity) {
+      return res.status(400).json({ message: "Stock is insufficient" });
+    }
+
+    if (currentQuantity >= MAX_LIMIT) {
+      return res
+        .status(400)
+        .json({ message: "Cannot exceed 5 units per product" });
     }
 
     cart.items[itemIndex].quantity += 1;
     await cart.save();
 
-    res.status(200).json({ message: "Cart item quantity incremented successfully", cart });
+    res
+      .status(200)
+      .json({ message: "Cart item quantity incremented successfully", cart });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -205,20 +255,26 @@ export const decrementCartItemQuantity = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    const itemIndex = cart.items.findIndex((item) => item.product_id.toString() === product_id);
+    const itemIndex = cart.items.findIndex(
+      (item) => item.product_id.toString() === product_id
+    );
 
     if (itemIndex === -1) {
       return res.status(404).json({ message: "Product not in cart" });
     }
 
     if (cart.items[itemIndex].quantity <= 1) {
-      return res.status(400).json({ message: "Cannot decrement quantity below 1" });
+      return res
+        .status(400)
+        .json({ message: "Cannot decrement quantity below 1" });
     }
 
     cart.items[itemIndex].quantity -= 1;
     await cart.save();
 
-    res.status(200).json({ message: "Cart item quantity decremented successfully", cart });
+    res
+      .status(200)
+      .json({ message: "Cart item quantity decremented successfully", cart });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

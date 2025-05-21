@@ -17,6 +17,7 @@
     "@reduxjs/toolkit": "^1.9.5",
     "@tabler/icons-react": "^3.31.0",
     "axios": "^1.4.0",
+    "canvas-confetti": "^1.9.3",
     "cropperjs": "^2.0.0",
     "dayjs": "^1.11.13",
     "lucide-react": "^0.487.0",

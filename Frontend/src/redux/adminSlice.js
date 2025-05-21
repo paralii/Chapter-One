@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-import { API_BASE } from "../../config";
 
 axios.defaults.withCredentials = true; 
 
@@ -8,8 +7,7 @@ export const adminLogin = createAsyncThunk(
   "admin/adminLogin",
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/admin/login`, credentials, { withCredentials: true });
-      console.log("Login response:", response.data); // Log the response data
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/login`, credentials, { withCredentials: true });
       return response.data.admin; 
     } catch (err) {
       console.error("Login error:", err.response?.data);  // Log the error response for debugging
@@ -22,7 +20,7 @@ export const adminLogout = createAsyncThunk(
   "admin/adminLogout", 
   async (_, { rejectWithValue }) => {
   try {
-    const response = await axios.post(`${API_BASE}/admin/logout`, {}, { withCredentials: true });
+    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {}, { withCredentials: true });
       return response.data;
   } catch (error) {
     console.error("Logout error:", error);
@@ -34,7 +32,7 @@ export const refreshAdminSession = createAsyncThunk(
   "admin/refreshAdminSession",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE}/admin/refresh-token`, {}, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/refresh-token`, {}, { withCredentials: true });
       return response.data.admin;
     } catch (err) {
       return rejectWithValue(err.response?.data || "Session refresh failed");

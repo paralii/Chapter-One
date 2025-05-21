@@ -9,15 +9,14 @@ import path from "path";
 import Cart from "../../models/Cart.js";
 import mongoose from "mongoose";
 
-const INVOICE_DIR = path.resolve("invoices");
+const INVOICE_DIR = path.join(process.cwd(), 'invoices');
 
 // Generate a unique readable order ID
 const generateOrderID = () => {
   return "CHAP" + Date.now() + Math.floor(Math.random() * 1000);
 };
 
-// 1. Place Order 
-export const placeOrder = async (req, res) => {
+export const createTempOrder = async (req, res) => {
   try {
     const userId = req.user._id;
     const {
@@ -26,25 +25,34 @@ export const placeOrder = async (req, res) => {
       shipping_chrg,
       discount,
       paymentMethod,
-      razorpay_order_id, // For online payments
+      amount,
+      taxes,
+      total,
+      currency,
     } = req.body;
 
-    // 1. Validate items
+
+    
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "No items to order" });
     }
 
-    // 2. Validate address
     const address = await Address.findOne({ _id: address_id, user_id: userId });
     if (!address) {
       return res.status(400).json({ message: "Invalid or unauthorized address" });
     }
 
-    // 3. Process items: validate stock, calculate totals
+    if (!["COD", "ONLINE"].includes(paymentMethod)) {
+      return res.status(400).json({ message: "Invalid payment method" });
+    }
+
     let subtotal = 0;
     const orderItems = [];
 
     for (const item of items) {
+      if (!mongoose.isValidObjectId(item.product_id)) {
+        return res.status(400).json({ message: `Invalid product ID: ${item.product_id}` });
+      }
       const product = await Product.findById(item.product_id);
       if (!product || product.isDeleted) {
         return res.status(400).json({ message: `Product not available: ${item.product_id}` });
@@ -57,76 +65,223 @@ export const placeOrder = async (req, res) => {
       const price = product.price;
       const total = price * item.quantity;
       subtotal += total;
-
-      // Deduct stock
       product.available_quantity -= item.quantity;
-      await product.save(); // No transaction session here
+      await product.save();
+      orderItems.push({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price,
+        total,
+        refundProcessed: false,
+      });
+    }
+
+    const netAmount = subtotal + (shipping_chrg || 0) + (taxes || 0) - (discount || 0);
+    if (netAmount < 0) {
+      return res.status(400).json({ message: 'Invalid order amount' });
+    }
+
+    const order = new Order({
+      orderID: generateOrderID(),
+      user_id: userId,
+      address_id,
+      paymentMethod,
+      paymentStatus: "Pending",
+      status: "Pending",
+      shipping_chrg: shipping_chrg || 0,
+      discount: discount || 0,
+      total: subtotal,
+      taxes: taxes || 0,
+      netAmount,
+      items: orderItems,
+      currency: currency || "INR",
+    });
+
+    await order.save();
+    res.status(201).json({ message: "Temporary order created", order });
+  } catch (err) {
+    console.error("Temporary order creation failed:", err);
+    res.status(500).json({ message: "Internal server error", error: err.message });
+  }
+};
+// 1. Place Order
+export const placeOrder = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const {
+      _id,
+      address_id,
+      items,
+      shipping_chrg,
+      discount,
+      paymentMethod,
+      razorpay_order_id,
+      amount,
+      taxes,
+      total,
+      currency,
+    } = req.body;
+
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "No items to order" });
+    }
+
+        if (!mongoose.isValidObjectId(address_id)) {
+      return res.status(400).json({ message: "Invalid address ID" });
+    }
+
+    let order;
+    if (_id && mongoose.isValidObjectId(_id)) {
+      order = await Order.findOne({ _id, user_id: userId });
+      if (!order) {
+        return res.status(404).json({ message: "Temporary order not found" });
+      }
+      if (order.paymentStatus === "Completed") {
+        order.status = "Pending";
+        order.razorpay_order_id = razorpay_order_id;
+        await order.save();
+        await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
+        return res.status(200).json({ message: "Order already paid, status updated", order });
+      }
+    } 
+    
+    if(!order) {
+      const address = await Address.findOne({ _id: address_id, user_id: userId });
+      if (!address) {
+        return res.status(400).json({ message: "Invalid or unauthorized address" });
+      }
+
+      if (!["COD", "ONLINE"].includes(paymentMethod)) {
+        return res.status(400).json({ message: `Invalid payment method: ${paymentMethod}. Allowed values: COD, ONLINE` });
+      }
+
+    let subtotal = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+            if (!mongoose.isValidObjectId(item.product_id)) {
+        return res.status(400).json({ message: `Invalid product ID: ${item.product_id}` });
+      }
+      const product = await Product.findById(item.product_id);
+      if (!product || product.isDeleted) {
+        return res
+          .status(400)
+          .json({ message: `Product not available: ${item.product_id}` });
+      }
+
+      if (product.available_quantity < item.quantity) {
+        return res
+          .status(400)
+          .json({ message: `Insufficient stock for: ${product.title}` });
+      }
+
+      const price = product.price;
+      const total = price * item.quantity;
+      subtotal += total;
+
+              if (paymentMethod === "COD") {
+          product.available_quantity -= item.quantity;
+          await product.save();
+        }
 
       orderItems.push({
         product_id: item.product_id,
         quantity: item.quantity,
         price,
         total,
+        status: "Pending",
+        refundProcessed: false,
       });
     }
 
     // 4. Calculate net amount
-    const netAmount = subtotal + shipping_chrg - discount;
+        const netAmount = subtotal + (shipping_chrg || 0) + (taxes || 0) - (discount || 0);
+    if (netAmount < 0) {
+      return res.status(400).json({ message: 'Invalid order amount' });
+    }
 
     // 5. Create order document
-    const order = new Order({
+     order = new Order({
       orderID: generateOrderID(),
       user_id: userId,
       address_id,
-      paymentMethod: paymentMethod || "COD",
-      paymentStatus: paymentMethod === "ONLINE" ? "Pending" : "Paid",
+      paymentMethod,
+      paymentStatus: paymentMethod === "ONLINE" ? "Pending" : "Completed",
+      status: "Pending",
       razorpay_order_id: paymentMethod === "ONLINE" ? razorpay_order_id : undefined,
-      shipping_chrg,
-      discount,
+      shipping_chrg: shipping_chrg || 0,
+      discount: discount || 0,
       total: subtotal,
+      taxes: taxes || 0,
       netAmount,
       items: orderItems,
+      currency: currency || "INR",
     });
 
-    await order.save();
-    // 6. Clear the user's cart
-await Cart.findOneAndUpdate(
-  { user_id: userId },
-  { $set: { items: [] } }
-);
+  }
+    if (!order) {
+      console.error("Order is still undefined after initialization");
+      return res.status(500).json({ message: "Failed to initialize order" });
+    }
 
+        if (paymentMethod === "COD") {
+      order.paymentStatus = "Completed";
+      order.status = "Pending";
+    } else if (paymentMethod === "ONLINE") {
+         if (!razorpay_order_id) {
+        return res.status(400).json({ message: "Missing razorpay_order_id for ONLINE payment" });
+      }
+      order.razorpay_order_id = razorpay_order_id;
+      order.status = "Pending";
+    }
+
+    await order.save();
+
+    await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
 
     res.status(201).json({ message: "Order placed successfully", order });
   } catch (err) {
     console.error("Order placement failed:", err);
-    res.status(500).json({ message: "Internal server error", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: err.message });
   }
 };
-
-  
 
 // 2. List Orders for User
 export const getUserOrders = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { search = "", page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
+    const { search = '', page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
 
+    if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
+      return res.status(400).json({ message: 'Invalid page or limit' });
+    }
+
+    const skip = (pageNum - 1) * limitNum;
     const filter = {
       user_id: userId,
-      orderID: { $regex: search, $options: "i" },
+      orderID: { $regex: search, $options: 'i' },
+      isDeleted: false,
     };
 
-    const orders = await Order.find(filter)
-      .sort({ order_date: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Order.countDocuments(filter);
+    const [orders, total] = await Promise.all([
+      Order.find(filter)
+        .populate('items.product_id', 'title price product_imgs')
+        .sort({ order_date: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Order.countDocuments(filter),
+    ]);
 
     res.json({ orders, total });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching orders" });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ message: 'Error fetching orders' });
   }
 };
 
@@ -136,8 +291,12 @@ export const getOrderDetails = async (req, res) => {
     const userId = req.user._id;
     const orderId = req.params.id;
 
+        if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
     const order = await Order.findOne({ _id: orderId, user_id: userId })
-      .populate("items.product_id", "title price")
+      .populate("items.product_id")
       .populate("address_id")
       .populate("user_id", "firstname lastname email");
 
@@ -145,6 +304,7 @@ export const getOrderDetails = async (req, res) => {
 
     res.json(order);
   } catch (err) {
+    console.error('Error fetching order details:', err);
     res.status(500).json({ message: "Error fetching order details" });
   }
 };
@@ -155,66 +315,116 @@ export const cancelOrderOrItem = async (req, res) => {
     const { orderId, productId, reason } = req.body;
     const userId = req.user._id;
 
-    const order = await Order.findOne({ _id: orderId, user_id: userId });
+        if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findOne({ _id: orderId, user_id: userId, isDeleted: false });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+        const hoursSinceOrder = (Date.now() - new Date(order.order_date)) / (1000 * 60 * 60);
+    if (hoursSinceOrder > 24) {
+      return res.status(400).json({ message: 'Cancellation period (24 hours) expired' });
+    }
+    
     if (productId) {
-      const item = order.items.find(item => item.product_id.toString() === productId);
+            if (!mongoose.isValidObjectId(productId)) {
+        return res.status(400).json({ message: 'Invalid product ID' });
+      }
+
+      const item = order.items.find(
+        (item) => item.product_id.toString() === productId
+      );
       if (!item) {
         return res.status(404).json({ message: "Item not found in order" });
       }
-      if (item.status !== 'Pending') {
-        return res.status(400).json({ success: false, message: 'Only items that are still "ordered" can be cancelled' });
-      }
-      if (item.status === "Cancelled") {
-        return res.status(400).json({ message: "Item already cancelled" });
-      }
-      if (item.status === "Returned") {
-        return res.status(400).json({ message: "Item already returned" });
-      }
-      if (item.status === "Delivered") {
-        return res.status(400).json({ message: "Delivered items cannot be cancelled" });
+      if (item.status !== "Pending") {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: 'Only items that are still "Pending" can be cancelled',
+          });
       }
 
       item.status = "Cancelled";
-      item.cancelReason = reason;
-      await Product.findByIdAndUpdate(productId, { $inc: { available_quantity: item.quantity } });
+      if (reason && typeof reason === 'string' && reason.trim()) {
+        item.cancelReason = reason.trim();
+      }
+      item.refundProcessed = false;
+      
+      await Product.findByIdAndUpdate(productId, {
+        $inc: { available_quantity: item.quantity },
+      });
 
       // Handle refund if online payment
-      if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Paid") {
-        await refundToWallet(userId, item.total, `Refund for cancelled item from Order ${order.orderID}`);
+      if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Completed" && !item.refundProcessed) {
+        const refundResult = await refundToWallet(
+          userId,
+          item.total,
+          `Refund for cancelled item from Order ${order.orderID}`
+        );
+        if(!refundResult) {
+          console.error('Refund failed:', refundResult);
+          return res.status(500).json({ message: 'Refund failed' });
+        }
+        item.refundProcessed = true;
+      }
+    } else {
+            if (order.status === 'Cancelled') {
+        return res.status(400).json({ message: 'Order is already cancelled' });
+      }
+      if (order.status === 'Delivered' || order.status === 'OutForDelivery' ) {
+        return res.status(400).json({ message: `Cannot cancel order in ${order.status} status` });
       }
 
-    } else {
-      if (order.status === "Cancelled" || order.status === "Delivered") {
-        return res.status(400).json({ message: "Order already processed" });
-      }
-      order.status = "Cancelled";
+      let refundableAmount = 0;
       for (const item of order.items) {
         if (item.status === "Pending") {
           item.status = "Cancelled";
-          item.cancelReason = reason;
-          await Product.findByIdAndUpdate(item.product_id, { $inc: { available_quantity: item.quantity } });
+          item.cancelReason = reason && typeof reason === 'string' ? reason.trim() : 'User cancelled';
+          item.refundProcessed = false;
 
-          if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Paid") {
-            const refundableAmount = order.items.reduce((sum, item) => {
-              return item.status === "Cancelled" ? sum + item.total : sum;
-            }, 0);
-            if (refundableAmount > 0) {
-              await refundToWallet(userId, refundableAmount, `Refund for cancelled Order ${order.orderID}`);
-            }
+          await Product.findByIdAndUpdate(item.product_id, {
+            $inc: { available_quantity: item.quantity },
+          });
+
+          if (order.paymentMethod === 'ONLINE' && order.paymentStatus === 'Completed' && !item.refundProcessed) {
+            refundableAmount += item.total;
           }
         }
+      }
+
+      const allCancelled = order.items.every((item) => item.status === 'Cancelled');
+      if (allCancelled) {
+        order.status = 'Cancelled';
+      }
+
+      if (refundableAmount > 0) {
+        const refundResult = await refundToWallet(
+          userId,
+          refundableAmount,
+          `Refund for cancelled Order ${order.orderID}`
+        );
+        if(!refundResult) {
+          console.error('Refund failed:', refundResult);
+          return res.status(500).json({ message: 'Refund failed' });
+        }
+        order.items.forEach(item => {
+          if (item.status === 'Cancelled') {
+            item.refundProcessed = true;
+          }
+        });
       }
     }
 
     await order.save();
-    res.json({ message: "Cancellation processed" });
+    res.json({ message: 'Cancellation processed successfully' });
   } catch (err) {
-    res.status(500).json({ message: "Error processing cancellation" });
+    console.error('Error processing cancellation:', err);
+    res.status(500).json({ message: 'Error processing cancellation', error: err.message });
   }
 };
-
 
 // 5. Return Delivered Item
 export const returnOrderItem = async (req, res) => {
@@ -222,54 +432,68 @@ export const returnOrderItem = async (req, res) => {
     const { orderId, productId, reason } = req.body;
     const userId = req.user._id;
 
-    if (!reason) return res.status(400).json({ message: "Return reason required" });
-
-    const order = await Order.findOne({ _id: orderId, user_id: userId });
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-    const item = order.items.find(item => item.product_id.toString() === productId);
-    if (!item) {
-      return res.status(404).json({ message: "Item not found in order" });
+    if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
     }
-    if (item.status === "Returned") {
-      return res.status(400).json({ success: false, message: 'Item already in return process or returned' });
-    }
-    if (item.status !== "Delivered") {
-      return res.status(400).json({  success: false, message: 'Only delivered items can be returned' });
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: 'Invalid product ID' });
     }
 
-    item.status = "Returned";
-    item.returnReason = reason;
+    if (!reason || typeof reason !== 'string' || reason.trim() === '') {
+      return res.status(400).json({ message: 'Return reason is required' });
+    }
 
-    if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Paid") {
-        await refundToWallet(userId, item.total, `Refund for returned item from Order ${order.orderID}`);
-      }
+    const order = await Order.findOne({ _id: orderId, user_id: userId, isDeleted: false });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const item = order.items.find((item) => item.product_id.toString() === productId);
+    if (!item) return res.status(404).json({ message: 'Item not found in order' });
+
+    if (item.status === 'Returned') {
+      return res.status(400).json({ message: 'Item already in return process or returned' });
+    }
+    if (item.status !== 'Delivered') {
+      return res.status(400).json({ message: 'Only delivered items can be returned' });
+    }
+
+    const deliveryDate = item.deliveryDate || order.updated_at;
+    const daysSinceDelivery = (Date.now() - new Date(deliveryDate)) / (1000 * 60 * 60 * 24);
+    if (daysSinceDelivery > 7) {
+      return res.status(400).json({ message: 'Return period (7 days) expired' });
+    }
+
+    item.status = 'Returned';
+    item.returnReason = reason.trim();
+    item.returnVerified = false;
+    item.returnDecision = null;
+    item.refundProcessed = false;
 
     await order.save();
     res.json({ message: "Return request submitted" });
   } catch (err) {
+    console.error('Error submitting return request:', err);
     res.status(500).json({ message: "Error submitting return request" });
   }
 };
 
 const refundToWallet = async (userId, amount, description = "Refund") => {
-    const wallet = await Wallet.findOneAndUpdate(
-      { user_id: userId },
-      {
-        $inc: { balance: amount },
-        $push: {
-          transactions: {
-            type: "credit",
-            amount,
-            description,
-            date: new Date(),
-          },
+  const wallet = await Wallet.findOneAndUpdate(
+    { user_id: userId },
+    {
+      $inc: { balance: amount },
+      $push: {
+        transactions: {
+          type: "credit",
+          amount,
+          description,
+          date: new Date(),
         },
       },
-      { upsert: true, new: true }
-    );
-    return wallet;
-  };
+    },
+    { upsert: true, new: true }
+  );
+  return wallet;
+};
 
 // 6. Download Invoice
 export const downloadInvoice = async (req, res) => {
@@ -278,34 +502,49 @@ export const downloadInvoice = async (req, res) => {
     const userId = req.user._id;
 
     const order = await Order.findOne({ _id: orderId, user_id: userId })
-      .populate("items.product_id", "title price")
+      .populate("items.product_id")
       .populate("address_id")
       .populate("user_id", "firstname lastname email");
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+    // Create productMap: { productId: productData }
+    const productMap = {};
+    order.items.forEach(item => {
+      if (item.product_id) {
+        productMap[item.product_id._id.toString()] = {
+          title: item.product_id.title,
+          price: item.product_id.price,
+          product_imgs: item.product_id.product_imgs || [],
+        };
+      }
+    });
+
+    const address = order.address_id;
+
     if (!fs.existsSync(INVOICE_DIR)) {
       fs.mkdirSync(INVOICE_DIR, { recursive: true });
     }
 
-    const invoicePath = path.join(INVOICE_DIR, `invoice_${order.orderID}_${userId}.pdf`);
-    await generateInvoicePDF(order, order.user_id, invoicePath);
+    const invoicePath = path.join(
+      INVOICE_DIR,
+      `invoice_${order.orderID}_${userId}.pdf`
+    );
+
+    await generateInvoicePDF(order, order.user_id, address, productMap, invoicePath);
 
     if (!fs.existsSync(invoicePath)) {
       return res.status(400).json({ message: "Invoice file not generated" });
     }
 
-    res.download(invoicePath, async err => {
-      if (err) {
-        return res.status(500).json({ message: "Failed to download invoice" });
-      }
-      try {
-        await fsPromises.unlink(invoicePath);
-      } catch (unlinkErr) {
-        console.warn("Invoice file cleanup failed:", unlinkErr.message);
-      }
-    });
+    const pdfBuffer = await fsPromises.readFile(invoicePath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice_${order.orderID}.pdf`);
+    res.send(pdfBuffer);
+
+    await fsPromises.unlink(invoicePath).catch(err => console.warn('Invoice cleanup failed:', err));
   } catch (err) {
+    console.error('Error generating invoice:', err);
     res.status(500).json({ message: "Error generating invoice" });
   }
 };

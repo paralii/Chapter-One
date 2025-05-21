@@ -1,9 +1,7 @@
-//api/userAxios.js
 import axios from "axios";
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const userAxios = axios.create({
-  baseURL: `${API_BASE}/user`,
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}/user`,
   withCredentials: true,
 });
 
@@ -19,7 +17,7 @@ userAxios.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await axios.post(
-          `${API_BASE}/user/refresh-token`,
+          `${import.meta.env.VITE_API_BASE_URL}/user/refresh-token`,
           {},
           { withCredentials: true }
         );

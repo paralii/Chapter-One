@@ -6,7 +6,7 @@ const Pagination = ({ page, setPage, totalPages, visiblePages }) => {
   };
 
   return (
-    <div className="flex justify-center mt-4">
+    <div className="flex justify-center mt-4 mb-8">
       <div className="flex items-center gap-1 text-sm font-medium font-Inter">
         {/* Prev */}
         <button

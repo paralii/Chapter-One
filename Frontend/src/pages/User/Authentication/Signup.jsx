@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { signupUser } from "../../../redux/authSlice";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import GoogleAuthHandler from "../../../components/User/GoogleAuthHandler";
 import { Eye, EyeOff } from "lucide-react";
@@ -16,7 +16,6 @@ function Signup({ onClose = () => {}}) {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
   const { loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -26,16 +25,15 @@ function Signup({ onClose = () => {}}) {
     };
   }, []);
 
-  const backgroundLocation = location.state?.backgroundLocation || "/";
   const handleClose = () => {
-    navigate(backgroundLocation, { replace: true });
+    navigate("/", { replace: true });
     onClose();
   };
   
   const openModalRoute = (path) => {
     navigate(path, {
       replace: true,
-      state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+      state: { backgroundLocation: "/" },
     });
   };
   

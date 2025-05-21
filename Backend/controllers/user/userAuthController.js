@@ -1,14 +1,11 @@
 import User from "../../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTokens.js";
 import setAuthCookies from "../../utils/setAuthCookies.js";
 import { generateOTP } from "../../utils/services/otpGenerator.js";
-import { sendOTPEmail } from "../../utils/services/emailService.js";
-import { validationResult } from "express-validator"; 
+import { sendOTPEmail, resendOtpForVerifyEmail, sendForgotPasswordOTP } from "../../utils/services/emailService.js";
 
-dotenv.config();
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -158,7 +155,7 @@ export const resendOtpForVerify = async (req, res) => {
       { expiresIn: "2m" } 
     );
 
-    await sendOTPEmail(email, newOtp);
+    await resendOtpForVerifyEmail(email, newOtp);
 
     res.status(200).json({ message: "OTP resent successfully", otpToken: newOtpToken });
   } catch (error) {
@@ -177,7 +174,7 @@ export const resendOTP = async (req, res) => {
     const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, { expiresIn: "2m" });
 
     console.log("resend OTP:", otp);
-    await sendOTPEmail(email, otp);
+    await resendOtpForVerifyEmail(email, otp);
 
     res.status(200).json({ message: "OTP resent successfully", otpToken });
   } catch (err) {
@@ -196,7 +193,7 @@ export const forgotPassword = async (req, res) => {
     const otpToken = jwt.sign({ email, otp, from: "forgot-password" }, process.env.JWT_SECRET, { expiresIn: "5m" });
 
     console.log("forgotPassword OTP:", otp);
-    await sendOTPEmail(email, otp);
+    await sendForgotPasswordOTP(email, otp);
 
     res.status(200).json({ message: "OTP sent to email for password reset", otpToken });
   } catch (err) {
@@ -242,7 +239,7 @@ export const resendForgotPasswordOTP = async (req, res) => {
     );
 
     console.log("Resend ForgotPassword OTP:", otp);
-    await sendOTPEmail(email, otp);
+    await sendForgotPasswordOTP(email, otp);
 
     res.status(200).json({ message: "OTP resent for password reset", otpToken });
   } catch (err) {

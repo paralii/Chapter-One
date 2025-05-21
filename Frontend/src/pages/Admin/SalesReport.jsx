@@ -6,7 +6,6 @@ import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import adminAxios from "../../api/adminAxios";
 
-const API_BASE = "http://localhost:2211";
 
 function SalesReport() {
   const [reports, setReports] = useState([]);
@@ -20,7 +19,7 @@ function SalesReport() {
 
   const fetchReports = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/admin/sales-reports`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/sales-reports`, {
         params: { search, page, limit },
       });
       setReports(response.data.reports);

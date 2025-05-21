@@ -18,18 +18,18 @@ import ResetPassword from "./pages/User/Authentication/ResetPassword";
 
 // --- User Pages ---
 import Home from "./pages/User/Home";
-import ProductList from "./pages/User/ProductList";
-import ProductDetail from "./pages/User/ProductDetail";
+import ProductList from "./pages/User/Product/ProductList";
+import ProductDetail from "./pages/User/Product/ProductDetail";
 import UserProfileDashboard from "./pages/User/Profile/UserProfileDashboard";
-import UserEditProfile from "./pages/User/Profile/UserEditProfile";
+import UserEditProfile from "./pages/User/Profile/Profile Overview/UserEditProfile";
 import UserPasswordManagement from "./pages/User/Profile/UserPasswordManagement";
-import UserAddresses from "./pages/User/Profile/UserAddresses";
-import AddEditAddress from "./pages/User/Profile/AddEditAddress";
-import UserOrder from "./pages/User/Profile/UserOrder";
-import UserWallet from "./pages/User/Profile/UserWalletHistory";
+import UserAddresses from "./pages/User/Profile/Address/UserAddresses";
+import AddEditAddress from "./pages/User/Profile/Address/AddEditAddress";
+import UserOrder from "./pages/User/Profile/Order/UserOrder";
+import UserWallet from "./pages/User/Profile/Wallet/UserWalletHistory";
 import Cart from "./pages/User/Profile/Cart";
 import Checkout from "./pages/User/Profile/Checkout";
-import OrderDetails from "./pages/User/Order/OrderDetails";
+import OrderDetails from "./pages/User/Profile/Order/OrderDetails";
 import OrderSuccess from "./pages/User/Order/OrderSuccess";
 import Wishlist from "./pages/User/Profile/Wishlist";
 // --- Admin Authentication & Dashboard ---
@@ -48,6 +48,7 @@ import ReferralManagment from "./pages/Admin/ReferralManagement";
 import SalesReport from "./pages/Admin/SalesReport";
 
 import { SearchProvider } from './context/SearchContext';
+import OrderFailure from "./pages/User/Order/OrderFailure";
 axios.defaults.withCredentials = true;
 
 function App() {
@@ -77,6 +78,7 @@ function App() {
           <Route path="/profile/edit" element={<UserEditProfile />} />
           <Route path="/profile/password-management" element={<UserPasswordManagement />} />
           <Route path="/order-success" element={<OrderSuccess />} />
+          <Route path="/order-failure" element={<OrderFailure />} />
           <Route path="/profile/addresses" element={<UserAddresses />} />
           <Route path="/profile/addresses/add" element={<AddEditAddress />} />
           <Route path="/profile/addresses/edit/:id" element={<AddEditAddress />} />
@@ -115,6 +117,7 @@ function App() {
           <Route path="/verify-otp" element={<OTPVerification onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/forgot-password" element={<ForgotPassword onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/reset-password/:token" element={<ResetPassword onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/profile/edit" element={<UserEditProfile onClose={() => navigate(state.backgroundLocation)} />} />
         </Routes>
       )}
 

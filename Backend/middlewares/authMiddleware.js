@@ -9,7 +9,6 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
     req.cookies[tokenName] || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    console.log("No token provided");
     return res.status(401).json({ message: "Unauthorized: No token provided" });
   }
 
@@ -26,11 +25,9 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
     } else {
       const user = await User.findById(decoded.id);
       if (!user) {
-        console.log("User not found");
         return res.status(401).json({ message: "Unauthorized: User not found" });
       }
       if (user.isBlock) {
-        console.log("User account is blocked");
         return res.status(403).json({ message: "Blocked account" });
       }
       req.user = user;
@@ -44,7 +41,6 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
 
 export const isAdmin = (req, res, next) => {
   if (!req.user || !req.user.isAdmin) {
-      console.log("Admin access required");
     return res
       .status(403)
       .json({ message: "Forbidden: Admin access required" });

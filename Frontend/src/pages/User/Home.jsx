@@ -11,9 +11,8 @@ import ForgotPassword from "../User/Authentication/ForgotPassword";
 import Pagination from "../../components/common/Pagination";
 import OTPVerification from "../../pages/User/Authentication/OTPVerification";
 import ResetPassword from "../../pages/User/Authentication/ResetPassword";
-import FallbackMessage from "../../components/common/FallbackMessage";
 import BookLoader from "../../components/common/BookLoader";
-const API_BASE = "http://localhost:2211";
+import FallbackMessage from "../../components/common/FallbackMessage";
 
 function Home() {
   const navigate = useNavigate();
@@ -23,24 +22,25 @@ function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState({ name: "All", id: null });
-  const [page, setPage] = useState(1); 
-  const [totalPages, setTotalPages] = useState(1); 
-  const [categories, setCategories] = useState([{ name: "All", id: null }]); 
+  const [selectedCategory, setSelectedCategory] = useState({
+    name: "All",
+    id: null,
+  });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [categories, setCategories] = useState([{ name: "All", id: null }]);
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const [animationDone, setAnimationDone] = useState(false);
-  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
 
   useEffect(() => {
     getCategories().then((res) => {
       const categoriesWithId = res.data.categories.map((cat) => ({
         name: cat.name,
-        id: cat._id, // assuming '_id' is the ObjectId for the category
+        id: cat._id,
       }));
       setCategories([{ name: "All", id: null }, ...categoriesWithId]);
     });
   }, []);
-  
 
   const search = "";
   const sort = "desc";
@@ -49,25 +49,22 @@ function Home() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-  
+
     const fetchBooks = async () => {
       try {
         let response;
-  
+
         if (selectedCategory.id) {
-          console.log("Selected Category:", selectedCategory);
           response = await getBooksByCategory(selectedCategory.id, page, limit);
         } else {
-          // Get all products
           response = await getProducts({ search, sort, page, limit });
         }
-        
+
         const productList = Array.isArray(response.data)
           ? response.data
           : response.data.products;
-  
+
         const total = response.data.total || productList.length;
-        setInitialDataLoaded(true);
         setProducts(productList);
         setTotalPages(Math.ceil(total / limit));
       } catch (err) {
@@ -80,24 +77,20 @@ function Home() {
         setLoading(false);
       }
     };
-  
+
     fetchBooks();
   }, [page, selectedCategory.id]);
-  
+
   const getImageUrl = (url) => {
     if (!url) return "https://via.placeholder.com/150x200?text=No+Image";
     if (url.startsWith("http")) return url;
     const uploadsIndex = url.indexOf("/uploads");
     return uploadsIndex !== -1
-      ? `${API_BASE}${url.substring(uploadsIndex)}`
-      : `${API_BASE}${url}`;
+      ? `${import.meta.env.VITE_API_BASE_URL}${url.substring(uploadsIndex)}`
+      : `${import.meta.env.VITE_API_BASE_URL}${url}`;
   };
 
 
-  if (!animationDone || !initialDataLoaded) {
-    return <BookLoader onFinish={() => setAnimationDone(true)} />;
-  }
-  
   return (
     <>
       <div className="min-h-screen bg-[#fff8e5]">
@@ -105,33 +98,34 @@ function Home() {
 
         {/* Category Filter */}
         <div className="flex flex-wrap justify-center gap-4 mt-4 px-2 border-b border-gray-300 pb-2">
-  {(showAllCategories ? categories : categories.slice(0, 5)).map((category) => (
-    <button
-      key={category.id}
-      onClick={() => {
-        setSelectedCategory(category);
-        setPage(1);
-      }}
-      className={`px-3 py-1 rounded-full border text-sm md:text-base transition-all duration-200 ${
-        selectedCategory.id === category.id
-          ? "bg-[#3c2712] text-white border-[#3c2712]"
-          : "text-gray-700 border-gray-300 hover:bg-[#f5e7cd]"
-      }`}
-    >
-      {category.name}
-    </button>
-    
-  ))}
+          {(showAllCategories ? categories : categories.slice(0, 5)).map(
+            (category) => (
+              <button
+                key={category.id}
+                onClick={() => {
+                  setSelectedCategory(category);
+                  setPage(1);
+                }}
+                className={`px-3 py-1 rounded-full border text-sm md:text-base transition-all duration-200 ${
+                  selectedCategory.id === category.id
+                    ? "bg-[#3c2712] text-white border-[#3c2712]"
+                    : "text-gray-700 border-gray-300 hover:bg-[#f5e7cd]"
+                }`}
+              >
+                {category.name}
+              </button>
+            )
+          )}
 
-  {categories.length > 5 && (
-    <button
-      onClick={() => setShowAllCategories(!showAllCategories)}
-      className="text-sm underline text-[#3c2712] mt-2"
-    >
-      {showAllCategories ? "Show Less" : "Show All Categories"}
-    </button>
-  )}
-</div>
+          {categories.length > 5 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="text-sm underline text-[#3c2712] mt-2"
+            >
+              {showAllCategories ? "Show Less" : "Show All Categories"}
+            </button>
+          )}
+        </div>
 
         <main className="py-12 px-5 md:px-[117px] flex flex-col gap-12">
           {/* Hero Section */}
@@ -167,13 +161,12 @@ function Home() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 {products.map((product) => (
-  <HomeProductCard
-    key={product._id}
-    product={product}
-    getImageUrl={getImageUrl}
-  />
-))}
-
+                  <HomeProductCard
+                    key={product._id}
+                    product={product}
+                    getImageUrl={getImageUrl}
+                  />
+                ))}
               </div>
             )}
           </section>

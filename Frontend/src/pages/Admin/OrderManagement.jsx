@@ -1,10 +1,13 @@
-"use client";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import adminAxios from "../../api/adminAxios"; // Import axios here
+import adminAxios from "../../api/adminAxios";
 import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
-
+import { adminLogout } from "../../redux/adminSlice";
+import { listOrdersAdmin, getOrderDetailsAdmin, updateOrderStatus, markItemDelivered, softDeleteOrder, downloadAdminInvoice, verifyReturnRequest } from "../../api/admin/orderAPI";
+import BookLoader from "../../components/common/BookLoader";
+import { showAlert } from "../../redux/alertSlice";
+import { useDispatch } from "react-redux";
 // Main OrderManagement Component
 function OrderManagement() {
   const [activeView, setActiveView] = useState("dashboard");
@@ -23,7 +26,10 @@ function OrderManagement() {
             setSelectedOrderId(orderId);
             setActiveView("view");
           }}
-          onLogout={() => navigate("/admin/login")}
+          onLogout={() => {
+            adminLogout();
+            navigate("/admin/login");
+          }}
         />
       );
     } else if (activeView === "edit") {
@@ -31,7 +37,10 @@ function OrderManagement() {
         <OrderEdit
           orderId={selectedOrderId}
           onCancel={() => setActiveView("dashboard")}
-          onLogout={() => navigate("/admin/login")}
+          onLogout={() => {
+            adminLogout();
+            navigate("/admin/login");
+          }}
         />
       );
     } else if (activeView === "view") {
@@ -39,7 +48,10 @@ function OrderManagement() {
         <OrderDetailsView
           orderId={selectedOrderId}
           onBack={() => setActiveView("dashboard")}
-          onLogout={() => navigate("/admin/login")}
+          onLogout={() => {
+            adminLogout();
+            navigate("/admin/login");
+          }}
         />
       );
     }
@@ -59,67 +71,82 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
   const [orders, setOrders] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [sort, setSort] = useState('order_date');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const limit = 10;
 
-  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchOrders = async () => {
+      setLoading(true);
+      setError('');
       try {
-        const response = await adminAxios.get(`/orders`, {
-          params: { search, page, limit },
+        const data = await listOrdersAdmin({
+          search,
+          page,
+          limit,
+          sort,
+          sortOrder,
+          status: statusFilter,
+          paymentMethod: paymentMethodFilter,
         });
-        setOrders(response.data.orders);
-        setTotal(response.data.total);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
+        setOrders(data.orders || []);
+        setTotal(data.total || 0);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch orders');
+      } finally {
+        setLoading(false);
       }
     };
     fetchOrders();
-  }, [search, page]);
+  }, [search, page, sort, sortOrder, statusFilter, paymentMethodFilter]);
 
-  const handleClear = () => setSearch("");
-
+  const handleClear = () => {
+    setSearch('');
+    setStatusFilter('');
+    setPaymentMethodFilter('');
+    setSort('order_date');
+    setSortOrder('desc');
+  };
   const totalPages = Math.ceil(total / limit);
 
-  const handleUpdateOrderStatus = async (orderId, status) => {
+    const handleSoftDeleteOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to delete this order?')) return;
     try {
-      await adminAxios.put(`/orders/${orderId}/status`, { status });
-      // Refresh orders list after updating status
-      const response = await adminAxios.get(`/orders`, {
-        params: { search, page, limit },
+      await softDeleteOrder(orderId);
+      const data = await listOrdersAdmin({
+        search,
+        page,
+        limit,
+        sort,
+        sortOrder,
+        status: statusFilter,
+        paymentMethod: paymentMethodFilter,
       });
-      setOrders(response.data.orders);
-    } catch (error) {
-      console.error("Error updating order status:", error);
-    }
-  };
-
-  const handleMarkItemDelivered = async (orderId, productId) => {
-    try {
-      await adminAxios.put(`/orders/${orderId}/mark-delivered`, { productId });
-      // Refresh orders list after marking item as delivered
-      const response = await adminAxios.get(`/orders`, {
-        params: { search, page, limit },
-      });
-      setOrders(response.data.orders);
-    } catch (error) {
-      console.error("Error marking item as delivered:", error);
+      setOrders(data.orders || []);
+      setTotal(data.total || 0);
+      dispatch(showAlert({ message: 'Order deleted successfully!', type: 'success' }));
+    } catch (err) {
+      dispatch(showAlert({ message: err.message || 'Failed to delete order', type: 'error' }));
     }
   };
 
   const handleDownloadInvoice = async (orderId) => {
     try {
-      const response = await adminAxios.get(`/orders/${orderId}/invoice`, {
-        responseType: 'blob',
-      });
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const link = document.createElement("a");
+      const response = await downloadAdminInvoice(orderId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `invoice_${orderId}.pdf`;
       link.click();
-    } catch (error) {
-      console.error("Error downloading invoice:", error);
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      dispatch(showAlert({ message: err.message || 'Failed to download invoice', type: 'error' }));
     }
   };
 
@@ -132,68 +159,130 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
         handleClear={handleClear}
         handleLogout={onLogout}
       />
-      <div className="bg-[#eee9dc] rounded-[15px] overflow-x-auto">
-        <table className="w-full border-collapse min-w-[800px]">
-          <thead>
-            <tr className="bg-[#eee9dc] border-b border-b-white text-[#484848] text-[14px] font-medium text-left">
-              <th className="p-[10px]">Order ID</th>
-              <th className="p-[10px]">Customer</th>
-              <th className="p-[10px]">Date</th>
-              <th className="p-[10px]">Status</th>
-              <th className="p-[10px]">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order._id} className="bg-[#eee9dc] border-b border-b-white">
-                <td className="p-[10px]">{order.orderID}</td>
-                <td className="p-[10px]">{order.user_id.firstname}</td>
-                <td className="p-[10px]">{order.order_date}</td>
-                <td className="p-[10px]">{order.status}</td>
-                <td className="p-[10px]">
-                  <button
-                    className="bg-[#f5deb3] hover:bg-[#e5c49b] text-black rounded-[10px] py-2 px-4"
-                    onClick={() => onEdit(order._id)}
-                  >
-                    ✎ Edit
-                  </button>
-                  <button
-  className="bg-[#ddd] hover:bg-[#ccc] text-black rounded-[10px] py-2 px-4 ml-2"
-  onClick={() => onView(order._id)}
->
-  View
-</button>
-
-                  <button
-                    className="bg-[#2196f3] hover:bg-[#1976d2] text-white rounded-[10px] py-2 px-4 ml-2"
-                    onClick={() => handleDownloadInvoice(order._id)}
-                  >
-                    Download Invoice
-                  </button>
-                  {/* You can add more action buttons like Cancel, Deliver, etc. */}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mb-4 flex flex-col sm:flex-row gap-4">
+        <div>
+          <label className="mr-2">Sort by:</label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="order_date">Order Date</option>
+            <option value="status">Status</option>
+          </select>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="border rounded px-2 py-1 ml-2"
+          >
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
+        <div>
+          <label className="mr-2">Filter by Status:</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Shipped">Shipped</option>
+            <option value="OutForDelivery">Out for Delivery</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div>
+          <label className="mr-2">Filter by Payment:</label>
+          <select
+            value={paymentMethodFilter}
+            onChange={(e) => setPaymentMethodFilter(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="">All</option>
+            <option value="COD">COD</option>
+            <option value="ONLINE">Online</option>
+          </select>
+        </div>
       </div>
-      <div className="flex items-center gap-4 mt-5">
-        <button
-          onClick={() => setPage(page - 1)}
-          disabled={page <= 1}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <span>Page {page} of {totalPages}</span>
-        <button
-          onClick={() => setPage(page + 1)}
-          disabled={page >= totalPages}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+      {loading ? (
+        <div className="text-center"><BookLoader/></div>
+      ) : orders.length === 0 ? (
+        <div className="text-center">No orders found</div>
+      ) : (
+        <>
+          <div className="bg-[#eee9dc] rounded-[15px] overflow-x-auto">
+            <table className="w-full border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-[#eee9dc] border-b border-b-white text-[#484848] text-[14px] font-medium text-left">
+                  <th className="p-[10px]">Order ID</th>
+                  <th className="p-[10px]">Customer</th>
+                  <th className="p-[10px]">Date</th>
+                  <th className="p-[10px]">Status</th>
+                  <th className="p-[10px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order._id} className="bg-[#eee9dc] border-b border-b-white">
+                    <td className="p-[10px]">{order.orderID}</td>
+                    <td className="p-[10px]">
+                      {order.user_id.firstname} {order.user_id.lastname}
+                    </td>
+                    <td className="p-[10px]">{new Date(order.order_date).toLocaleString()}</td>
+                    <td className="p-[10px]">{order.status}</td>
+                    <td className="p-[10px] flex gap-2">
+                      <button
+                        className="bg-[#f5deb3] hover:bg-[#e5c49b] text-black rounded-[10px] py-2 px-4"
+                        onClick={() => onEdit(order._id)}
+                      >
+                        ✎ Edit
+                      </button>
+                      <button
+                        className="bg-[#ddd] hover:bg-[#ccc] text-black rounded-[10px] py-2 px-4"
+                        onClick={() => onView(order._id)}
+                      >
+                        View
+                      </button>
+                      <button
+                        className="bg-[#2196f3] hover:bg-[#1976d2] text-white rounded-[10px] py-2 px-4"
+                        onClick={() => handleDownloadInvoice(order._id)}
+                      >
+                        Download Invoice
+                      </button>
+                      <button
+                        className="bg-[#ff4444] hover:bg-[#cc0000] text-white rounded-[10px] py-2 px-4"
+                        onClick={() => handleSoftDeleteOrder(order._id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-4 mt-5">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page <= 1}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span>Page {page} of {totalPages}</span>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page >= totalPages}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -203,41 +292,69 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
 // OrderEdit Component with Dummy Data
 function OrderEdit({ orderId, onCancel, onLogout }) {
   const [orderDetails, setOrderDetails] = useState(null);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
+      setLoading(true);
+      setError('');
       try {
-        const response = await adminAxios.get(`/orders/${orderId}`);
-        setOrderDetails(response.data.order);
-        setStatus(response.data.order.status);
-      } catch (error) {
-        console.error("Error fetching order details:", error);
+        const order = await getOrderDetailsAdmin(orderId);
+        setOrderDetails(order);
+        setStatus(order.status);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch order details');
+      } finally {
+        setLoading(false);
       }
     };
     fetchOrderDetails();
   }, [orderId]);
 
   const statusColors = {
-    Pending: "bg-yellow-400 text-yellow-900",
-    Delivered: "bg-green-400 text-green-900",
-    Shipped: "bg-blue-400 text-blue-900",
-    OutForDelivery: "bg-orange-400 text-orange-900",
-    Cancelled: "bg-red-400 text-red-900",
+    Pending: 'bg-yellow-400 text-yellow-900',
+    Delivered: 'bg-green-400 text-green-900',
+    Shipped: 'bg-blue-400 text-blue-900',
+    OutForDelivery: 'bg-orange-400 text-orange-900',
+    Cancelled: 'bg-red-400 text-red-900',
   };
 
   const handleUpdateStatus = async () => {
+    setLoading(true);
+    setError('');
     try {
-      await adminAxios.patch(`/orders/${orderId}/status`, { status });
-      console.log(status);
-      alert("Order status updated successfully!");
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      alert("Failed to update order status.");
+      await updateOrderStatus(orderId, status);
+      dispatch(showAlert({ message: 'Order status updated successfully!', type: 'success' }));
+      onCancel();
+    } catch (err) {
+      dispatch(showAlert({ message: err.message || 'Failed to update order status', type: 'error' }));
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!orderDetails) return <div>Loading...</div>;
+    const handleSoftDeleteOrder = async () => {
+    if (!window.confirm('Are you sure you want to delete this order?')) return;
+    setLoading(true);
+    setError('');
+    try {
+      await softDeleteOrder(orderId);
+      dispatch(showAlert({ message: 'Order deleted successfully!', type: 'success' }));
+      onCancel();
+    } catch (err) {
+      setError(err.message || 'Failed to delete order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="p-10"><BookLoader/></div>;
+  if (error) return <div className="p-10 text-red-600">{error}</div>;
+  if (!orderDetails) return <div className="p-10">No order data</div>;
 
   return (
     <div className="flex-1 p-10">
@@ -252,7 +369,7 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
       </div>
       <div className="bg-gray-100 rounded p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold">Order ID: {orderDetails._id}</h2>
+          <h2 className="text-xl font-semibold">Order ID: {orderDetails.orderID}</h2>
           <span className={`p-2 text-xs font-semibold rounded ${statusColors[status]}`}>
             {status}
           </span>
@@ -263,6 +380,7 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="px-4 py-2 rounded bg-white border"
+            disabled={loading}
           >
             <option value="Pending">Pending</option>
             <option value="Shipped">Shipped</option>
@@ -272,14 +390,23 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
           </select>
         </div>
         <button
-          className="mt-6 w-full py-3 bg-lime-500 text-white rounded"
+          className="mt-6 w-full py-3 bg-lime-500 text-white rounded disabled:opacity-50"
           onClick={handleUpdateStatus}
+          disabled={loading}
         >
-          Update
+          {loading ? 'Updating...' : 'Update'}
+        </button>
+        <button
+          className="mt-4 w-full py-3 bg-red-500 text-white rounded disabled:opacity-50"
+          onClick={handleSoftDeleteOrder}
+          disabled={loading}
+        >
+          {loading ? 'Deleting...' : 'Delete Order'}
         </button>
         <button
           onClick={onCancel}
           className="mt-4 w-full py-3 bg-gray-200 rounded"
+          disabled={loading}
         >
           Cancel
         </button>
@@ -290,38 +417,63 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
 
 function OrderDetailsView({ orderId, onBack, onLogout }) {
   const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
+      setLoading(true);
+      setError('');
       try {
-        const response = await adminAxios.get(`/orders/${orderId}`);
-        setOrder(response.data.order);
-      } catch (error) {
-        console.error("Failed to fetch order details:", error);
+        const orderData = await getOrderDetailsAdmin(orderId);
+        setOrder(orderData);
+      } catch (err) {
+        setError(err.message || 'Failed to fetch order details');
+      } finally {
+        setLoading(false);
       }
     };
     fetchOrderDetails();
   }, [orderId]);
 
-  const handleVerifyReturn = async (productId) => {
+  const handleMarkItemDelivered = async (productId) => {
+    setLoading(true);
+    setError('');
     try {
-      await adminAxios.put(`/orders/${orderId}/verify-return`, { productId });
-      alert("Return verified and amount refunded to user wallet.");
-      // Refresh the data
-      const response = await adminAxios.get(`/orders/${orderId}`);
-      setOrder(response.data.order);
+      await markItemDelivered(orderId, productId);
+      dispatch(showAlert({ message: 'Item marked as delivered!', type: 'success' }));
+      const orderData = await getOrderDetailsAdmin(orderId);
+      setOrder(orderData);
     } catch (err) {
-      console.error("Error verifying return:", err);
-      alert("Failed to verify return.");
+      setError(err.message || 'Failed to mark item as delivered');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!order) return <div className="p-10">Loading...</div>;
+  const handleVerifyReturn = async (productId, decision) => {
+    setLoading(true);
+    setError('');
+    try {
+      await verifyReturnRequest(orderId, productId._id || productId, decision);
+      dispatch(showAlert({ message: `Return request ${decision ? 'approved' : 'rejected'}!`, type: 'success' }));
+      const orderData = await getOrderDetailsAdmin(orderId);
+      setOrder(orderData);
+    } catch (err) {
+      setError(err.message || 'Failed to verify return request');
+    } finally {
+      setLoading(false);
+    }
+  };
+  if (loading) return <div className="p-10"><BookLoader/></div>;
+  if (error) return <div className="p-10 text-red-600">{error}</div>;
+  if (!order) return <div className="p-10">No order data</div>;
 
   return (
     <div className="flex-1 p-5 sm:p-10 bg-[#fffbf0]">
       <PageHeader title="Order Details" handleLogout={onLogout} />
-
       <div className="bg-[#eee9dc] p-6 rounded-[15px]">
         <div className="mb-4">
           <h2 className="text-xl font-bold mb-2">Order #{order.orderID}</h2>
@@ -329,7 +481,6 @@ function OrderDetailsView({ orderId, onBack, onLogout }) {
           <p>Date: {new Date(order.order_date).toLocaleString()}</p>
           <p>Status: <span className="font-semibold">{order.status}</span></p>
         </div>
-
         <h3 className="font-semibold text-lg mt-4 mb-2">Items:</h3>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] border border-[#d4cfc5] rounded">
@@ -339,28 +490,55 @@ function OrderDetailsView({ orderId, onBack, onLogout }) {
                 <th className="p-3">Qty</th>
                 <th className="p-3">Price</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">Return</th>
+                <th className="p-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {order.items.map((item) => (
-                <tr key={item._id} className="border-t border-[#d4cfc5] bg-[#faf7f2]">
-                  <td className="p-3">{item.product_id.title}</td>
+                      {order.items.map((item) => (
+                <tr
+                  key={item.product_id?.toString() || item._id}
+                  className="border-t border-[#d4cfc5] bg-[#faf7f2]"
+                >
+                  <td className="p-3">{item.product_id?.title || 'Deleted Product'}</td>
                   <td className="p-3">{item.quantity}</td>
-                  <td className="p-3">₹{item.price}</td>
+                  <td className="p-3">₹{item.price.toFixed(2)}</td>
                   <td className="p-3">{item.status}</td>
                   <td className="p-3">
-                    {item.returnRequested && !item.returnVerified ? (
-                      <button
-                        onClick={() => handleVerifyReturn(item._id)}
-                        className="bg-yellow-400 text-black px-4 py-1 rounded hover:bg-yellow-500"
-                      >
-                        Verify Return
-                      </button>
+                    {item.status === 'Returned' && !item.returnVerified ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVerifyReturn(item.product_id, true)}
+                          className="bg-green-400 text-black px-4 py-1 rounded hover:bg-green-500"
+                          disabled={loading}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleVerifyReturn(item.product_id, false)}
+                          className="bg-red-400 text-black px-4 py-1 rounded hover:bg-red-500"
+                          disabled={loading}
+                        >
+                          Reject
+                        </button>
+                      </div>
                     ) : item.returnVerified ? (
-                      <span className="text-green-600 font-semibold">Verified</span>
+                      <span
+                        className={
+                          item.returnDecision === 'approved' ? 'text-green-600' : 'text-red-600'
+                        }
+                      >
+                        {item.returnDecision.charAt(0).toUpperCase() + item.returnDecision.slice(1)}
+                      </span>
+                    ) : item.status === 'OutForDelivery' ? (
+                      <button
+                        onClick={() => handleMarkItemDelivered(item.product_id)}
+                        className="bg-blue-400 text-black px-4 py-1 rounded hover:bg-blue-500"
+                        disabled={loading}
+                      >
+                        Mark Delivered
+                      </button>
                     ) : (
-                      "-"
+                      '-'
                     )}
                   </td>
                 </tr>
@@ -368,12 +546,10 @@ function OrderDetailsView({ orderId, onBack, onLogout }) {
             </tbody>
           </table>
         </div>
-
         <div className="mt-6">
-          <p className="text-lg font-semibold">Total: ₹{order.totalAmount}</p>
+          <p className="text-lg font-semibold">Total: ₹{order.netAmount.toFixed(2)}</p>
           <p>Payment Method: {order.paymentMethod}</p>
         </div>
-
         <button
           onClick={onBack}
           className="mt-6 px-6 py-2 bg-gray-300 hover:bg-gray-400 text-black rounded"
@@ -385,4 +561,4 @@ function OrderDetailsView({ orderId, onBack, onLogout }) {
   );
 }
 
-export default OrderManagement; 
+export default OrderManagement;

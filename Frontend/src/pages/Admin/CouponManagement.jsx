@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import adminAxios from "../../api/adminAxios";
-
+import BookLoader from "../../components/common/BookLoader";
 function CouponManagement() {
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedCouponId, setSelectedCouponId] = useState(null);
@@ -156,7 +156,7 @@ function CouponEdit({ couponId, onCancel }) {
     }
   };
 
-  if (!coupon) return <div>Loading...</div>;
+  if (!coupon) return <div><BookLoader/></div>;
 
   return (
     <div className="flex-1 p-10">

@@ -42,7 +42,6 @@ export const getBooksByCategory = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
     const categoryId = new mongoose.Types.ObjectId(category);
-    console.log("Category ID:", category);
 
     const skip = (page - 1) * limit;
 

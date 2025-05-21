@@ -6,7 +6,6 @@ import AdminSidebar from "../../components/Admin/AdminSideBar";
 import adminAxios from "../../api/adminAxios";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 
-const API_BASE = "http://localhost:2211";
 
 function ReferralManagement() {
   // activeView: "dashboard" for listing referrals or "edit" for editing a referral.
@@ -68,7 +67,7 @@ function ReferralDashboard({ onEdit, onLogout }) {
 
   const fetchReferrals = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/admin/referrals`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/referrals`, {
         params: { search, page, limit },
       });
       setReferrals(response.data.referrals);
@@ -175,7 +174,7 @@ function ReferralEdit({ referralId, onCancel, onLogout }) {
   useEffect(() => {
     const fetchReferral = async () => {
       try {
-        const response = await axios.get(`${API_BASE}/admin/referrals/${referralId}`, {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/referrals/${referralId}`, {
           withCredentials: true,
         });
         const referral = response.data;
@@ -194,7 +193,7 @@ function ReferralEdit({ referralId, onCancel, onLogout }) {
     e.preventDefault();
     try {
       await axios.put(
-        `${API_BASE}/admin/referrals/${referralId}`,
+        `${import.meta.env.VITE_API_BASE_URL}/admin/referrals/${referralId}`,
         { code, benefit, expiryDate },
         { withCredentials: true }
       );

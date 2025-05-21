@@ -72,7 +72,7 @@ export const refreshAccessToken = async (req, res, type = "user") => {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      console.log(`New ${type} access token generated:`, accessToken);
+      console.log(`New ${type} access token generated`);
       res.status(200).json({ accessToken, message: "Token refreshed" });
     }
   );

@@ -8,9 +8,7 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import adminAxios from "../../api/adminAxios";
-
-// Common API_BASE (adjust if needed)
-const API_BASE = "http://localhost:2211";
+import * as productApi from "../../api/admin/productAPI";
 
 // ---------- Helper Function for Cropping ----------
 const getCroppedImg = (imageSrc, pixelCrop) => {
@@ -116,12 +114,12 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/admin/products`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/products`, {
         params: {
           search,
           page,
           limit,
-          isDeleted: !showListedOnly ? false : undefined,
+          isDeleted: !showListedOnly ? true : undefined,
         },
         withCredentials: true,
       });
@@ -152,7 +150,7 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
               onClick={async () => {
                 try {
                   await axios.patch(
-                    `${API_BASE}/admin/products/${id}/toggle`,
+                    `${import.meta.env.VITE_API_BASE_URL}/admin/products/${id}/toggle`,
                     { isDeleted: !isDeleted },
                     { withCredentials: true }
                   );
@@ -333,7 +331,7 @@ const [publisher, setPublisher] = useState("");
 
   useEffect(() => {
     axios
-      .get(`${API_BASE}/admin/categories`, {
+      .get(`${import.meta.env.VITE_API_BASE_URL}/admin/categories`, {
         params: { search: "", page: 1, limit: 100, isDeleted: "true" },
       })
       .then((res) => setCategories(res.data.categories))
@@ -420,7 +418,7 @@ formData.append("publisher", publisher);
       formData.append("images", imgObj.croppedImage);
     });
     try {
-      await axios.post(`${API_BASE}/admin/products`, formData, { withCredentials: true });
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/products`, formData, { withCredentials: true });
       onCancel(); // Go back to manage view after successful submission
     } catch (err) {
       setError(err.response.data.error || "Error adding product");
@@ -429,7 +427,7 @@ formData.append("publisher", publisher);
 
   const handleLogout = async () => {
     try {
-      await adminAxios.post(`${API_BASE}/admin/logout`, {}, { withCredentials: true });
+      await adminAxios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {}, { withCredentials: true });
       onLogout();
     } catch (err) {
       console.error("Logout failed:", err.response?.data?.message || err.message);
@@ -704,7 +702,7 @@ const [publisher, setPublisher] = useState("");
   useEffect(() => {
     // Fetch product details and pre-fill fields
     axios
-  .get(`${API_BASE}/user/products/${productId}`, { withCredentials: true })
+  .get(`${import.meta.env.VITE_API_BASE_URL}/admin/products/${productId}`, { withCredentials: true })
   .then((res) => {
     const prod = res.data;
     setTitle(prod.title);
@@ -718,7 +716,6 @@ const [publisher, setPublisher] = useState("");
     setDiscount(prod.discount || "0");
     setPublisher(prod.publisher || "");
     setImagePreviews(prod.product_imgs);
-    console.log("category",category)
   })
       .catch((err) =>
         setError(err.response?.data?.message || "Error fetching product")
@@ -726,7 +723,7 @@ const [publisher, setPublisher] = useState("");
 
     // Fetch categories
     axios
-      .get(`${API_BASE}/admin/categories`, {
+      .get(`${import.meta.env.VITE_API_BASE_URL}/admin/categories`, {
         params: { search: "", page: 1, limit: 100, isDeleted: "true" },
       })
       .then((res) => setCategories(res.data.categories))
@@ -804,10 +801,11 @@ const [publisher, setPublisher] = useState("");
     formData.append("price", price);
     formData.append("available_quantity", availableQuantity);
     formData.append("description", description);
-    formData.append("highlight", highlight);
-    formData.append("specifications", specifications);
+    formData.append("highlights", highlight);
+    formData.append("specs", specifications);
     formData.append("discount", discount);
     formData.append("publisher", publisher);
+images.forEach((img) => formData.append("images", img.croppedImage));
 
     
     if (images.length > 0) {
@@ -820,7 +818,7 @@ const [publisher, setPublisher] = useState("");
       });
     }
     try {
-      await axios.put(`${API_BASE}/admin/products/${productId}`, formData, {
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/admin/products/${productId}`, formData, {
         withCredentials: true,
       });
       onCancel(); 
@@ -831,7 +829,7 @@ const [publisher, setPublisher] = useState("");
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${API_BASE}/admin/logout`, {}, { withCredentials: true });
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {}, { withCredentials: true });
       onLogout();
     } catch (err) {
       console.error("Logout failed:", err.response?.data?.message || err.message);

@@ -35,7 +35,7 @@ const ResetPassword = ({ onClose = () => {}}) => {
       toast.success(resetPasswordMessage || "Password reset successful!");
       setTimeout(() => {
         navigate("/login", {
-          state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+          state: { backgroundLocation: "/" },
           replace: true,
         });
       }, 2000);
@@ -80,7 +80,6 @@ const ResetPassword = ({ onClose = () => {}}) => {
       );
       return;
     }
-    console.log("Resetting with values:", { otp, otpToken: token, newPassword });
 
     dispatch(resetPassword({ otpToken: token, otp, newPassword }));
   };
@@ -96,7 +95,7 @@ const ResetPassword = ({ onClose = () => {}}) => {
           type="button"
           className="absolute top-4 right-4 text-xl text-gray-500 hover:text-black"
           onClick={() =>
-            navigate(location.state?.backgroundLocation || "/", { replace: true })
+            navigate( "/", { replace: true })
           }
         >
           &times;

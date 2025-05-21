@@ -1,58 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';  
-import userAxios from "../../../api/userAxios";
-import Navbar from '../../../components/common/Navbar';  
-import Footer from '../../../components/common/Footer';   
-import { useDispatch } from 'react-redux';  
-import { logoutUser } from '../../../redux/authSlice';
-import { toast } from 'react-toastify';
-
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
+import { useDispatch } from "react-redux";
+import { getUserProfile } from "../../../api/user/UserAPI";
+import { getAddresses } from "../../../api/user/addressAPI";
+import { getWallet } from "../../../api/user/walletAPI";
+import { logoutUser } from "../../../redux/authSlice";
+import BookLoader from "../../../components/common/BookLoader";
+import { toast } from "react-toastify";
 const UserProfileDashboard = () => {
   const [user, setUser] = useState(null);
   const [defaultAddress, setDefaultAddress] = useState(null);
-  const [walletBalance, setWalletBalance] = useState(null); // Wallet state
+  const [walletBalance, setWalletBalance] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const response = await userAxios.get('/profile');  
+    getUserProfile()
+      .then((response) => {
         setUser(response.data.user);
-      } catch (err) {
-        console.error("Failed to fetch user profile", err);
-      }
-    };
+      })
+      .catch((error) => {
+        console.error("Failed to fetch user profile", error);
+      });
 
-    // Fetch the default address
-    const fetchDefaultAddress = async () => {
-      try {
-        const response = await userAxios.get('/address/default');  // Adjust this API endpoint
-        setDefaultAddress(response.data.address);
-      } catch (err) {
-        console.error("Failed to fetch default address", err);
-      }
-    };
+    getAddresses()
+      .then((response) => {
+        const addresses = response.data.addresses;
+        const defaultAddr = addresses.find((address) => address.isDefault);
+        setDefaultAddress(defaultAddr);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch addresses", error);
+      });
 
-    // Fetch wallet balance
-    // const fetchWalletBalance = async () => {
-    //   try {
-    //     const response = await userAxios.get('/balance');  // Adjust the endpoint
-    //     setWalletBalance(response.data.balance);
-    //   } catch (err) {
-    //     console.error("Failed to fetch wallet balance", err);
-    //   }
-    // };
-
-    fetchUserProfile();
-    fetchDefaultAddress();
-    // fetchWalletBalance();
+    // getWallet()
+    // .then((response) => {
+    //   setWalletBalance(response.data.balance);
+    // })
+    // .catch((error) => {
+    //   console.error("Failed to fetch wallet balance", error);
+    // });
   }, []);
 
   const handleLogout = () => {
-    dispatch(logoutUser())  
+    dispatch(logoutUser())
       .then(() => {
-        navigate('/');  
+        navigate("/");
         toast.success("Logged out successfully!");
       })
       .catch((error) => {
@@ -60,91 +55,137 @@ const UserProfileDashboard = () => {
       });
   };
 
-  if (!user || !defaultAddress ) return <div>Loading...</div>;
+  
+  if (!user) return <BookLoader />;
 
   return (
     <>
-    <Navbar />
-    <div className="bg-[#fff8e5] min-h-screen flex flex-col items-center py-12 px-6">
-      <div className="bg-white shadow-xl rounded-xl w-full max-w-5xl p-8 mt-8">
-        <div className="flex flex-col lg:flex-row items-center justify-between mb-8">
-          <div className="flex flex-col lg:flex-row items-center">
-            <div className="flex items-center justify-center mb-4 lg:mb-0">
-              {/* Profile Image */}
-              <div className="w-20 h-20 rounded-full overflow-hidden">
-                <img 
-                  src={user.profileImage || 'https://res.cloudinary.com/chapter-one/image/upload/v1746419585/uploads/niizxavwwvje8ji82hmi.jpg'} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                />
+      <div className="min-h-screen bg-[#fff8e5] py-6 px-6">
+        <div className="w-1/3">
+          <div
+            className="logo font-[Outfit] text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#696969] cursor-pointer"
+            onClick={() => navigate("/")}
+          >
+            CHAPTER ONE
+          </div>
+        </div>
+        <div className="bg-white shadow-xl rounded-xl w-full max-w-5xl p-8 mt-8 mx-auto">
+          <div className="flex flex-col lg:flex-row items-center justify-between mb-8">
+            <div className="flex flex-col lg:flex-row items-center">
+              <div className="flex items-center justify-center mb-4 lg:mb-0">
+                {/* Profile Image */}
+                <div className="w-24 h-24 rounded-full overflow-hidden">
+                  <img
+                    src={
+                      user.profileImage ||
+                      "https://res.cloudinary.com/chapter-one/image/upload/v1746419585/uploads/niizxavwwvje8ji82hmi.jpg"
+                    }
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+              <div className="ml-0 lg:ml-6 text-center lg:text-left">
+                <h2 className="text-3xl font-semibold text-[#3c2712]">
+                  {user.firstname} {user.lastname}
+                </h2>
+                <p className="text-gray-700">{user.email}</p>
               </div>
             </div>
-            <div className="ml-0 lg:ml-6 text-center lg:text-left">
-              <h2 className="text-3xl font-semibold text-[#3c2712]">{user.firstname} {user.lastname}</h2>
-              <p className="text-gray-600">{user.email}</p>
+            <div className="mt-4 lg:mt-0">
+              <Link
+                to="/profile/edit"
+                className="text-[#3c2712] hover:text-[#2a1b0c] text-lg"
+              >
+                Edit Profile
+              </Link>
             </div>
           </div>
-          <div className="mt-4 lg:mt-0">
-            <Link to="/profile/edit" className="text-[#3c2712] hover:text-[#2a1b0c] text-lg">
-              Edit Profile
-            </Link>
+  
+          {/* Address Section */}
+          <div className="flex justify-between mb-8">
+            <div className="w-full lg:w-1/2">
+              <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Address</h3>
+              <div className="text-gray-700 text-lg">
+                {defaultAddress ? (
+                  <p>
+                    You’re all set! Here’s your current address: <br />
+                    {defaultAddress.name}, {defaultAddress.place}, {defaultAddress.city}, {defaultAddress.state}, {defaultAddress.country} - {defaultAddress.pin}
+                  </p>
+                ) : (
+                  <p>No default address set yet. Let’s add one!</p>
+                )}
+              </div>
+            </div>
+            <div className="w-full lg:w-1/2 text-right mt-4 lg:mt-0">
+              <Link
+                to="/profile/addresses"
+                className="text-[#3c2712] hover:text-[#2a1b0c] text-lg"
+              >
+                Manage Addresses
+              </Link>
+            </div>
           </div>
-        </div>
-
-        {/* Address Section */}
-        <div className="mb-8">
-          <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Address</h3>
-          <div className="text-gray-700 text-lg">
-          {defaultAddress ? (
-              <p>Your current Address: <br />{defaultAddress.name}, {defaultAddress.place}, {defaultAddress.city}, {defaultAddress.state}, {defaultAddress.country} - {defaultAddress.pin}</p>
-            ) : (
-              <p>No default address set yet.</p>
-            )}
+  
+          {/* Wallet Section */}
+          <div className="flex justify-between mb-8">
+            <div className="w-full lg:w-1/2">
+              <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Wallet</h3>
+              <div className="text-gray-700 text-lg">
+                <p>Here’s what you have in your wallet: <strong>${walletBalance}</strong></p>
+              </div>
+            </div>
+            <div className="w-full lg:w-1/2 text-right mt-4 lg:mt-0">
+              <Link
+                to="/profile/wallet"
+                className="text-[#3c2712] hover:text-[#2a1b0c] text-lg"
+              >
+                View Wallet History
+              </Link>
+            </div>
           </div>
-          <Link to="/profile/addresses" className="text-[#3c2712] hover:text-[#2a1b0c] mt-2 inline-block text-lg">
-            Manage Addresses
-          </Link>
-        </div>
-
-        {/* Wallet Section */}
-        <div className="mb-8">
-          <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Wallet</h3>
-          <div className="text-gray-700 text-lg">
-            <p>Your current wallet balance: <strong>${walletBalance}</strong></p>
+  
+          {/* Order History Section */}
+          <div className="flex justify-between mb-8">
+            <div className="w-full lg:w-1/2">
+              <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Latest Order</h3>
+              {/* {latestOrder ? (
+                <p>
+                  Latest Order Status: {latestOrder.status} <br />
+                  Order Details: {latestOrder.items.map((item, index) => (
+                    <span key={index}>{item.name} ({item.quantity}) </span>
+                  ))}
+                </p>
+              ) : (
+                <p>No orders placed yet. Go ahead and place one!</p>
+              )} */}
+            </div>
+            <div className="w-full lg:w-1/2 text-right mt-4 lg:mt-0">
+              <Link
+                to="/profile/orders"
+                className="text-[#3c2712] hover:text-[#2a1b0c] text-lg"
+              >
+                View Orders
+              </Link>
+            </div>
           </div>
-          <Link to="/profile/wallet" className="text-[#3c2712] hover:text-[#2a1b0c] mt-2 inline-block text-lg">
-            View Wallet History
-          </Link>
-        </div>
-
-        {/* Order History Section */}
-        <div className="mb-8">
-          <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Order History</h3>
-          <Link to="/profile/orders" className="text-[#3c2712] hover:text-[#2a1b0c] mt-2 inline-block text-lg">
-          View and manage your orders.          </Link>
-        </div>
-
-        {/* Change Password Section */}
-        <div className="flex justify-between mt-6">
-          <Link to="/profile/password-management" className="text-[#3c2712] hover:text-[#2a1b0c] text-lg">
-            Manage Password
-          </Link>
-        </div>
-
-        {/* Logout Button */}
-        <div className="mt-6">
-            <button 
-              onClick={handleLogout} 
-              className="w-full bg-[#f4a261] text-white font-semibold py-2 px-4 rounded hover:bg-[#e76f51]"
+          
+          {/* Logout Button */}
+          <div className="mt-6">
+            <button
+              onClick={handleLogout}
+              className="w-full bg-[#f4a261] text-white font-semibold py-2 px-4 rounded hover:bg-[#e76f51] transition-all"
             >
               Logout
             </button>
           </div>
+        </div>
       </div>
-    </div>
-    <Footer />
+      <Footer />
     </>
   );
+  
+  
 };
 
 export default UserProfileDashboard;

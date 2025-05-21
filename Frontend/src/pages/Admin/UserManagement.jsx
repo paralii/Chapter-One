@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import showConfirmDialog from "../../components/common/ConformationModal";
 import axios from "axios";
 
-const API_BASE = "http://localhost:2211";
 
 function UserManagement() {
   const navigate = useNavigate();
@@ -241,13 +240,13 @@ function UserModal({ isOpen, onClose, mode, userData, onUserUpdated }) {
     try {
       if (mode === "add") {
         await axios.post(
-          `${API_BASE}/admin/customers`,
+          `${import.meta.env.VITE_API_BASE_URL}/admin/customers`,
           { firstname, lastname, email, password },
           { withCredentials: true }
         );
       } else {
         await axios.put(
-          `${API_BASE}/admin/customers/${userData._id}`,
+          `${import.meta.env.VITE_API_BASE_URL}/admin/customers/${userData._id}`,
           { firstname, lastname, email },
           { withCredentials: true }
         );

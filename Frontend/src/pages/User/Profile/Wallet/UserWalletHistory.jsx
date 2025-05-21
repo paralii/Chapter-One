@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import userAxios from '../../../api/userAxios';
+import userAxios from '../../../../api/userAxios';
 
 const UserWallet = () => {
   const [walletBalance, setWalletBalance] = useState(0);

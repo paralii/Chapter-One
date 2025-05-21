@@ -10,12 +10,16 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled"],
       default: "Pending",
     },
-    paymentMethod: { type: String, enum: ["COD", "Online"], default: "COD" },
-    payment_id: { type: String }, // optional, for online payments
+    paymentMethod: { type: String, enum: ["COD", "ONLINE"], default: "COD" },
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Completed", "Failed"],
+      default: "Pending"},
+    payment_id: { type: String },
     shipping_chrg: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
-    total: { type: Number, required: true }, // total without discount
-    netAmount: { type: Number, required: true }, // final payable
+    total: { type: Number, required: true },
+    netAmount: { type: Number, required: true },
     order_date: { type: Date, default: Date.now },
     delivery_date: { type: Date },
     isDeleted: { type: Boolean, default: false },
@@ -24,8 +28,8 @@ const orderSchema = new mongoose.Schema(
       {
         product_id: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
         quantity: { type: Number, required: true },
-        price: { type: Number, required: true }, // single price at order time
-        total: { type: Number, required: true }, // price * quantity
+        price: { type: Number, required: true },
+        total: { type: Number, required: true },
         status: {
           type: String,
           enum: ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled", "Returned"],
@@ -34,6 +38,8 @@ const orderSchema = new mongoose.Schema(
         refundProcessed: { type: Boolean, default: false },
         cancelReason: { type: String },
         returnReason: { type: String },
+        returnVerified: { type: Boolean, default: false },
+        returnDecision: { type: String, enum: ["approved", "rejected", null], default: null },
       },
     ],
   },

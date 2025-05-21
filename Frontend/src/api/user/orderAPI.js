@@ -6,6 +6,10 @@ export const createOrder = (orderData) => {
   return userAxios.post("/orders", orderData, { withCredentials: true });
 };
 
+export const createTempOrder = (orderData) => {
+  return userAxios.post("/orders/temp", orderData, { withCredentials: true });
+};
+
 // Get all orders for the logged-in user
 export const listOrders = () => {
   return userAxios.get("/orders", { withCredentials: true });

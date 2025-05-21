@@ -3,7 +3,7 @@ import Cart from "../../models/Cart.js";
 import Product from "../../models/Product.js";
 import mongoose from "mongoose";
 
-// Utility function to calculate the shipping cost (this can be dynamic or static)
+// Utility function to calculate the shipping cost (this can be    or static)
 const calculateShippingCost = (city) => {
   // Example: Shipping cost based on city (can be enhanced)
   const shippingCosts = {
@@ -16,14 +16,20 @@ const calculateShippingCost = (city) => {
 
 // Checkout for the authenticated user
 export default async function checkout (req, res) {
-  const { address_id } = req.body; // Address ID for shipping
+  const { address_id, paymentMethod } = req.body; // Address ID for shipping
 
   try {
+
+    if (paymentMethod && !["COD", "ONLINE"].includes(paymentMethod)) {
+      return res.status(400).json({ message: 'Invalid payment method' });
+    }
+
     const cart = await Cart.findOne({ user_id: req.user._id }).populate("items.product_id");
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
+    
     // Get the user's selected address, ensure it's default if no specific address is selected
     let address = await Address.findById(address_id);
     if (!address) {
@@ -41,6 +47,16 @@ export default async function checkout (req, res) {
 
     for (const item of cart.items) {
       const product = item.product_id;
+            if (!product || product.isDeleted) {
+        return res.status(400).json({ message: `Product not available: ${item.product_id}` });
+      }
+
+           if (product.available_quantity < item.quantity) {
+        return res.status(400).json({ message: `Insufficient stock for: ${product.title}` });
+      }
+
+      product.available_quantity -= item.quantity;
+      await product.save();
       const itemTotal = product.price * item.quantity;
       const itemTaxes = (itemTotal * 0.1); // 10% tax for simplicity
       const itemDiscount = 0; // Placeholder for discount logic
@@ -58,6 +74,7 @@ export default async function checkout (req, res) {
         taxes: itemTaxes,
         discount: itemDiscount,
         finalItemTotal,
+        refundProcessed: false,
       });
     }
 
@@ -72,6 +89,7 @@ export default async function checkout (req, res) {
       message: "Checkout successful",
       checkoutDetails: {
         address,
+        paymentMethod,
         items: itemsDetails,
         subtotal,
         taxes,
