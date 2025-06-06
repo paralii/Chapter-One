@@ -1,5 +1,6 @@
 import Product from "../../models/Product.js";
 import cloudinary from "../../config/cloudinary.js";
+import mongoose from "mongoose";
 
 export const createProduct = async (req, res) => {
   try {
@@ -28,39 +29,70 @@ export const updateProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    req.body.price = Number(req.body.price);
-    req.body.available_quantity = Number(req.body.available_quantity);
-    req.body.discount = Number(req.body.discount);
-    req.body.category_id = new mongoose.Types.ObjectId(req.body.category_id);
+    // Prepare update data
+    const updateData = { ...req.body };
 
-
-    if (req.uploadedImages && req.uploadedImages.length >= 3) {
-      req.body.product_imgs = req.uploadedImages;
+    // Convert and validate numeric fields
+    if (req.body.price !== undefined) {
+      updateData.price = Number(req.body.price);
+      if (isNaN(updateData.price) || updateData.price <= 0) {
+        return res.status(400).json({ message: "Invalid or missing price" });
+      }
+    }
+    if (req.body.available_quantity !== undefined) {
+      updateData.available_quantity = Number(req.body.available_quantity);
+      if (isNaN(updateData.available_quantity) || updateData.available_quantity < 0) {
+        return res.status(400).json({ message: "Invalid available quantity" });
+      }
+    }
+    if (req.body.discount !== undefined) {
+      updateData.discount = Number(req.body.discount);
+      if (isNaN(updateData.discount) || updateData.discount < 0 || updateData.discount > 100) {
+        return res.status(400).json({ message: "Invalid discount (must be between 0 and 100)" });
+      }
+    }
+    if (req.body.category_id) {
+      if (!mongoose.Types.ObjectId.isValid(req.body.category_id)) {
+        return res.status(400).json({ message: "Invalid category ID" });
+      }
+      updateData.category_id = new mongoose.Types.ObjectId(req.body.category_id);
     }
 
-    if (isNaN(price)) return res.status(400).json({ message: "Invalid or missing price" });
-
-    if (price !== undefined && price <= 0)
-      return res.status(400).json({ message: "Invalid price" });
-    if (available_quantity !== undefined && available_quantity < 0)
-      return res.status(400).json({ message: "Invalid available quantity" });
-
-    // If there are new images in the request, process them
-    if (req.uploadedImages && req.uploadedImages.length >= 3) {
-      req.body.product_imgs = req.uploadedImages; // Use processed image URLs from middleware
+    // Handle images
+// Handle images
+if (req.uploadedImages && req.uploadedImages.length >= 3) {
+  // Delete old images from Cloudinary if new images are provided
+  if (product.product_imgs && product.product_imgs.length > 0) {
+    for (const imageUrl of product.product_imgs) {
+      const publicId = imageUrl.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(publicId).catch(err => {
+        console.error(`Failed to delete image ${publicId}:`, err);
+      });
     }
+  }
+  updateData.product_imgs = req.uploadedImages;
+} else if (req.uploadedImages && req.uploadedImages.length > 0 && req.uploadedImages.length < 3) {
+  return res.status(400).json({ message: "At least 3 images are required when updating images" });
+} else {
+  // Preserve existing images if no new images are provided
+  updateData.product_imgs = product.product_imgs;
+}
 
+    // Update the product
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
-    );
+    ).populate("category_id");
 
-    res
-      .status(200)
-      .json({ message: "Product updated successfully", updatedProduct });
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Failed to update product" });
+    }
+
+    res.status(200).json({ message: "Product updated successfully", product: updatedProduct });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Update product error:", err);
+    res.status(500).json({ error: "Server error while updating product", details: err.message });
   }
 };
 

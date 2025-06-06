@@ -18,23 +18,25 @@ export const uploadProductImages = multer({
 }).array("images", 10); 
 
 export const processProductImages = async (req, res, next) => {
+  // If no files are uploaded, proceed without processing images
   if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: "No images uploaded" });
+    req.uploadedImages = []; // Set empty array to indicate no new images
+    return next();
   }
 
   try {
-    const processedImages = [];
+    const processedImages = req.files.map(file => file.path); // Cloudinary URLs are already in file.path
 
-    const uploadPromises = req.files.map(async (file) => {
-      processedImages.push(file.path); 
-    });
+    // Optional: Validate Cloudinary URLs if needed
+    if (processedImages.some(url => !url.startsWith('https://res.cloudinary.com'))) {
+      console.error("Invalid Cloudinary URLs:", processedImages);
+      return res.status(500).json({ error: "Invalid image URLs from Cloudinary" });
+    }
 
-    await Promise.all(uploadPromises);
-    req.uploadedImages = processedImages; 
-
-    next(); 
+    req.uploadedImages = processedImages;
+    next();
   } catch (err) {
     console.error("Error processing images:", err);
-    res.status(500).json({ error: "Error processing images" });
+    res.status(500).json({ error: "Error processing images", details: err.message });
   }
 };

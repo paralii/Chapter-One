@@ -270,55 +270,65 @@ function CategoryManagement() {
         </div>
   
         {/* Modal for Adding/Editing Category */}
-        {modalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-              <div className="flex justify-between items-center border-b pb-3">
-                <h2 className="text-xl font-bold">
-                  {editingCategory ? "Edit Category" : "Add New Category"}
-                </h2>
-                <button
-                  onClick={() => setModalOpen(false)}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  ✖
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium">Name</label>
-                  <input
-                    name="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    required
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium">Description</label>
-                  <input
-                    name="description"
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, description: e.target.value }))
-                    }
-                    className="w-full p-2 border border-gray-300 rounded"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button type="submit" className="px-4 py-2 bg-[#3c2712] text-white rounded">
-                    Save
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+{modalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65">
+    <div className="bg-[#eee9dc] rounded-[15px] shadow-lg w-full max-w-md p-6">
+      <div className="flex justify-between items-center border-b border-white pb-3">
+        <h2 className="text-xl font-semibold text-[#654321]">
+          {editingCategory ? "Edit Category" : "Add New Category"}
+        </h2>
+        <button
+          onClick={() => setModalOpen(false)}
+          className="text-[#654321] hover:text-[#543210] font-medium"
+        >
+          ✖
+        </button>
+      </div>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-[#484848]">Name</label>
+          <input
+            name="name"
+            type="text"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, name: e.target.value }))
+            }
+            required
+            className="w-full p-2 border border-[#f5deb3] rounded-[5px] bg-[#fffbf0] text-sm font-medium text-[#484848] focus:outline-none focus:border-[#654321]"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-[#484848]">Description</label>
+          <input
+            name="description"
+            type="text"
+            value={formData.description}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, description: e.target.value }))
+            }
+            className="w-full p-2 border border-[#f5deb3] rounded-[5px] bg-[#fffbf0] text-sm font-medium text-[#484848] focus:outline-none focus:border-[#654321]"
+          />
+        </div>
+        <div className="flex justify-end gap-4">
+          <button
+            type="button"
+            onClick={() => setModalOpen(false)}
+            className="px-4 py-2 bg-[#f5deb3] text-[#654321] rounded-[5px] text-sm font-medium hover:bg-[#e5c49b]"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-[#654321] text-white rounded-[5px] text-sm font-medium hover:bg-[#543210]"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
       </>
     );
   }
