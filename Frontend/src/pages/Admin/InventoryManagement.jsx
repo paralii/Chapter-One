@@ -5,9 +5,8 @@ import { useDispatch } from 'react-redux';
 import { showAlert } from '../../redux/alertSlice';
 import BookLoader from '../../components/common/BookLoader';
 import axios from 'axios';
-import showConfirmDialog from '../../components/common/ConformationModal'; // Import the custom confirmation modal
-
-const api = axios.create({ baseURL: 'http://localhost:2211/admin' });
+import { getInventory, inventoryReport, updateStock } from '../../api/admin/inventoryAPI';
+import showConfirmDialog from '../../components/common/ConformationModal';
 
 export default function InventoryDashboard({ onEdit, onLogout }) {
   const [inventory, setInventory] = useState([]);
@@ -29,7 +28,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const response = await api.get('/inventory', { params: { search, page, limit } });
+      const response = await getInventory({ params: { search, page, limit } });
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch inventory');
       }
@@ -46,7 +45,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
 
   const fetchReport = async () => {
     try {
-      const response = await api.get('/inventory/report');
+      const response = await inventoryReport();
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch report');
       }
@@ -60,7 +59,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const response = await api.post('/inventory/update', { productId, quantity, reason });
+      const response = await updateStock({ productId, quantity, reason });
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to update stock');
       }
@@ -75,24 +74,39 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
     }
   };
 
-  const handleShowUpdateStockModal = (item) => {
-    showConfirmDialog({
-      message: `Update stock for ${item.title}?`,
-      requireReason: true,
-      reasonRequired: true,
-      placeholder: 'Enter reason for stock update (e.g., Restock, Adjustment)',
-      onConfirm: (reason) => {
-        // Prompt for quantity separately since confirm dialog handles reason
-        const quantityInput = prompt('Enter new quantity:', item.available_quantity);
-        const quantity = parseInt(quantityInput);
-        if (quantityInput === null || isNaN(quantity) || quantity < 0) {
-          dispatch(showAlert({ message: 'Invalid quantity entered', type: 'error' }));
-          return;
-        }
-        handleUpdateStock(item._id, quantity, reason);
-      },
-    });
-  };
+const handleShowUpdateStockModal = (item) => {
+  showConfirmDialog({
+    message: `Do you want to update the stock for ${item.title}?`,
+    inputs: [],
+    confirmButtonText: "Yes",
+    cancelButtonText: "Cancel",
+    twoStep: true,
+    nextStepConfig: {
+      message: `Enter new stock quantity for ${item.title}`,
+      inputs: [
+        {
+          name: "quantity",
+          type: "number",
+          label: "New Quantity",
+          defaultValue: item.available_quantity.toString(),
+          required: true,
+          validate: (value) => {
+            const parsed = parseInt(value);
+            if (isNaN(parsed) || parsed < 0) {
+              return "Quantity must be a non-negative number.";
+            }
+            return null;
+          },
+        },
+      ],
+      confirmButtonText: "Update",
+      cancelButtonText: "Cancel",
+    },
+    onConfirm: (values) => {
+      handleUpdateStock(item._id, parseInt(values.quantity), "Manual update");
+    },
+  });
+};
 
   const handleClear = () => {
     setSearch('');
@@ -106,7 +120,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
       <AdminSidebar />
       <div className="flex-1 p-5 sm:p-10">
         <PageHeader
-          title="Inventory Management"
+          title="Inventory"
           search={search}
           onSearchChange={(e) => setSearch(e.target.value)}
           handleClear={handleClear}

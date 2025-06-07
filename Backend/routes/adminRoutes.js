@@ -9,7 +9,7 @@ import * as AdminInventoryController from '../controllers/admin/adminInventoryCo
 import { uploadProductImages, processProductImages } from "../middlewares/uploadMiddleware.js";
 import * as AdminCouponController from "../controllers/admin/adminCouponController.js";
 import * as salesReportController from "../controllers/admin/salesReportController.js";
-
+import * as AdminOfferController from "../controllers/admin/adminOfferController.js";
 // import { getSalesReport, generateSalesReportCSV } from "../controllers/admin/salesReportController.js";
 // import { getSalesReport, generateSalesReportPDF, generateSalesReportExcel } from "../controllers/admin/salesReportController.js";
 
@@ -61,15 +61,23 @@ router.get('/inventory/report', verifyToken("admin"), isAdmin, AdminInventoryCon
 
 // ===================== COUPON MANAGEMENT =====================
 router.post("/coupons/create", verifyToken("admin"), isAdmin, AdminCouponController.createCoupon);
+router.get("/coupons", verifyToken("admin"), isAdmin, AdminCouponController.getCoupons);
+router.get("/coupons/:couponId", verifyToken("admin"), isAdmin, AdminCouponController.getCouponById);
 router.put("/coupons/:couponId/update", verifyToken("admin"), isAdmin, AdminCouponController.updateCoupon);
 router.delete("/coupons/:couponId/delete", verifyToken("admin"), isAdmin, AdminCouponController.deleteCoupon);
-router.get("/coupons", verifyToken("admin"), isAdmin, AdminCouponController.getCoupons);  // Fetch all active coupons
-router.get("/coupons/:couponId", verifyToken("admin"), isAdmin, AdminCouponController.getCouponById); // Fetch coupon by ID
+
+// ===================== OFFER MANAGEMENT =====================
+router.post("/offers/create", verifyToken("admin"), isAdmin, AdminOfferController.createOffer);
+router.get("/offers", verifyToken("admin"), isAdmin, AdminOfferController.getOffers);
+router.get("/offers/:offerId", verifyToken("admin"), isAdmin, AdminOfferController.getOfferById);
+router.put("/offers/:offerId/update", verifyToken("admin"), isAdmin, AdminOfferController.updateOffer);
+router.put("/offers/:offerId/toggle-referral", verifyToken("admin"), isAdmin, AdminOfferController.toggleReferralOffer);
+router.get("/offers/referrals", verifyToken("admin"), isAdmin, AdminOfferController.getReferralOffers);
 
 // ===================== SALES REPORT =====================
-router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport); // Fetch report data (dashboard view)
-router.get("/sales-report/pdf", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportPDF); // Download PDF
-router.get("/sales-report/excel", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportExcel); // Download Excel
+// router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport); // Fetch report data (dashboard view)
+// router.get("/sales-report/pdf", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportPDF); // Download PDF
+// router.get("/sales-report/excel", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportExcel); // Download Excel
 
 
 

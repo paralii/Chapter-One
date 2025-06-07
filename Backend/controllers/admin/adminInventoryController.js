@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import Product from '../../models/Product.js';
 import asyncHandler from 'express-async-handler';
 
-// GET /admin/inventory - View all products with stock levels
 export const getAllInventory = asyncHandler(async (req, res) => {
   const { search = '', page = 1, limit = 10 } = req.query;
   const pageNum = parseInt(page);
@@ -30,13 +29,9 @@ export const getAllInventory = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, products, total });
 });
 
-// POST /admin/inventory/update - Update stock manually
-// Body: { productId: "", quantity: 100, reason: "Restock" }
 export const updateProductStock = asyncHandler(async (req, res) => {
   try {
     const { productId, quantity, reason = 'Manual update' } = req.body;
-    const adminId = req.user._id; // Assumes admin authentication
-
     if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ success: false, message: 'Invalid product ID' });
     }
@@ -61,7 +56,6 @@ export const updateProductStock = asyncHandler(async (req, res) => {
   }
 });
 
-// GET /admin/inventory/low-stock - View products with low stock (less than 5)
 export const getLowStockProducts = asyncHandler(async (req, res) => {
   const threshold = 5;
   const lowStockProducts = await Product.find(
@@ -76,7 +70,6 @@ export const getLowStockProducts = asyncHandler(async (req, res) => {
   });
 });
 
-// GET /admin/inventory/report - Basic inventory report
 export const getInventoryReport = asyncHandler(async (req, res) => {
   const products = await Product.find({ isDeleted: false }, 'title available_quantity price').lean();
 

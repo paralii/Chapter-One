@@ -1,14 +1,17 @@
-// src/api/admin/inventoryAPI.js
 import adminAxios from "../adminAxios";
 
 export const getInventory = () => {
   return adminAxios.get("/inventory");
 };
 
-export const updateStock = (id, stockData) => {
-  return adminAxios.put(`/inventory/${id}`, stockData);
+export const updateStock = (stockData) => {
+  return adminAxios.post(`/inventory/update`, stockData);
 };
 
-export const addStock = (id, data) => {
-  return adminAxios.post(`/inventory/${id}/add-stock`, data);
+export const lowStock = (data) => {
+  return adminAxios.get(`/inventory/low-stock`, data);
+};
+
+export const inventoryReport = () => {
+  return adminAxios.get("/inventory/report");
 };
