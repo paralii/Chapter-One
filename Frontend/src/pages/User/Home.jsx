@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Navbar from "../../components/common/Navbar";
+
 import { HomeProductCard } from "../../components/User/ProductCard";
-import Footer from "../../components/common/Footer";
 import { getProducts } from "../../api/user/productAPI";
-import { getCategories, getBooksByCategory } from "../../api/user/categoryAPI";
+
+import Navbar from "../../components/common/Navbar";
+import Footer from "../../components/common/Footer";
+
 import Login from "../User/Authentication/Login";
 import Signup from "../User/Authentication/Signup";
 import ForgotPassword from "../User/Authentication/ForgotPassword";
@@ -22,25 +24,8 @@ function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState({
-    name: "All",
-    id: null,
-  });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [categories, setCategories] = useState([{ name: "All", id: null }]);
-  const [showAllCategories, setShowAllCategories] = useState(false);
-
-
-  useEffect(() => {
-    getCategories().then((res) => {
-      const categoriesWithId = res.data.categories.map((cat) => ({
-        name: cat.name,
-        id: cat._id,
-      }));
-      setCategories([{ name: "All", id: null }, ...categoriesWithId]);
-    });
-  }, []);
 
   const search = "";
   const sort = "desc";
@@ -54,11 +39,7 @@ function Home() {
       try {
         let response;
 
-        if (selectedCategory.id) {
-          response = await getBooksByCategory(selectedCategory.id, page, limit);
-        } else {
-          response = await getProducts({ search, sort, page, limit });
-        }
+        response = await getProducts({ search, sort, page, limit });
 
         const productList = Array.isArray(response.data)
           ? response.data
@@ -79,7 +60,7 @@ function Home() {
     };
 
     fetchBooks();
-  }, [page, selectedCategory.id]);
+  }, [page]);
 
   const getImageUrl = (url) => {
     if (!url) return "https://via.placeholder.com/150x200?text=No+Image";
@@ -90,42 +71,10 @@ function Home() {
       : `${import.meta.env.VITE_API_BASE_URL}${url}`;
   };
 
-
   return (
     <>
       <div className="min-h-screen bg-[#fff8e5]">
         <Navbar />
-
-        {/* Category Filter */}
-        <div className="flex flex-wrap justify-center gap-4 mt-4 px-2 border-b border-gray-300 pb-2">
-          {(showAllCategories ? categories : categories.slice(0, 5)).map(
-            (category) => (
-              <button
-                key={category.id}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  setPage(1);
-                }}
-                className={`px-3 py-1 rounded-full border text-sm md:text-base transition-all duration-200 ${
-                  selectedCategory.id === category.id
-                    ? "bg-[#3c2712] text-white border-[#3c2712]"
-                    : "text-gray-700 border-gray-300 hover:bg-[#f5e7cd]"
-                }`}
-              >
-                {category.name}
-              </button>
-            )
-          )}
-
-          {categories.length > 5 && (
-            <button
-              onClick={() => setShowAllCategories(!showAllCategories)}
-              className="text-sm underline text-[#3c2712] mt-2"
-            >
-              {showAllCategories ? "Show Less" : "Show All Categories"}
-            </button>
-          )}
-        </div>
 
         <main className="py-12 px-5 md:px-[117px] flex flex-col gap-12">
           {/* Hero Section */}
@@ -147,9 +96,7 @@ function Home() {
           {/* Best Sellers Section */}
           <section className="best-sellers-section mb-12">
             <div className="section-title font-[Inter] text-[24px] md:text-[30px] font-bold text-[#3c2712] uppercase text-center mb-5 border-b border-[rgba(60,39,18,0.5)] pb-4">
-              {selectedCategory.name === "All"
-                ? "Best Sellers"
-                : `Category: ${selectedCategory.name}`}
+              Best Sellers
             </div>
 
             {loading ? (

@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  verifyOTP,
-  resendOtpForVerify,
-  verifyForgotPasswordOTP,
-  resendForgotPasswordOTP,
-} from "../../../redux/authSlice";
+
+import { verifyOTP, resendOtpForVerify, verifyForgotPasswordOTP, resendForgotPasswordOTP } from "../../../redux/authSlice";
 import { confirmEmailChange, resendOTP } from "../../../api/user/UserAPI";
 import { toast } from "react-toastify";
 
@@ -29,7 +25,6 @@ const OTPVerification = () => {
   const finalOtp = otpDigits.join("");
   const maskedEmail = email?.replace(/(.{2}).+(@.+)/, "$1****$2");
 
-  // Set OTP token or redirect if missing
   useEffect(() => {
     const storedToken = localStorage.getItem("otpToken");
     if (!email || (!initialOtpToken && !storedToken)) {
@@ -40,7 +35,6 @@ const OTPVerification = () => {
     setOtpToken(initialOtpToken || storedToken);
   }, [email, initialOtpToken, navigate, from]);
 
-  // Countdown timer for resend OTP
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
@@ -50,7 +44,6 @@ const OTPVerification = () => {
     }
   }, [timeLeft]);
 
-  // Focus on first input
   useEffect(() => {
     document.getElementById("otp-0")?.focus();
   }, []);
@@ -81,9 +74,12 @@ const OTPVerification = () => {
       }
 
       const isSuccess =
-        (from === "forgot-password" && resendForgotPasswordOTP.fulfilled.match(result)) ||
+        (from === "forgot-password" &&
+          resendForgotPasswordOTP.fulfilled.match(result)) ||
         (from === "change-email" && result?.payload?.success) ||
-        (from !== "forgot-password" && from !== "change-email" && resendOtpForVerify.fulfilled.match(result));
+        (from !== "forgot-password" &&
+          from !== "change-email" &&
+          resendOtpForVerify.fulfilled.match(result));
 
       if (isSuccess) {
         if (newToken) {
@@ -132,15 +128,24 @@ const OTPVerification = () => {
       let result;
 
       if (from === "forgot-password") {
-        result = await dispatch(verifyForgotPasswordOTP({ email, otp: finalOtp, otpToken: activeToken }));
+        result = await dispatch(
+          verifyForgotPasswordOTP({
+            email,
+            otp: finalOtp,
+            otpToken: activeToken,
+          })
+        );
       } else if (from === "change-email") {
         result = await confirmEmailChange(finalOtp, activeToken);
       } else {
-        result = await dispatch(verifyOTP({ email, otp: finalOtp, otpToken: activeToken }));
+        result = await dispatch(
+          verifyOTP({ email, otp: finalOtp, otpToken: activeToken })
+        );
       }
 
       const isVerified =
-        (from === "forgot-password" && verifyForgotPasswordOTP.fulfilled.match(result)) ||
+        (from === "forgot-password" &&
+          verifyForgotPasswordOTP.fulfilled.match(result)) ||
         (from === "change-email" && result?.success) ||
         (from !== "forgot-password" && verifyOTP.fulfilled.match(result));
 
@@ -150,7 +155,8 @@ const OTPVerification = () => {
 
         if (from === "forgot-password") {
           const resetToken = result.payload?.resetToken;
-          if (!resetToken) throw new Error("Reset token missing after OTP verification");
+          if (!resetToken)
+            throw new Error("Reset token missing after OTP verification");
 
           navigate(`/reset-password/${resetToken}`, {
             state: { otp: finalOtp, backgroundLocation: "/" },
@@ -169,7 +175,9 @@ const OTPVerification = () => {
           }
         }
       } else {
-        throw new Error(result.payload?.message || "Invalid OTP! Please try again.");
+        throw new Error(
+          result.payload?.message || "Invalid OTP! Please try again."
+        );
       }
     } catch (error) {
       toast.error(error.message || "Something went wrong.");
@@ -180,7 +188,9 @@ const OTPVerification = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-lg flex flex-col items-center relative">
-        <h1 className="text-2xl font-bold text-black mb-2 font-Inter">Enter the OTP</h1>
+        <h1 className="text-2xl font-bold text-black mb-2 font-Inter">
+          Enter the OTP
+        </h1>
 
         <p className="text-sm sm:text-base text-gray-700 text-center mb-1 font-Inter">
           Sent to <span className="font-medium">{maskedEmail}</span>
@@ -189,7 +199,10 @@ const OTPVerification = () => {
           Please enter the 6-digit OTP sent to your registered email.
         </p>
 
-        <form onSubmit={handleSubmit} className="w-full flex flex-col items-center">
+        <form
+          onSubmit={handleSubmit}
+          className="w-full flex flex-col items-center"
+        >
           <div className="flex justify-between gap-3 mb-6">
             {otpDigits.map((digit, index) => (
               <input
@@ -208,7 +221,8 @@ const OTPVerification = () => {
           </div>
 
           <div className="text-black text-sm mb-3 font-Inter">
-            Time left: <span className="font-semibold">{formatTime(timeLeft)}</span>
+            Time left:{" "}
+            <span className="font-semibold">{formatTime(timeLeft)}</span>
           </div>
 
           <div
