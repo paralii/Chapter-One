@@ -4,10 +4,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const verifyToken = (type = "user") => async (req, res, next) => {
+  
   const tokenName = type === "admin" ? "accessToken_admin" : "accessToken_user";
   const token =
     req.cookies[tokenName] || req.headers.authorization?.split(" ")[1];
-
   if (!token) {
     return res.status(401).json({ message: "Unauthorized: No token provided" });
   }

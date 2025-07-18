@@ -18,7 +18,7 @@ import * as userValidation from "../middlewares/validators.js";
 import { uploadProfileImage } from "../middlewares/profileImageMiddleware.js";
 import * as userWishlistController from "../controllers/user/userWishlistController.js";
 import * as userWalletController from "../controllers/user/userWalletController.js";
-
+import * as userOfferController from "../controllers/user/userOfferController.js";
 
 const router = express.Router();
 
@@ -83,6 +83,7 @@ router.post("/checkout", verifyToken("user"), userValidation.validateCheckout, c
 router.get("/orders", verifyToken("user"), userOrderController.getUserOrders);
 router.post("/orders/temp", verifyToken("user"), userOrderController.createTempOrder);
 router.post("/orders", verifyToken("user"), userOrderController.placeOrder);
+router.get("/orders/pending", verifyToken("user"), userOrderController.getPendingOrder);
 router.get("/orders/:id", verifyToken("user"), userOrderController.getOrderDetails);
 router.put("/orders/cancel", verifyToken("user"), userOrderController.cancelOrderOrItem);
 router.put("/orders/return", verifyToken("user"), userOrderController.returnOrderItem);
@@ -92,15 +93,24 @@ router.get("/orders/invoice/:id", verifyToken("user"), userOrderController.downl
 router.post("/create-order", verifyToken("user"), paymentController.createRazorpayOrder);
 router.post("/verify-payment", verifyToken("user"), paymentController.verifyPayment);
 
-
-router.post("/apply", userCouponController.applyCoupon);
-router.post("/remove", userCouponController.removeCoupon);
+// ===================== COUPON ===================== 
+router.get("/coupons", verifyToken("user"), userCouponController.getAvailableCoupons);
+router.post("/apply-coupon", verifyToken("user"), userCouponController.applyCoupon);
+router.post("/remove-coupon", verifyToken("user"), userCouponController.removeCoupon);
 
 // ===================== WISHLIST ===================== 
 router.get("/wishlist", verifyToken("user"), userWishlistController.getWishlist);
 router.post("/wishlist/add/:productId", verifyToken("user"), userWishlistController.addToWishlist);
 router.post("/wishlist/remove/:productId", verifyToken("user"), userWishlistController.removeFromWishlist);
 router.post("/wishlist/move-to-cart/:productId", verifyToken("user"), userWishlistController.moveToCart);
+
+// ===================== OFFERS =====================
+router.get("/offers", userOfferController.getActiveOffers);
+router.post("/offers/apply-referral", userOfferController.applyReferralOffer);
+router.get("/offers/referral", verifyToken("user"), userOfferController.getReferralOffer);
+router.get("/offers/referral/coupons", verifyToken("user"), userOfferController.getReferralCoupons);
+router.post("/offers/referral/apply", verifyToken("user"), userOfferController.applyReferral);
+router.get("/offers/referral-stats", verifyToken("user"), userOfferController.getReferralStats);
 
 
 router.get("/details", verifyToken("user"), userWalletController.getWalletDetails);

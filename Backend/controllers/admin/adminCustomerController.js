@@ -2,7 +2,6 @@ import User from "../../models/User.js";
 import bcrypt from "bcryptjs";
 import { validateUserInput } from "../../utils/validators/userValidator.js";
 
-// Create a new user (Admin handling user creation)
 export const createCustomer = async (req, res) => {
   const { firstname, lastname, email, password } = req.body;
 
@@ -35,7 +34,6 @@ export const createCustomer = async (req, res) => {
   }
 };
 
-// Get all users
 export const getAllCustomers = async (req, res) => {
   const { search = "", page = 1, limit = 10 } = req.query;
   try {
@@ -47,7 +45,6 @@ export const getAllCustomers = async (req, res) => {
       ],
     };
 
-    // Get total number of users matching the query
     const total = await User.countDocuments(query);
     const users = await User.find(query)
       .sort({ _id: -1 })

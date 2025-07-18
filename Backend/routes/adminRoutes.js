@@ -72,7 +72,7 @@ router.get("/offers", verifyToken("admin"), isAdmin, AdminOfferController.getOff
 router.get("/offers/:offerId", verifyToken("admin"), isAdmin, AdminOfferController.getOfferById);
 router.put("/offers/:offerId/update", verifyToken("admin"), isAdmin, AdminOfferController.updateOffer);
 router.put("/offers/:offerId/toggle-referral", verifyToken("admin"), isAdmin, AdminOfferController.toggleReferralOffer);
-router.get("/offers/referrals", verifyToken("admin"), isAdmin, AdminOfferController.getReferralOffers);
+router.post("/offers/referrals", verifyToken("admin"), isAdmin, AdminOfferController.getReferralOffers);
 
 // ===================== SALES REPORT =====================
 // router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport); // Fetch report data (dashboard view)

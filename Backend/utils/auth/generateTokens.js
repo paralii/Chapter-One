@@ -5,7 +5,6 @@ import Admin from "../../models/Admin.js";
 
 dotenv.config();
 
-// Generate access tokens
 export const generateTokens = (user, isAdmin = false) => {
   const accessToken = jwt.sign(
     { id: user._id, isAdmin },
@@ -22,7 +21,6 @@ export const generateTokens = (user, isAdmin = false) => {
   return { accessToken, refreshToken };
 };
 
-// Refresh access token (reusable for both user and admin)
 export const refreshAccessToken = async (req, res, type = "user") => {
   const refreshCookieName = `refreshToken_${type}`;
   const accessCookieName = `accessToken_${type}`;

@@ -1,24 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../models/User.js';
-import jwt from 'jsonwebtoken';
-
-
-const generateTokens = (user) => {
-  const accessToken = jwt.sign(
-    { id: user._id, isAdmin: user.isAdmin },
-    process.env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
-
-  const refreshToken = jwt.sign(
-    { id: user._id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
-
-  return { accessToken, refreshToken };
-};
+import { generateTokens } from '../utils/auth/generateTokens.js';
 
 passport.use(
   new GoogleStrategy(
@@ -30,7 +13,6 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         let user = await User.findOne({ email: profile.emails[0].value });
-
         if (!user) {
           user = new User({
             firstname: profile.name.givenName,
@@ -39,15 +21,11 @@ passport.use(
             isVerified: true,
             password: '',
           });
-
           await user.save();
-
         } else if (!user.isVerified) {
           return done(null, false, { message: 'Please verify your email first.' });
         }
-
-        const tokens = generateTokens(user);
-
+        const tokens = generateTokens(user, false);
         return done(null, { user, tokens });
       } catch (error) {
         return done(error, null);
