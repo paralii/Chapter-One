@@ -24,7 +24,7 @@ export const adminLogout = createAsyncThunk(
       return response.data;
   } catch (error) {
     console.error("Logout error:", error);
-    return rejectWithValue(err.response.data);
+    return rejectWithValue(error.response.data);
   }
 });
 
@@ -33,7 +33,7 @@ export const refreshAdminSession = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/refresh-token`, {}, { withCredentials: true });
-      return response.data.admin;
+      return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || "Session refresh failed");
     }
@@ -43,16 +43,17 @@ export const refreshAdminSession = createAsyncThunk(
 const adminSlice = createSlice({
   name: "admin",
   initialState: {
-    admin: null,
+    admin: JSON.parse(localStorage.getItem("admin")) || null,
     loading: false,
     error: null,
   },
   reducers: {
     logoutAdmin(state) {
       state.admin = null;
+      localStorage.removeItem("admin");
     },
     clearAdminError(state) {
-      state.error = null; // Clear error state
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -64,6 +65,7 @@ const adminSlice = createSlice({
       .addCase(adminLogin.fulfilled, (state, action) => {
         state.loading = false;
         state.admin = action.payload;
+        localStorage.setItem("admin", JSON.stringify(action.payload));
       })
       .addCase(adminLogin.rejected, (state, action) => {
         state.loading = false;
@@ -72,13 +74,20 @@ const adminSlice = createSlice({
 
       .addCase(adminLogout.fulfilled, (state) => {
         state.admin = null;
+        localStorage.removeItem("admin");
+      })
+      .addCase(adminLogout.rejected, (state, action) => {
+      state.error = action.payload || "Logout failed";
+      state.admin = null;
+      localStorage.removeItem("admin");
       })
       
       .addCase(refreshAdminSession.fulfilled, (state, action) => {
-        state.admin = action.payload;
+        state.loading = false;
       })
       .addCase(refreshAdminSession.rejected, (state) => {
         state.admin = null;
+        localStorage.removeItem("admin");
       });
   },
 });

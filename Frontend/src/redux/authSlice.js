@@ -1,4 +1,3 @@
-// src/redux/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
@@ -6,9 +5,9 @@ axios.defaults.withCredentials = true;
 
 export const signupUser = createAsyncThunk(
   'auth/signupUser',
-  async (userData, { rejectWithValue }) => {
+  async ({ firstname, lastname, email, password, referral_code }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/signup`, userData);
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/signup`, { firstname, lastname, email, password, referral_code: referral_code || undefined });
       if (response.data.otpToken) {
         localStorage.setItem("otpToken", response.data.otpToken);
       }      
@@ -21,17 +20,15 @@ export const signupUser = createAsyncThunk(
 
 export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
-  async ({ email, otp }, { rejectWithValue }) => {
+  async ({ email, otp, otpToken }, { rejectWithValue }) => {
     try {
-      const otpToken = localStorage.getItem("otpToken");
       if (!otpToken) throw new Error("OTP token missing or expired");
-
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/verify-otp`, { email, otp, otpToken });
-      localStorage.removeItem("otpToken");
-      if (response.data.token && response.data.user) {
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));        
+      console.log(response)
+      if (response.data.user) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       }
+      localStorage.removeItem("otpToken");
       return response.data;
     } catch (err) {
       console.error("Error verifying OTP:", err.response);
@@ -92,9 +89,8 @@ export const forgotPassword = createAsyncThunk(
 
 export const verifyForgotPasswordOTP = createAsyncThunk(
   'auth/verifyForgotPasswordOTP',
-  async ({ email, otp }, { rejectWithValue }) => {
+  async ({ email, otp, otpToken }, { rejectWithValue }) => {
     try {
-      const otpToken = localStorage.getItem("otpToken");
       if (!otpToken) throw new Error("OTP token missing or expired");
 
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/verify-forgot-password-otp`, {
@@ -102,7 +98,6 @@ export const verifyForgotPasswordOTP = createAsyncThunk(
         otp,
         otpToken
       });
-      localStorage.setItem("otpToken", response.data.otpToken);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -141,9 +136,11 @@ export const fetchCurrentUser = createAsyncThunk(
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/user/me`, {
         withCredentials: true,
       });
+      console.log("fetchCurrentUser response:", response.data);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response.data);
+      console.error("fetchCurrentUser error:", err.response?.data || err.message);
+      return rejectWithValue(err.response?.data || { message: err.message });
     }
   }
 );
@@ -279,7 +276,6 @@ const authSlice = createSlice({
       .addCase(verifyForgotPasswordOTP.fulfilled, (state, action) => {
         state.loading = false;
         state.signupMessage = action.payload.message;
-        state.otpToken = action.payload.otpToken;
       })
       .addCase(verifyForgotPasswordOTP.rejected, (state, action) => {
         state.loading = false;
@@ -299,15 +295,17 @@ const authSlice = createSlice({
         state.error = action.payload?.message || "Failed to resend OTP";
       })
       .addCase(fetchCurrentUser.pending, (state) => {
-        state.status = "loading";
+        state.user = action.payload;
+        state.error = null;
+        localStorage.setItem("user", JSON.stringify(action.payload));
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload;
-        state.status = "succeeded";
+        state.error = "succeeded";
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
-        state.status = "failed";
-        state.user = null;
+        state.error = action.payload.message;
+        console.error("fetchCurrentUser rejected:", action.payload);
       });
       
   },

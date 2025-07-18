@@ -1,5 +1,4 @@
-"use client";
-import React from "react";
+
 import Footer from "../../components/common/Footer";
 
 const emailIconSvg = `<svg id="70:2248" width="24" height="49" viewBox="0 0 24 49" fill="none" xmlns="http://www.w3.org/2000/svg" class="email-icon">
@@ -23,42 +22,7 @@ const socialIconSvg = `<svg id="70:2279" width="155" height="32" viewBox="0 0 15
 function ContactUs() {
   return (
     <>
-      <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Outfit:wght@300;600&family=Roboto:wght@200;300;400;500;700&display=swap"
-        rel="stylesheet"
-      />
       <div className="font-sans">
-        {/* Navbar */}
-        <div className="bg-[#fff8e5] p-0">
-          <div className="max-w-[1440px] mx-auto lg:pt-[35px] lg:px-[117px] md:px-[20px] sm:px-[15px]">
-            <div className="flex items-center gap-[20px] flex-wrap sm:justify-between">
-              <div className="text-[#696969] text-[36px] font-semibold" style={{ fontFamily: "Outfit, sans-serif" }}>
-                CHAPTER ONE
-              </div>
-              <div className="flex items-center gap-[10px] w-full mt-[15px] order-last sm:order-none sm:mt-0">
-                <input
-                  type="text"
-                  placeholder="Search"
-                  className="bg-white border border-[#e1d9d9] rounded-[29px] w-[639px] md:w-full h-[58px] px-[20px]"
-                />
-                <button className="text-white bg-[#696969] border-0 rounded-[23px] w-[121px] h-[46px] font-[300] text-[19px]">
-                  Search
-                </button>
-              </div>
-              
-            </div>
-            <div className="hidden sm:flex justify-center gap-[74px] mt-[96px] pb-[18px] md:gap-[40px] md:px-[20px] md:overflow-x-auto">
-              <div className="text-[#000] text-[18px] font-medium">Home</div>
-              <div className="text-[#000] text-[18px] font-medium">Novel</div>
-              <div className="text-[#000] text-[18px] font-medium">Kids</div>
-              <div className="text-[#000] text-[18px] font-medium">Fantasy</div>
-              <div className="text-[#000] text-[18px] font-medium">Romance</div>
-              <div className="text-[#000] text-[18px] font-medium">Thriller</div>
-              <div className="text-[#000] text-[18px] font-medium">Offer</div>
-            </div>
-            <div className="opacity-50 bg-[#3c2712] h-[1px] mt-[22px]"></div>
-          </div>
-        </div>
 
         {/* Main Content */}
         <div className="bg-[#fff8e5] flex flex-col lg:flex-row py-[30px] px-[15px] md:py-[50px] md:px-[20px] lg:px-[117px] lg:gap-[100px]">

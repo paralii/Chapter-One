@@ -20,6 +20,7 @@
     "canvas-confetti": "^1.9.3",
     "cropperjs": "^2.0.0",
     "dayjs": "^1.11.13",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.487.0",
     "react": "^18.2.0",
     "react-confirm-alert": "^3.0.6",

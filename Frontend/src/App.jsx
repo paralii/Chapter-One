@@ -7,6 +7,8 @@ import "react-toastify/dist/ReactToastify.css";
 import CustomAlert from "./components/common/CustomAlert";
 import UserPrivateRoute from "./components/User/UserPrivateRoute";
 import AdminPrivateRoute from "./components/Admin/AdminPrivateRoute";
+import OrderSuccess from "./components/User/OrderSuccess";
+import OrderFailure from "./components/User/OrderFailure";
 
 // --- User Authentication ---
 import Login from "./pages/User/Authentication/Login";
@@ -22,16 +24,15 @@ import ProductList from "./pages/User/Product/ProductList";
 import ProductDetail from "./pages/User/Product/ProductDetail";
 import UserProfileDashboard from "./pages/User/Profile/UserProfileDashboard";
 import UserEditProfile from "./pages/User/Profile/Profile Overview/UserEditProfile";
-import UserPasswordManagement from "./pages/User/Profile/UserPasswordManagement";
 import UserAddresses from "./pages/User/Profile/Address/UserAddresses";
 import AddEditAddress from "./pages/User/Profile/Address/AddEditAddress";
 import UserOrder from "./pages/User/Profile/Order/UserOrder";
 import UserWallet from "./pages/User/Profile/Wallet/UserWalletHistory";
-import Cart from "./pages/User/Profile/Cart";
-import Checkout from "./pages/User/Profile/Checkout";
+import Cart from "./pages/User/Profile/Profile Overview/Cart";
+import Checkout from "./pages/User/Profile/Profile Overview/Checkout";
 import OrderDetails from "./pages/User/Profile/Order/OrderDetails";
-import OrderSuccess from "./pages/User/Order/OrderSuccess";
-import Wishlist from "./pages/User/Profile/Wishlist";
+import Wishlist from "./pages/User/Profile/Profile Overview/Wishlist";
+import ReferralDashboard from "./pages/User/Profile/Profile Overview/ReferralDashboard";
 // --- Admin Authentication & Dashboard ---
 import AdminSignin from "./pages/Admin/AdminSignin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -48,7 +49,6 @@ import ReferralManagment from "./pages/Admin/ReferralManagement";
 import SalesReport from "./pages/Admin/SalesReport";
 
 import { SearchProvider } from './context/SearchContext';
-import OrderFailure from "./pages/User/Order/OrderFailure";
 axios.defaults.withCredentials = true;
 
 function App() {
@@ -76,18 +76,19 @@ function App() {
         <Route element={<UserPrivateRoute />}>
           <Route path="/profile" element={<UserProfileDashboard />} />
           <Route path="/profile/edit" element={<UserEditProfile />} />
-          <Route path="/profile/password-management" element={<UserPasswordManagement />} />
-          <Route path="/order-success" element={<OrderSuccess />} />
-          <Route path="/order-failure" element={<OrderFailure />} />
           <Route path="/profile/addresses" element={<UserAddresses />} />
           <Route path="/profile/addresses/add" element={<AddEditAddress />} />
           <Route path="/profile/addresses/edit/:id" element={<AddEditAddress />} />
           <Route path="/profile/orders" element={<UserOrder />} />
           <Route path="/orders/:id" element={<OrderDetails />} />
-          <Route path="/profile/wallet" element={<UserWallet />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/profile/referrals" element={<ReferralDashboard />} />
+          {/* <Route path="/profile/wallet" element={<UserWallet />} /> */}
           <Route path="/wishlist" element={<Wishlist />} />
+
+          <Route path="/order-success" element={<OrderSuccess />} />
+          <Route path="/order-failure" element={<OrderFailure />} />
         </Route>
 
         {/* --- Public Admin Route --- */}
