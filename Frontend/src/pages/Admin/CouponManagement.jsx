@@ -327,6 +327,7 @@ function CouponEdit({ couponId, onCancel, onSave, onLogout }) {
             className="w-full p-2 border rounded-lg"
             required
             placeholder="e.g., SAVE10"
+            
           />
         </div>
         <div className="mb-4">
@@ -352,6 +353,7 @@ function CouponEdit({ couponId, onCancel, onSave, onLogout }) {
             className="w-full p-2 border rounded-lg"
             min="0"
             step="0.01"
+            required
             placeholder="e.g., 500"
           />
         </div>
@@ -364,6 +366,7 @@ function CouponEdit({ couponId, onCancel, onSave, onLogout }) {
             className="w-full p-2 border rounded-lg"
             min="0"
             step="0.01"
+            required
             placeholder="e.g., 100"
           />
         </div>
@@ -375,6 +378,7 @@ function CouponEdit({ couponId, onCancel, onSave, onLogout }) {
             onChange={(e) => setCoupon({ ...coupon, expirationDate: e.target.value })}
             className="w-full p-2 border rounded-lg"
             min={new Date().toISOString().split("T")[0]}
+            required
             placeholder="Select date"
           />
         </div>

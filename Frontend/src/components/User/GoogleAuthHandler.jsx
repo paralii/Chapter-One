@@ -10,10 +10,31 @@ const GoogleAuthHandler = ({ type = "signin" }) => {
   const { user } = useSelector((state) => state.auth);  
   const [isFetching, setIsFetching] = useState(true);
   useEffect(() => {
-    dispatch(fetchCurrentUser());
-  }, []);
+const urlParams = new URLSearchParams(location.search);
+    const isGoogleCallback = urlParams.get("code");
+
+    console.log("GoogleAuthHandler mounted, URL params:", urlParams.toString());
+    console.log("Is Google callback:", isGoogleCallback, "User:", user);
+
+    if (!user && isGoogleCallback) {
+      setIsFetching(true);
+      dispatch(fetchCurrentUser())
+        .unwrap()
+        .then((userData) => {
+          console.log("User fetched successfully after Google auth:", userData);
+          // Optionally update localStorage to match manual signup
+          localStorage.setItem("user", JSON.stringify(userData));
+          setIsFetching(false);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch user after Google auth:", error);
+          setIsFetching(false);
+        });
+    }
+  }, [dispatch, user, location]);
   
   const handleGoogleAuth = async () => {
+    console.log("Redirecting to Google auth...");
     window.location.href = `${import.meta.env.VITE_API_BASE_URL}/user/auth/google`;
   };
 

@@ -37,17 +37,21 @@ function ForgotPassword({ onClose = () => {}}) {
     const resultAction = await dispatch(forgotPassword({ email }));
     if (forgotPassword.fulfilled.match(resultAction)) {
       const { otpToken } = resultAction.payload;
-      localStorage.setItem("otpToken", otpToken);
-      toast.success("OTP sent to your email for password reset");
-      navigate("/verify-otp", {
-        state: {
-          email,
-          from: "forgot-password",
-          otpToken,
-          backgroundLocation:  "/",
-        },
-        replace: true,
-      });
+      if (otpToken) {
+        localStorage.setItem("otpToken", otpToken);
+        toast.success("OTP sent to your email for password reset");
+        navigate("/verify-otp", {
+          state: {
+            email,
+            from: "forgot-password",
+            otpToken,
+            backgroundLocation: location.state?.backgroundLocation || "/",
+          },
+          replace: true,
+        });
+      } else {
+        toast.info("If an account exists for this email, reset instructions have been sent.");
+      }
     } else {
       toast.error(
         resultAction.payload?.message ||
@@ -119,7 +123,7 @@ function ForgotPassword({ onClose = () => {}}) {
             type="button"
             onClick={() =>
               navigate("/login", {
-                state: { backgroundLocation:"/" },
+                state: { backgroundLocation: location.state?.backgroundLocation || "/" },
                 replace: true,
               })
             }

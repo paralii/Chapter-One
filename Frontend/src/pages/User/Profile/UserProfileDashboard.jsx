@@ -6,12 +6,14 @@ import { useDispatch } from "react-redux";
 import { getUserProfile } from "../../../api/user/UserAPI";
 import { getAddresses } from "../../../api/user/addressAPI";
 import { getWallet } from "../../../api/user/walletAPI";
+import { getOrderDetails } from "../../../api/user/orderAPI";
 import { logoutUser } from "../../../redux/authSlice";
 import BookLoader from "../../../components/common/BookLoader";
 import { toast } from "react-toastify";
 const UserProfileDashboard = () => {
   const [user, setUser] = useState(null);
   const [defaultAddress, setDefaultAddress] = useState(null);
+  const [latestOrder, setLatestOrder] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -33,6 +35,15 @@ const UserProfileDashboard = () => {
       })
       .catch((error) => {
         console.error("Failed to fetch addresses", error);
+      });
+
+      getOrderDetails()
+      .then((response) => {
+        const latestOrder = response.data.orders[0]; 
+        setLatestOrder(latestOrder);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch latest order", error);
       });
 
     // getWallet()
@@ -61,13 +72,13 @@ const UserProfileDashboard = () => {
   return (
     <>
       <div className="min-h-screen bg-[#fff8e5] py-6 px-6">
-        <div className="w-1/3">
           <div
-            className="logo font-[Outfit] text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#696969] cursor-pointer"
+            className="logo font-[Outfit] text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#696969] cursor-pointer flex justify-center"
             onClick={() => navigate("/")}
           >
             CHAPTER ONE
           </div>
+        <div className="w-full">
         </div>
         <div className="bg-white shadow-xl rounded-xl w-full max-w-5xl p-8 mt-8 mx-auto">
           <div className="flex flex-col lg:flex-row items-center justify-between mb-8">
@@ -149,7 +160,7 @@ const UserProfileDashboard = () => {
           <div className="flex justify-between mb-8">
             <div className="w-full lg:w-1/2">
               <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Latest Order</h3>
-              {/* {latestOrder ? (
+              {latestOrder ? (
                 <p>
                   Latest Order Status: {latestOrder.status} <br />
                   Order Details: {latestOrder.items.map((item, index) => (
@@ -158,7 +169,7 @@ const UserProfileDashboard = () => {
                 </p>
               ) : (
                 <p>No orders placed yet. Go ahead and place one!</p>
-              )} */}
+              )}
             </div>
             <div className="w-full lg:w-1/2 text-right mt-4 lg:mt-0">
               <Link
@@ -169,7 +180,9 @@ const UserProfileDashboard = () => {
               </Link>
             </div>
           </div>
-          
+          <Link to="/profile/referrals" className="block py-3 px-4 text-[#8e4700] hover:bg-[#edece9]">
+  Referral Program
+</Link>
           {/* Logout Button */}
           <div className="mt-6">
             <button
@@ -178,6 +191,12 @@ const UserProfileDashboard = () => {
             >
               Logout
             </button>
+          </div>
+                    <div
+            className="mt-3 text-[#696969] cursor-pointer flex justify-center"
+            onClick={() => navigate("/")}
+          >
+            Continue Shopping
           </div>
         </div>
       </div>

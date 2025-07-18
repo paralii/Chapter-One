@@ -1,16 +1,21 @@
 import adminAxios from "../adminAxios";
 
-// Create a new coupon
+export const getAllCoupons = (params) => {
+  return adminAxios.get("/coupons", { params });
+};
+
+export const getCouponById = (id) => {
+  return adminAxios.get(`/coupons/${id}`)
+} 
+
 export const createCoupon = (couponData) => {
   return adminAxios.post("/coupons/create", couponData);
 };
 
-// Delete a coupon by ID
 export const deleteCoupon = (id) => {
-  return adminAxios.delete(`/coupons/${id}`);
+  return adminAxios.delete(`/coupons/${id}/delete`);
 };
 
-// Optional: List coupons (if needed)
-export const listCoupons = (params) => {
-  return adminAxios.get("/coupons/list", { params });
-};
+export const updateCoupon = (couponId, data) => {
+  return adminAxios.put(`coupons/${couponId}/update`, data);
+}

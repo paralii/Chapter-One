@@ -1,22 +1,21 @@
 import { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { useParams, useNavigate, Link } from "react-router-dom";
+
 import Navbar from "../../../components/common/Navbar";
 import Footer from "../../../components/common/Footer";
 import BookLoader from "../../../components/common/BookLoader";
-import { useDispatch } from "react-redux";
-import { showAlert } from "../../../redux/alertSlice";
+
 import { Heart, Heart as HeartFilled } from "lucide-react";
 import { RelatedProductCard } from "../../../components/User/ProductCard";
 import { getProducts, getProductById } from "../../../api/user/productAPI";
-import {
-  getWishlist,
-  addToWishlist,
-  removeFromWishlist,
-} from "../../../api/user/wishlistAPI";
+import { getWishlist, addToWishlist, removeFromWishlist } from "../../../api/user/wishlistAPI";
 import { addToCart } from "../../../api/user/cartAPI";
-
+import { showAlert } from "../../../redux/alertSlice";
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
+
+import userAxios from "../../../api/userAxios";
 
 function ProductDetail() {
   const { id } = useParams();
@@ -32,9 +31,10 @@ function ProductDetail() {
   const [activeImage, setActiveImage] = useState("");
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [relatedLoading, setRelatedLoading] = useState(true);
-    const [initialDataLoaded, setInitialDataLoaded] = useState(false);
-    const [animationDone, setAnimationDone] = useState(false);
-  
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [animationDone, setAnimationDone] = useState(false);
+  const [offers, setOffers] = useState([]);
+
   const maxQuantity = 5;
 
   const getImageUrl = (url) =>
@@ -54,14 +54,18 @@ function ProductDetail() {
         navigate("/products");
         return;
       }
-      setInitialDataLoaded(true);
       setProduct(prod);
+      // Fetch offers
+      const offerRes = await userAxios.get(`/offers?productId=${id}&type=PRODUCT`);
+      setOffers(offerRes.data.offers || []);
     } catch (err) {
       setError(
         err.response?.data?.message || err.message || "Error fetching product"
       );
     } finally {
       setLoading(false);
+      setInitialDataLoaded(true);
+
     }
   };
 
@@ -80,13 +84,10 @@ function ProductDetail() {
   const fetchWishlistStatus = async () => {
     try {
       const res = await getWishlist();
-
-      const wishlistItems = Array.isArray(res?.data?.wishlist)
-        ? res.data.wishlist
-        : [];
-      setIsInWishlist(wishlistItems.some((item) => item._id === id));
+      const wishlistItems = res.data.wishlist?.products || [];
+      setIsInWishlist(wishlistItems.some((item) => item.product_id._id === id));
     } catch (err) {
-      console.error("Error fetching wishlist", err);
+      console.error("Error fetching wishlist status:", err);
     }
   };
 
@@ -101,7 +102,8 @@ function ProductDetail() {
 
   if (!animationDone || !initialDataLoaded) {
     return <BookLoader onFinish={() => setAnimationDone(true)} />;
-  }  if (error)
+  }
+  if (error)
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fff8e5] text-red-500">
         {error}
@@ -161,14 +163,24 @@ function ProductDetail() {
     try {
       if (isInWishlist) {
         await removeFromWishlist(product._id);
+        setIsInWishlist(false);
+        dispatch(
+          showAlert({ message: "Removed from wishlist!", type: "success" })
+        );
       } else {
         await addToWishlist(product._id);
+        setIsInWishlist(true);
+        dispatch(
+          showAlert({ message: "Added to wishlist!", type: "success" })
+        );
       }
-      setIsInWishlist(!isInWishlist);
     } catch (err) {
-      dispatch(
-        showAlert({ message: "Failed to update wishlist", type: "error" })
-      );
+      console.error("Error updating wishlist:", err);
+      const message =
+        err.response?.data?.message === "Product already in wishlist"
+          ? "Product is already in your wishlist."
+          : "Failed to update wishlist.";
+      dispatch(showAlert({ message, type: "error" }));
     }
   };
 
@@ -184,10 +196,17 @@ function ProductDetail() {
     navigate("/checkout", { state: { fromBuyNow: true } });
   };
 
-  const hasDiscount = product.discount > 0;
-  const discountPrice = hasDiscount
+  const hasDiscount = product.discount > 0 || offers.length > 0;
+  const discountPrice = product.discount > 0
     ? product.price - (product.price * product.discount) / 100
-    : null;
+    : offers.length > 0
+    ? offers.reduce((minPrice, offer) => {
+        const offerPrice = offer.discount_type === "PERCENTAGE"
+          ? product.price - (product.price * offer.discount_value) / 100
+          : product.price - offer.discount_value;
+        return Math.min(minPrice, offerPrice);
+      }, product.price)
+    : product.price;
 
   return (
     <div className="min-h-screen bg-[#fff8e5] font-Inter text-[#3c2712]">
@@ -286,14 +305,34 @@ function ProductDetail() {
               </span>
             )}
             <span className="text-2xl font-semibold">
-              ₹{discountPrice || product.price}
+              ₹{discountPrice.toFixed(2)}
             </span>
             {hasDiscount && (
               <span className="text-sm text-green-600">
-                ({product.discount}% OFF)
+                {product.discount > 0
+                  ? `(${product.discount}% OFF)`
+                  : offers.length > 0
+                  ? `(${offers[0].discount_type === "PERCENTAGE" ? `${offers[0].discount_value}% OFF` : `₹${offers[0].discount_value} OFF`})`
+                  : ""}
               </span>
             )}
           </div>
+          {offers.length > 0 && (
+            <div className="space-y-2 mt-4 text-sm">
+              <h2 className="font-semibold">Available Offers</h2>
+              <ul className="list-disc pl-5">
+                {offers.map((offer) => (
+                  <li key={offer._id}>
+                    {offer.discount_type === "PERCENTAGE"
+                      ? `${offer.discount_value}% off`
+                      : `₹${offer.discount_value} off`}{" "}
+                    on {offer.product_id?.title || "this product"} (Expires{" "}
+                    {new Date(offer.end_date).toLocaleDateString()})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Highlights / Specs */}
           <div className="space-y-2 mt-4 text-sm">

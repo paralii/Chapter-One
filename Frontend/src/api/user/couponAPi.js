@@ -1,15 +1,14 @@
 import userAxios from "../userAxios";
 
 export const applyCoupon = (data) => {
-  return userAxios.post("/apply", data);
+  return userAxios.post("/apply-coupon", data);
 };
 
 export const removeCoupon = () => {
-  return userAxios.post("/remove");
+  return userAxios.post("/remove-coupon");
 };
 
-export const listCoupons = (params) => {
-  return userAxios.get("/list", { params });
+export const getAllCoupons = (params) => {
+  return userAxios.get("/coupons", { params });
 };
 
-export default { applyCoupon, removeCoupon, listCoupons };

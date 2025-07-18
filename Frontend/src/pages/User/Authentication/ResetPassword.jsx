@@ -40,14 +40,17 @@ const ResetPassword = ({ onClose = () => {}}) => {
         });
       }, 2000);
     }
-  }, [resetPasswordMessage, navigate, location]);
+  }, [resetPasswordMessage, navigate]);
 
   useEffect(() => {
     if (error && typeof error === "string") {
       toast.error(error);
       if (error.toLowerCase().includes("token") || error.toLowerCase().includes("expired")) {
         setTimeout(() => {
-          navigate("/forgot-password", { replace: true });
+          navigate("/forgot-password", {
+            state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+            replace: true,
+          });
         }, 2000);
       }
     }
@@ -55,7 +58,11 @@ const ResetPassword = ({ onClose = () => {}}) => {
 
   useEffect(() => {
     if (!token || !otp) {
-      navigate("/forgot-password", { replace: true });
+      toast.error("Session expired! Please try again.", { toastId: "session-expired" });
+      navigate("/forgot-password", {
+        state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+        replace: true,
+      });
     }
   }, [token, otp, navigate]);
 
@@ -95,7 +102,7 @@ const ResetPassword = ({ onClose = () => {}}) => {
           type="button"
           className="absolute top-4 right-4 text-xl text-gray-500 hover:text-black"
           onClick={() =>
-            navigate( "/", { replace: true })
+            navigate(location.state?.backgroundLocation || "/", { replace: true })
           }
         >
           &times;

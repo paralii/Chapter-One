@@ -1,12 +1,24 @@
 import adminAxios from "../adminAxios";
 
-// CATEGORY OFFER API
-export const createCategoryOffer = (offerData) => adminAxios.post("/category-offers", offerData);
-export const deleteCategoryOffer = (id) => adminAxios.delete(`/category-offers/${id}`);
-export const getCategoryOffers = () => adminAxios.get("/category-offers"); // ✅ NEW
+export const createOffer = (data) => adminAxios.post("/offers/create", data);
+export const getOffers = (type, includeInactive = false) =>
+  adminAxios.get(`/offers?type=${type}&includeInactive=${includeInactive}`);
+export const getOfferById = (offerId) => adminAxios.get(`/offers/${offerId}`);
 
-// PRODUCT OFFER API
-export const createProductOffer = (offerData) => adminAxios.post("/product-offers", offerData);
-export const deleteProductOffer = (id) => adminAxios.delete(`/product-offers/${id}`);
-export const getProductOffers = () => adminAxios.get("/product-offers"); // ✅ NEW
-export const getProductOfferById = (id) => adminAxios.get(`/product-offers/${id}`);
+export const getReferralOffers = async ({ offerId, search = "", page = 1, limit = 10 }) => {
+  const data = {
+    offerId: offerId || undefined,
+    search: search.trim() || undefined,
+    page: Math.max(1, parseInt(page)),
+    limit: Math.max(1, parseInt(limit)),
+  };
+  return adminAxios.post("/offers/referrals", data);
+};
+
+export const updateOffer = async (offerId, data) => {
+  return adminAxios.put(`/offers/${offerId}/update`, data);
+};
+
+export const toggleReferralOffer = async (offerId, data) => {
+  return adminAxios.put(`/offers/${offerId}/toggle-referral`, data);
+};

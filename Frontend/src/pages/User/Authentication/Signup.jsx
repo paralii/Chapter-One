@@ -104,7 +104,7 @@ function Signup({ onClose = () => {} }) {
         const { otpToken } = resultAction.payload || {};
         toast.success("Signup successful! Check your email for the OTP.");
         navigate("/verify-otp", {
-          state: { email, otpToken, backgroundLocation: "/" },
+          state: { email, otpToken, backgroundLocation: "/", from: "signup" },
         });
       } else {
         const errors = resultAction.payload?.errors;

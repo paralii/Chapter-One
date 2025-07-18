@@ -26,13 +26,16 @@ const OTPVerification = () => {
   const maskedEmail = email?.replace(/(.{2}).+(@.+)/, "$1****$2");
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("otpToken");
+    localStorage.removeItem("otpToken");
+    const storedToken = initialOtpToken || localStorage.getItem("otpToken");
     if (!email || (!initialOtpToken && !storedToken)) {
       toast.error("Session expired! Please try again.");
       navigate(from === "forgot-password" ? "/forgot-password" : "/signup");
       return;
     }
-    setOtpToken(initialOtpToken || storedToken);
+    if (!otpToken) {
+        setOtpToken(initialOtpToken || storedToken);
+    }
   }, [email, initialOtpToken, navigate, from]);
 
   useEffect(() => {
@@ -55,6 +58,7 @@ const OTPVerification = () => {
   };
 
   const handleResend = async () => {
+    console.log("Resending OTP with token:", otpToken);
     if (!isResendActive) return;
 
     setIsResendActive(false);
@@ -66,11 +70,17 @@ const OTPVerification = () => {
       if (from === "change-email") {
         const res = await resendOTP(email);
         result = { payload: res.data };
-        newToken = res.data.emailChangeToken;
+        newToken = res.data.otpToken || res.data.emailChangeToken;
       } else if (from === "forgot-password") {
         result = await dispatch(resendForgotPasswordOTP({ email }));
+        if (resendForgotPasswordOTP.fulfilled.match(result)) {
+          newToken = result.payload.otpToken;
+        }
       } else {
-        result = await dispatch(resendOtpForVerify({ otpToken }));
+      result = await dispatch(resendOtpForVerify({ otpToken }));
+      if (resendOtpForVerify.fulfilled.match(result)) {
+        newToken = result.payload.otpToken;
+      }
       }
 
       const isSuccess =
@@ -83,8 +93,11 @@ const OTPVerification = () => {
 
       if (isSuccess) {
         if (newToken) {
+          console.log("New OTP token received:", newToken);
           setOtpToken(newToken);
           localStorage.setItem("otpToken", newToken);
+        } else {
+          throw new Error("New OTP token not received");
         }
         toast.success("New OTP sent to your email!");
         setOtpDigits(Array(6).fill(""));
@@ -116,14 +129,13 @@ const OTPVerification = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    console.log("Verifying OTP with token:", otpToken, "and OTP:", finalOtp);
     if (finalOtp.length !== 6) {
       return toast.error("Please enter a valid 6-digit OTP");
     }
 
     try {
-      const activeToken = otpToken || localStorage.getItem("otpToken");
-      if (!activeToken) throw new Error("OTP token missing or expired");
+      if (!otpToken) throw new Error("OTP token missing or expired");
 
       let result;
 
@@ -132,14 +144,14 @@ const OTPVerification = () => {
           verifyForgotPasswordOTP({
             email,
             otp: finalOtp,
-            otpToken: activeToken,
+            otpToken: otpToken,
           })
         );
       } else if (from === "change-email") {
-        result = await confirmEmailChange(finalOtp, activeToken);
+        result = await confirmEmailChange(finalOtp, otpToken);
       } else {
         result = await dispatch(
-          verifyOTP({ email, otp: finalOtp, otpToken: activeToken })
+          verifyOTP({ email, otp: finalOtp, otpToken: otpToken })
         );
       }
 
