@@ -16,9 +16,14 @@ function OrderFailure() {
     });
   }, [errorMessage]);
 
-  const handleRetryPayment = () => {
-    navigate("/checkout", { state: { tempOrderId: orderId } });
-  };
+const handleRetryPayment = () => {
+  if (!orderId) {
+    toast.error("Order ID not found. Redirecting to orders...");
+    navigate("/profile/orders");
+    return;
+  }
+  navigate("/checkout", { state: { tempOrderId: orderId } });
+};
 
   const handleViewOrderDetails = () => {
     if (orderId) {

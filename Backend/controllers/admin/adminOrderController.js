@@ -367,74 +367,51 @@ export const softDeleteOrder = async (req, res) => {
   }
 };
 
-// Admin verifies return request
 export const verifyReturnRequest = async (req, res) => {
   try {
-    const { orderId, productId, returnApproved } = req.body;
+    const { orderId, productId, approve } = req.body;
 
+    const order = await Order.findOne({ _id: orderId, isDeleted: false });
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
-    if (!mongoose.isValidObjectId(orderId) || !mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ success: false, message: 'Invalid order or product ID' });
+    const item = order.items.find(i => i.product_id.toString() === productId);
+    if (!item) return res.status(404).json({ success: false, message: "Item not found in order" });
+
+    if (!item.returnReason || item.status !== "Returned") {
+      return res.status(400).json({ success: false, message: "Item not marked for return" });
     }
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-
-    const item = order.items.find(item => item.product_id.toString() === productId);
-    if (!item) {
-      return res.status(404).json({ success: false, message: 'Item not found in order' });
-    }
-
-
-
-    if (item.status !== 'Returned') {
-      return res.status(400).json({ success: false, message: 'Item is not marked as returned' });
-    }
-
-    if (item.returnVerified) {
-      return res.status(400).json({ success: false, message: 'Return already verified' });
-    }
-
-    if (!item.returnReason || item.returnReason.trim() === '') {
-      return res.status(400).json({ success: false, message: 'Return reason is missing' });
-    }
-
-    const deliveryDate = item.deliveryDate || order.updated_at;
-    const daysSinceDelivery = (Date.now() - new Date(deliveryDate)) / (1000 * 60 * 60 * 24);
-    if (daysSinceDelivery > 7) {
-      return res.status(400).json({ success: false, message: 'Return verification period (7 days) expired' });
-    }
-
-    if (returnApproved) {
-      await Product.findByIdAndUpdate(
-        item.product_id,
-        { $inc: { available_quantity: item.quantity } },
-      );
-
-      // if (order.paymentMethod === 'ONLINE' && order.paymentStatus === 'Completed' && !item.refundProcessed) {
-      //   const creditResult = await creditWallet(
-      //     order.user_id,
-      //     item.total,
-      //     `Refund for returned item from Order ${order.orderID}`,
-      //   );
-      //   if (!creditResult.success) {
-      //     throw new Error('Wallet credit failed');
-      //   }
-      //   item.refundProcessed = true;
-      // }
-
+    if (approve) {
       item.returnVerified = true;
-      item.returnDecision = 'approved';
+      item.returnDecision = "Approved";
+
+      // Refund to wallet if online payment & not already refunded
+      if (
+        order.paymentMethod === "ONLINE" &&
+        order.paymentStatus === "Completed" &&
+        !item.refundProcessed
+      ) {
+        const creditResult = await creditWallet(
+          order.user_id,
+          item.total,
+          `Refund for returned product in Order ${order.orderID}`
+        );
+
+        if (!creditResult.success) {
+          return res.status(500).json({ success: false, message: "Wallet refund failed" });
+        }
+
+        item.refundProcessed = true;
+      }
     } else {
       item.returnVerified = true;
-      item.returnDecision = 'rejected';
+      item.returnDecision = "Rejected";
     }
 
     await order.save();
-    res.json({ success: true, message: `Return ${returnApproved ? 'approved and wallet refunded' : 'rejected'}` });
+    return res.json({ success: true, message: `Return ${approve ? "approved" : "rejected"}` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error verifying return', error: err.message });
+    console.error("Return verification error:", err);
+    return res.status(500).json({ success: false, message: "Internal error verifying return" });
   }
 };

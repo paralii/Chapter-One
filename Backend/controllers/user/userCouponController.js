@@ -22,7 +22,11 @@ export const applyCoupon = async (req, res) => {
     if (!mongoose.isValidObjectId(orderId)) {
       return res.status(400).json({ success: false, message: "Invalid order ID format" });
     }
-    const order = await Order.findById(orderId);
+    if (!couponCode || typeof couponCode !== "string" || !couponCode.trim()) {
+      return res.status(400).json({ success: false, message: "Coupon code is required" });
+    }
+
+    const order = await Order.findById(orderId).populate("items.product_id");
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
@@ -36,38 +40,33 @@ export const applyCoupon = async (req, res) => {
       return res.status(400).json({ success: false, message: "This coupon is already applied to the order" });
     }
 
-    const coupon = await Coupon.findOneAndUpdate(
-      {
-        code: couponCode.toUpperCase(),
-        isActive: true,
-        expirationDate: { $gte: new Date() },
-        $expr: { $lt: ["$usedCount", "$usageLimit"] },
-      },
-      { $inc: { usedCount: 1 } },
-      { new: true }
-    );
+    const coupon = await Coupon.findOne({
+      code: couponCode.toUpperCase(),
+      isActive: true,
+      expirationDate: { $gte: new Date() },
+      $expr: { $lt: ["$usedCount", "$usageLimit"] },
+    });
 
     if (!coupon) {
-      return res.status(400).json({ success: false, message: "Coupon is invalid, expired, or usage limit exceeded", });
+      return res.status(400).json({ success: false, message: "Coupon is invalid, expired, or usage limit exceeded" });
     }
 
-    if (order.total < coupon.minOrderValue) {
-      await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: -1 } });
-      return res.status(400).json({ success: false, message: `Minimum order value of ₹${coupon.minOrderValue} is required for this coupon` });
+    if (order.total < (coupon.minOrderValue || 0)) {
+      return res.status(400).json({
+        success: false,
+        message: `Minimum order value of ₹${coupon.minOrderValue} is required for this coupon (current total: ₹${order.total.toFixed(2)})`,
+      });
     }
     if (coupon.usedBy?.map(id => id.toString()).includes(order.user_id.toString())) {
-      await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: -1 } });
-      return res.status(400).json({ success: false, message: "You have already used this coupon." });
+      return res.status(400).json({ success: false, message: "You have already used this coupon" });
     }
 
-
-let discount = (order.total * coupon.discountPercentage) / 100;
-if (coupon.maxDiscountAmount) {
-  discount = Math.min(discount, coupon.maxDiscountAmount);
-}
+    let discount = (order.total * coupon.discountPercentage) / 100;
+    if (coupon.maxDiscountAmount) {
+      discount = Math.min(discount, coupon.maxDiscountAmount);
+    }
     const netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0) - discount;
     if (netAmount < 0) {
-      await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: -1 } });
       return res.status(400).json({ success: false, message: "Discount cannot exceed order total" });
     }
 
@@ -75,13 +74,26 @@ if (coupon.maxDiscountAmount) {
     order.netAmount = netAmount;
     order.coupon = couponCode.toUpperCase();
     await Coupon.findByIdAndUpdate(coupon._id, {
-  $addToSet: { usedBy: order.user_id },
-});
-
+      $inc: { usedCount: 1 },
+      $addToSet: { usedBy: order.user_id },
+    });
     await order.save();
 
     const checkoutDetails = {
-      subtotal: order.total || 0,
+      address: order.address_id,
+      paymentMethod: order.paymentMethod,
+      items: order.items.map(item => ({
+        product_id: item.product_id._id,
+        title: item.product_id.title,
+        quantity: item.quantity,
+        itemTotal: item.product_id.price * item.quantity,
+        taxes: (item.product_id.price * item.quantity) * 0.1,
+        discount: 0,
+        finalItemTotal: (item.product_id.price * item.quantity) * 1.1,
+        applied_offer: item.applied_offer || null,
+        refundProcessed: false,
+      })),
+      subtotal: order.total,
       taxes: order.taxes || 0,
       shippingCost: order.shipping_chrg || 0,
       discount: order.discount || 0,
@@ -122,17 +134,15 @@ export const removeCoupon = async (req, res) => {
 
     const coupon = await Coupon.findOneAndUpdate(
       { code: order.coupon },
-      { $inc: { usedCount: -1 },
-        $pull: { usedBy: order.user_id },
-      },
+      { $inc: { usedCount: -1 }, $pull: { usedBy: order.user_id } },
       { new: true }
     );
     if (!coupon) {
       console.warn(`Coupon ${order.coupon} not found during removal`);
     }
 
-      order.discount = 0;
-    order.netAmount = order.total;
+    order.discount = 0;
+    order.netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0);
     order.coupon = null;
     await order.save();
 

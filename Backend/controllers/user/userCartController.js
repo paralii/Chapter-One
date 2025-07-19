@@ -1,9 +1,69 @@
 import Cart from "../../models/Cart.js";
 import Product from "../../models/Product.js";
 import Wishlist from "../../models/Wishlist.js";
+import  Offer from "../../models/Offer.js";
 import mongoose from "mongoose";
 
       const MAX_LIMIT = 5;
+
+// Get cart for the authenticated user
+async function calculateCartItems(items) {
+  const currentDate = new Date();
+  const cartItems = [];
+  for (const item of items) {
+    const product = await Product.findById(item.product_id).populate("category_id");
+    if (!product || product.isDeleted || product.isBlocked || !product.category_id?.isListed) {
+      continue; // Skip invalid products
+    }
+    const productOffer = await Offer.findOne({
+      type: "PRODUCT",
+      product_id: item.product_id,
+      is_active: true,
+      start_date: { $lte: currentDate },
+      end_date: { $gte: currentDate }
+    });
+    const categoryOffer = await Offer.findOne({
+      type: "CATEGORY",
+      category_id: product.category_id,
+      is_active: true,
+      start_date: { $lte: currentDate },
+      end_date: { $gte: currentDate }
+    });
+    let finalPrice = product.price;
+    let appliedOffer = null;
+    let offerId = null;
+    let productDiscount = 0;
+    let categoryDiscount = 0;
+    if (productOffer) {
+      productDiscount = productOffer.discount_type === "PERCENTAGE"
+        ? product.price * (productOffer.discount_value / 100)
+        : productOffer.discount_value;
+    }
+    if (categoryOffer) {
+      categoryDiscount = categoryOffer.discount_type === "PERCENTAGE"
+        ? product.price * (categoryOffer.discount_value / 100)
+        : categoryOffer.discount_value;
+    }
+    if (productDiscount > categoryDiscount) {
+      finalPrice -= productDiscount;
+      appliedOffer = "PRODUCT";
+      offerId = productOffer?._id;
+    } else if (categoryDiscount > 0) {
+      finalPrice -= categoryDiscount;
+      appliedOffer = "CATEGORY";
+      offerId = categoryOffer?._id;
+    }
+    if (finalPrice < 0) finalPrice = 0;
+    cartItems.push({
+      ...item.toObject(),
+      product_id: product,
+      final_price: finalPrice,
+      applied_offer: appliedOffer,
+      offer_id: offerId
+    });
+  }
+  return cartItems;
+}
 
 // Get cart for the authenticated user
 export const getCart = async (req, res) => {
@@ -16,7 +76,11 @@ export const getCart = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    res.status(200).json({ cart });
+    // Calculate offers for cart items
+    const calculatedItems = await calculateCartItems(cart.items);
+    const total = calculatedItems.reduce((sum, item) => sum + item.final_price * item.quantity, 0);
+
+    res.status(200).json({ cart: { ...cart.toObject(), items: calculatedItems }, total });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -5,7 +5,9 @@ import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTok
 import setAuthCookies from "../../utils/setAuthCookies.js";
 import { generateOTP } from "../../utils/services/otpGenerator.js";
 import { sendOTPEmail, resendOtpForVerifyEmail, sendForgotPasswordOTP } from "../../utils/services/emailService.js";
-
+import Coupon from "../../models/Coupon.js";
+import Offer from "../../models/Offer.js";
+import { v4 as uuidv4 } from "uuid";
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -18,8 +20,10 @@ export const login = async (req, res) => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail });
-    if (!user) return res.status(400).json({ message: "User with this email does not exist" });
-
+    if (!user) {
+       console.log(`Login attempt failed: User not found for email ${normalizedEmail}`);
+      return res.status(400).json({ message: "User with this email does not exist" });
+}
     if (!user.isVerified) {
       return res.status(403).json({ message: "Please verify your email first" });
     }
@@ -30,6 +34,7 @@ export const login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(normalizedPassword, user.password);
     if (!isMatch) {
+        console.log(`Login attempt failed: Incorrect password for email ${normalizedEmail}`);
       return res.status(400).json({ message: "Incorrect password, please try again" });
     }
 
@@ -37,8 +42,8 @@ export const login = async (req, res) => {
     setAuthCookies(res, accessToken, refreshToken, "user");
     res.status(200).json({ user, message: "Login successful" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+    console.error(`Login error for ${normalizedEmail}:`, err.message);
+    res.status(500).json({ message: "Server error", error: err.message });  }
 };
 
 export const logout = (req, res) => {
@@ -50,34 +55,46 @@ export const logout = (req, res) => {
 export const refreshUserToken = (req, res) => refreshAccessToken(req, res, "user");
 
 export const userSignup = async (req, res) => {
-  const { firstname, lastname, email, password } = req.body;
+  const { firstname, lastname, email, password, referral_code } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
   try {
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email : normalizedEmail });
     if (user) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOTP();
 
+    let referred_by = null;
+    if (referral_code && referral_code.trim()) {
+      const referrer = await User.findOne({ referral_code: referral_code.trim().toUpperCase() });
+      if (!referrer) {
+        return res.status(400).json({ message: "Invalid referral code" });
+      }
+      referred_by = referrer._id;
+    }
+
     const otpToken = jwt.sign(
-      { firstname, lastname, email, password: hashedPassword, otp },
+      { firstname, lastname, email: normalizedEmail, password: hashedPassword, otp, referred_by },
       process.env.JWT_SECRET,
-      { expiresIn: "2m" }
+      { expiresIn: "5m" }
     );
 
-    console.log("SignUp OTP:", otp);
     await sendOTPEmail(email, otp);
+    console.log("SignUp OTP:", otp);
 
     res.status(201).json({ message: "OTP sent to email", otpToken });
   } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+   console.error("Signup error:", err.message);
+    res.status(500).json({ message: "Server error", error: err.message });  }
 };
 
 export const verifyOTP = async (req, res) => {
   const { otp, otpToken } = req.body;
   try {
     const decoded = jwt.verify(otpToken, process.env.JWT_SECRET);
-
+    console.log("Verifying OTP:", { receivedOtp: otp, storedOtp: decoded.otp });
+    
     if (decoded.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
@@ -110,15 +127,28 @@ export const verifyOTP = async (req, res) => {
         email: decoded.email,
         password: decoded.password,
         isVerified: true,
+        referred_by: decoded.referred_by || null,
       });
+      await user.save();
+
+      if (decoded.referred_by) {
+        const couponCode = `COUPON-${uuidv4().split("-")[0].toUpperCase()}`;
+        const coupon = new Coupon({
+          code: couponCode,
+          discountPercentage: 10,
+          expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          usedBy: [decoded.referred_by],
+          minOrderValue: 100,
+        });
+        await coupon.save();
+      }
     } else {
       user.isVerified = true;
+      await user.save();
     }
+   const { accessToken, refreshToken } = generateTokens(user, false);
+    setAuthCookies(res, accessToken, refreshToken, "user");
 
-    await user.save();
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
 
     res.status(200).json({
       message: "OTP verified, account created successfully",
@@ -128,12 +158,11 @@ export const verifyOTP = async (req, res) => {
         firstname: user.firstname,
         lastname: user.lastname,
       },
-      token,
     });
 
   } catch (err) {
-    return res.status(400).json({ message: "OTP expired or invalid" });
-  }
+    console.error("Verify OTP error:", { otpToken, error: err.message });
+    return res.status(400).json({ message: "OTP expired or invalid" });  }
 };
 
 export const resendOtpForVerify = async (req, res) => {
@@ -152,7 +181,7 @@ export const resendOtpForVerify = async (req, res) => {
     const newOtpToken = jwt.sign(
       { firstname, lastname, email, password, otp: newOtp },
       process.env.JWT_SECRET,
-      { expiresIn: "2m" } 
+      { expiresIn: "5m" } 
     );
 
     await resendOtpForVerifyEmail(email, newOtp);
@@ -173,8 +202,8 @@ export const resendOTP = async (req, res) => {
     const otp = generateOTP();
     const otpToken = jwt.sign({ email, otp }, process.env.JWT_SECRET, { expiresIn: "2m" });
 
-    console.log("resend OTP:", otp);
     await resendOtpForVerifyEmail(email, otp);
+    console.log("resend OTP:", otp);
 
     res.status(200).json({ message: "OTP resent successfully", otpToken });
   } catch (err) {
@@ -192,8 +221,8 @@ export const forgotPassword = async (req, res) => {
     const otp = generateOTP();
     const otpToken = jwt.sign({ email, otp, from: "forgot-password" }, process.env.JWT_SECRET, { expiresIn: "5m" });
 
-    console.log("forgotPassword OTP:", otp);
     await sendForgotPasswordOTP(email, otp);
+    console.log("forgotPassword OTP:", otp);
 
     res.status(200).json({ message: "OTP sent to email for password reset", otpToken });
   } catch (err) {
@@ -238,8 +267,8 @@ export const resendForgotPasswordOTP = async (req, res) => {
       { expiresIn: "5m" }
     );
 
-    console.log("Resend ForgotPassword OTP:", otp);
     await sendForgotPasswordOTP(email, otp);
+    console.log("Resend ForgotPassword OTP:", otp);
 
     res.status(200).json({ message: "OTP resent for password reset", otpToken });
   } catch (err) {
@@ -257,6 +286,11 @@ export const resetPassword = async (req, res) => {
 
     const user = await User.findOne({ email: decoded.email });
     if (!user) return res.status(400).json({ message: "User not found" });
+
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ message: "New password cannot be the same as the old password" });
+    }
 
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();

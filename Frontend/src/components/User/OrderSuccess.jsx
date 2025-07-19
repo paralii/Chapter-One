@@ -18,7 +18,7 @@ function OrderSuccess() {
         autoClose: 3000,
       });
       setTimeout(() => {
-        navigate("/");
+        navigate("/profile/orders");
       }, 3000);
     } else {
       for (let i = 0; i < 3; i++) {

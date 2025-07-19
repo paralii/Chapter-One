@@ -84,7 +84,7 @@ function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/profile/referrals" element={<ReferralDashboard />} />
-          {/* <Route path="/profile/wallet" element={<UserWallet />} /> */}
+          <Route path="/profile/wallet" element={<UserWallet />} />
           <Route path="/wishlist" element={<Wishlist />} />
 
           <Route path="/order-success" element={<OrderSuccess />} />

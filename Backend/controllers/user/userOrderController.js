@@ -11,30 +11,207 @@ import mongoose from "mongoose";
 
 const INVOICE_DIR = path.join(process.cwd(), 'invoices');
 
-// Generate a unique readable order ID
 const generateOrderID = () => {
   return "CHAP" + Date.now() + Math.floor(Math.random() * 1000);
 };
 
+export const getPendingOrder = async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      user_id: req.user._id,
+      status: "Pending",
+      isDeleted: false,
+    }).lean();
+    res.json({ success: true, order });
+  } catch (err) {
+    console.error("Error fetching pending order:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch pending order", error: err.message });
+  }
+};
+
 export const createTempOrder = async (req, res) => {
   try {
-    const userId = req.user._id;
     const {
       address_id,
       items,
+      shipping_chrg = 0,
+      discount = 0,
+      paymentMethod,
+      amount,
+      taxes = 0,
+      total,
+      currency = "INR",
+      coupon,
+    } = req.body;
+
+    if (!address_id) {
+      return res.status(400).json({ success: false, message: "Address ID is required" });
+    }
+    if (!mongoose.isValidObjectId(address_id)) {
+      return res.status(400).json({ success: false, message: "Invalid address ID format" });
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "Items array is required and cannot be empty" });
+    }
+    if (!paymentMethod || !["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
+      return res.status(400).json({ success: false, message: "Payment method must be COD, ONLINE, or Wallet" });
+    }
+    if (amount == null || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: "Amount must be a positive number" });
+    }
+    if (total == null || isNaN(total) || total <= 0) {
+      return res.status(400).json({ success: false, message: "Total must be a positive number" });
+    }
+
+    const validatedItems = items.map((item) => {
+      if (!mongoose.isValidObjectId(item.product_id)) {
+        throw new Error(`Invalid product ID: ${item.product_id}`);
+      }
+      if (!item.quantity || item.quantity < 1 || !Number.isInteger(item.quantity)) {
+        throw new Error(`Invalid quantity for product ${item.product_id}`);
+      }
+      if (item.price == null || isNaN(item.price) || item.price <= 0) {
+        throw new Error(`Invalid price for product ${item.product_id}`);
+      }
+      return {
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.quantity * item.price,
+        status: "Pending",
+        refundProcessed: false,
+        cancelReason: null,
+        returnReason: null,
+        returnVerified: false,
+        returnDecision: null,
+      };
+    });
+
+    if (isNaN(shipping_chrg) || shipping_chrg < 0) {
+      return res.status(400).json({ success: false, message: "Shipping charge must be a non-negative number" });
+    }
+    if (isNaN(discount) || discount < 0) {
+      return res.status(400).json({ success: false, message: "Discount must be a non-negative number" });
+    }
+    if (isNaN(taxes) || taxes < 0) {
+      return res.status(400).json({ success: false, message: "Taxes must be a non-negative number" });
+    }
+
+    const netAmount = total - discount + taxes + shipping_chrg;
+    if (isNaN(netAmount) || netAmount <= 0) {
+      return res.status(400).json({ success: false, message: "Calculated net amount must be a positive number" });
+    }
+
+    const existingOrder = await Order.findOne({
+      user_id: req.user._id,
+      status: "Pending",
+      isDeleted: false,
+      paymentStatus: { $ne: "Completed" },
+    });
+
+    if (existingOrder) {
+      const existingItems = existingOrder.items.map(i => ({
+        product_id: i.product_id.toString(),
+        quantity: i.quantity,
+      }));
+      const newItems = validatedItems.map(i => ({
+        product_id: i.product_id.toString(),
+        quantity: i.quantity,
+      }));
+      const itemsMatch = existingItems.length === newItems.length &&
+        existingItems.every(ei => newItems.some(ni => ni.product_id === ei.product_id && ni.quantity === ni.quantity));
+
+      if (!itemsMatch) {
+        await Order.findByIdAndUpdate(existingOrder._id, {
+          $set: {
+            isDeleted: true,
+            deletedAt: new Date(),
+            cancellation_reason: "Mismatched items with new cart",
+          },
+        });
+      } else {
+        return res.json({ success: true, message: "Existing temporary order found", order: existingOrder });
+      }
+    }
+
+    const staleDate = new Date(Date.now() - 1 * 60 * 60 * 1000);
+    await Order.updateMany(
+      {
+        user_id: req.user._id,
+        status: "Pending",
+        isDeleted: false,
+        createdAt: { $lt: staleDate },
+        paymentStatus: { $ne: "Completed" },
+      },
+      { $set: { isDeleted: true, deletedAt: new Date() } }
+    );
+
+    const order = new Order({
+      orderID: generateOrderID(),
+      user_id: req.user._id,
+      address_id,
+      items: validatedItems,
       shipping_chrg,
       discount,
       paymentMethod,
       amount,
       taxes,
       total,
+      netAmount,
       currency,
+      coupon: coupon || null,
+      status: "Pending",
+      isDeleted: false,
+    });
+
+    await order.save();
+    res.json({ success: true, message: "Temporary order created successfully", order });
+  } catch (err) {
+    console.error("Error creating temporary order:", err);
+    res.status(500).json({ success: false, message: "Failed to create temporary order", error: err.message });
+  }
+};
+
+export const placeOrder = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const {
+      address_id,
+      items,
+      shipping_chrg = 0,
+      discount = 0,
+      paymentMethod,
+      razorpay_order_id,
+      payment_id,
+      amount,
+      taxes = 0,
+      total,
+      currency = "INR",
+      coupon,
     } = req.body;
 
+    console.log("placeOrder request payload:", req.body);
 
-    
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "No items to order" });
+    }
+    if (!mongoose.isValidObjectId(address_id)) {
+      return res.status(400).json({ message: "Invalid address ID" });
+    }
+    if (!["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
+      return res.status(400).json({ message: `Invalid payment method: ${paymentMethod}. Allowed values: COD, ONLINE, Wallet` });
+    }
+    if (paymentMethod === "ONLINE" && (!razorpay_order_id || !payment_id)) {
+      return res.status(400).json({ message: "Razorpay order ID and payment ID are required for ONLINE payment" });
+    }
+    if (paymentMethod === "Wallet" && !payment_id) {
+      return res.status(400).json({ message: "Payment ID is required for Wallet payment" });
+    }
+    if (amount == null || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ message: "Amount must be a positive number" });
+    }
+    if (total == null || isNaN(total) || total <= 0) {
+      return res.status(400).json({ message: "Total must be a positive number" });
     }
 
     const address = await Address.findOne({ _id: address_id, user_id: userId });
@@ -42,12 +219,9 @@ export const createTempOrder = async (req, res) => {
       return res.status(400).json({ message: "Invalid or unauthorized address" });
     }
 
-    if (!["COD", "ONLINE"].includes(paymentMethod)) {
-      return res.status(400).json({ message: "Invalid payment method" });
-    }
-
     let subtotal = 0;
     const orderItems = [];
+    const stockUpdates = [];
 
     for (const item of items) {
       if (!mongoose.isValidObjectId(item.product_id)) {
@@ -57,28 +231,78 @@ export const createTempOrder = async (req, res) => {
       if (!product || product.isDeleted) {
         return res.status(400).json({ message: `Product not available: ${item.product_id}` });
       }
-
       if (product.available_quantity < item.quantity) {
         return res.status(400).json({ message: `Insufficient stock for: ${product.title}` });
       }
 
-      const price = product.price;
-      const total = price * item.quantity;
-      subtotal += total;
-      product.available_quantity -= item.quantity;
-      await product.save();
+      const price = product.price * (1 - (product.discount || 0) / 100);
+      const itemTotal = price * item.quantity;
+      subtotal += itemTotal;
+
+      stockUpdates.push({ product, quantity: item.quantity });
+
       orderItems.push({
         product_id: item.product_id,
         quantity: item.quantity,
         price,
-        total,
+        total: itemTotal,
+        status: "Pending",
         refundProcessed: false,
+        cancelReason: null,
+        returnReason: null,
+        returnVerified: false,
+        returnDecision: null,
       });
     }
 
-    const netAmount = subtotal + (shipping_chrg || 0) + (taxes || 0) - (discount || 0);
-    if (netAmount < 0) {
-      return res.status(400).json({ message: 'Invalid order amount' });
+    if (isNaN(shipping_chrg) || shipping_chrg < 0) {
+      return res.status(400).json({ message: "Shipping charge must be a non-negative number" });
+    }
+    if (isNaN(discount) || discount < 0) {
+      return res.status(400).json({ message: "Discount must be a non-negative number" });
+    }
+    if (isNaN(taxes) || taxes < 0) {
+      return res.status(400).json({ message: "Taxes must be a non-negative number" });
+    }
+
+    const netAmount = subtotal + shipping_chrg + taxes - discount;
+    if (isNaN(netAmount) || netAmount <= 0) {
+      return res.status(400).json({ message: "Invalid order amount" });
+    }
+
+    if (paymentMethod === "Wallet") {
+      const wallet = await Wallet.findOne({ user_id: userId });
+      if (!wallet || wallet.balance < netAmount) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
+      await Wallet.findOneAndUpdate(
+        { user_id: userId },
+        {
+          $inc: { balance: -netAmount },
+          $push: {
+            transactions: {
+              type: "debit",
+              amount: netAmount,
+              description: `Order ${generateOrderID()}`,
+              date: new Date(),
+            },
+          },
+        }
+      );
+    }
+
+    if (paymentMethod === "ONLINE") {
+      const existingOrder = await Order.findOne({
+        $or: [
+          { razorpay_order_id, isDeleted: false },
+          { payment_id, isDeleted: false },
+        ],
+      });
+      if (existingOrder) {
+        return res.status(400).json({
+          message: `Duplicate order detected: ${existingOrder.razorpay_order_id ? `razorpay_order_id ${razorpay_order_id}` : `payment_id ${payment_id}`}`,
+        });
+      }
     }
 
     const order = new Order({
@@ -86,168 +310,55 @@ export const createTempOrder = async (req, res) => {
       user_id: userId,
       address_id,
       paymentMethod,
-      paymentStatus: "Pending",
-      status: "Pending",
-      shipping_chrg: shipping_chrg || 0,
-      discount: discount || 0,
-      total: subtotal,
-      taxes: taxes || 0,
-      netAmount,
-      items: orderItems,
-      currency: currency || "INR",
-    });
-
-    await order.save();
-    res.status(201).json({ message: "Temporary order created", order });
-  } catch (err) {
-    console.error("Temporary order creation failed:", err);
-    res.status(500).json({ message: "Internal server error", error: err.message });
-  }
-};
-// 1. Place Order
-export const placeOrder = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const {
-      _id,
-      address_id,
-      items,
-      shipping_chrg,
-      discount,
-      paymentMethod,
-      razorpay_order_id,
-      amount,
-      taxes,
-      total,
-      currency,
-    } = req.body;
-
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "No items to order" });
-    }
-
-        if (!mongoose.isValidObjectId(address_id)) {
-      return res.status(400).json({ message: "Invalid address ID" });
-    }
-
-    let order;
-    if (_id && mongoose.isValidObjectId(_id)) {
-      order = await Order.findOne({ _id, user_id: userId });
-      if (!order) {
-        return res.status(404).json({ message: "Temporary order not found" });
-      }
-      if (order.paymentStatus === "Completed") {
-        order.status = "Pending";
-        order.razorpay_order_id = razorpay_order_id;
-        await order.save();
-        await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
-        return res.status(200).json({ message: "Order already paid, status updated", order });
-      }
-    } 
-    
-    if(!order) {
-      const address = await Address.findOne({ _id: address_id, user_id: userId });
-      if (!address) {
-        return res.status(400).json({ message: "Invalid or unauthorized address" });
-      }
-
-      if (!["COD", "ONLINE"].includes(paymentMethod)) {
-        return res.status(400).json({ message: `Invalid payment method: ${paymentMethod}. Allowed values: COD, ONLINE` });
-      }
-
-    let subtotal = 0;
-    const orderItems = [];
-
-    for (const item of items) {
-            if (!mongoose.isValidObjectId(item.product_id)) {
-        return res.status(400).json({ message: `Invalid product ID: ${item.product_id}` });
-      }
-      const product = await Product.findById(item.product_id);
-      if (!product || product.isDeleted) {
-        return res
-          .status(400)
-          .json({ message: `Product not available: ${item.product_id}` });
-      }
-
-      if (product.available_quantity < item.quantity) {
-        return res
-          .status(400)
-          .json({ message: `Insufficient stock for: ${product.title}` });
-      }
-
-      const price = product.price;
-      const total = price * item.quantity;
-      subtotal += total;
-
-              if (paymentMethod === "COD") {
-          product.available_quantity -= item.quantity;
-          await product.save();
-        }
-
-      orderItems.push({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price,
-        total,
-        status: "Pending",
-        refundProcessed: false,
-      });
-    }
-
-    // 4. Calculate net amount
-        const netAmount = subtotal + (shipping_chrg || 0) + (taxes || 0) - (discount || 0);
-    if (netAmount < 0) {
-      return res.status(400).json({ message: 'Invalid order amount' });
-    }
-
-    // 5. Create order document
-     order = new Order({
-      orderID: generateOrderID(),
-      user_id: userId,
-      address_id,
-      paymentMethod,
-      paymentStatus: paymentMethod === "ONLINE" ? "Pending" : "Completed",
+      paymentStatus: paymentMethod === "ONLINE" || paymentMethod === "Wallet" ? "Completed" : "Pending",
       status: "Pending",
       razorpay_order_id: paymentMethod === "ONLINE" ? razorpay_order_id : undefined,
-      shipping_chrg: shipping_chrg || 0,
-      discount: discount || 0,
+      payment_id: paymentMethod === "ONLINE" || paymentMethod === "Wallet" ? payment_id : undefined,
+      shipping_chrg,
+      discount,
       total: subtotal,
-      taxes: taxes || 0,
+      taxes,
       netAmount,
       items: orderItems,
-      currency: currency || "INR",
+      currency,
+      coupon: coupon || null,
+      applied_offers: [],
+      order_date: new Date(),
+      isDeleted: false,
     });
 
-  }
-    if (!order) {
-      console.error("Order is still undefined after initialization");
-      return res.status(500).json({ message: "Failed to initialize order" });
-    }
-
-        if (paymentMethod === "COD") {
-      order.paymentStatus = "Completed";
-      order.status = "Pending";
-    } else if (paymentMethod === "ONLINE") {
-         if (!razorpay_order_id) {
-        return res.status(400).json({ message: "Missing razorpay_order_id for ONLINE payment" });
+    try {
+      await order.save();
+    } catch (err) {
+      console.error("Failed to save order:", err);
+      // Revert stock updates
+      for (const { product, quantity } of stockUpdates) {
+        product.available_quantity += quantity;
+        await product.save();
       }
-      order.razorpay_order_id = razorpay_order_id;
-      order.status = "Pending";
+      return res.status(500).json({ message: "Failed to save order", error: err.message });
     }
 
-    await order.save();
-
-    await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
+    try {
+      await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
+    } catch (err) {
+      console.error("Failed to clear cart:", err);
+      // Optionally revert order and stock
+      await Order.findByIdAndDelete(order._id);
+      for (const { product, quantity } of stockUpdates) {
+        product.available_quantity += quantity;
+        await product.save();
+      }
+      return res.status(500).json({ message: "Failed to clear cart", error: err.message });
+    }
 
     res.status(201).json({ message: "Order placed successfully", order });
   } catch (err) {
     console.error("Order placement failed:", err);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: err.message });
+    res.status(500).json({ message: "Internal server error", error: err.message });
   }
 };
+
 
 // 2. List Orders for User
 export const getUserOrders = async (req, res) => {
@@ -312,169 +423,105 @@ export const getOrderDetails = async (req, res) => {
 // 4. Cancel Order or Item
 export const cancelOrderOrItem = async (req, res) => {
   try {
-    const { orderId, productId, reason } = req.body;
-    const userId = req.user._id;
-
-        if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ message: 'Invalid order ID' });
+    const { orderId, itemId, reason } = req.body;
+    if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(400).json({ success: false, message: "Invalid order ID format" });
     }
-
-    const order = await Order.findOne({ _id: orderId, user_id: userId, isDeleted: false });
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-        const hoursSinceOrder = (Date.now() - new Date(order.order_date)) / (1000 * 60 * 60);
-    if (hoursSinceOrder > 24) {
-      return res.status(400).json({ message: 'Cancellation period (24 hours) expired' });
+    const order = await Order.findById(orderId).populate("items.product_id");
+    if (!order || order.user_id.toString() !== req.user._id.toString()) {
+      return res.status(404).json({ success: false, message: "Order not found or unauthorized" });
     }
-    
-    if (productId) {
-            if (!mongoose.isValidObjectId(productId)) {
-        return res.status(400).json({ message: 'Invalid product ID' });
-      }
-
-      const item = order.items.find(
-        (item) => item.product_id.toString() === productId
-      );
+    if (["Delivered", "Returned", "Cancelled"].includes(order.status)) {
+      return res.status(400).json({ success: false, message: `Order cannot be cancelled, current status: ${order.status}` });
+    }
+    if (itemId) {
+      const item = order.items.find(i => i._id.toString() === itemId);
       if (!item) {
-        return res.status(404).json({ message: "Item not found in order" });
+        return res.status(404).json({ success: false, message: "Item not found in order" });
       }
-      if (item.status !== "Pending") {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: 'Only items that are still "Pending" can be cancelled',
-          });
-      }
-
       item.status = "Cancelled";
-      if (reason && typeof reason === 'string' && reason.trim()) {
-        item.cancelReason = reason.trim();
-      }
-      item.refundProcessed = false;
-      
-      await Product.findByIdAndUpdate(productId, {
+      item.cancellation_reason = reason || "No reason provided";
+      order.total -= item.price * item.quantity;
+      order.netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0) - (order.discount || 0);
+      await Product.findByIdAndUpdate(item.product_id._id, {
         $inc: { available_quantity: item.quantity },
       });
-
-      // Handle refund if online payment
-      if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Completed" && !item.refundProcessed) {
-        const refundResult = await refundToWallet(
-          userId,
-          item.total,
-          `Refund for cancelled item from Order ${order.orderID}`
-        );
-        if(!refundResult) {
-          console.error('Refund failed:', refundResult);
-          return res.status(500).json({ message: 'Refund failed' });
-        }
-        item.refundProcessed = true;
+      if (order.items.every(i => i.status === "Cancelled")) {
+        order.status = "Cancelled";
       }
     } else {
-            if (order.status === 'Cancelled') {
-        return res.status(400).json({ message: 'Order is already cancelled' });
-      }
-      if (order.status === 'Delivered' || order.status === 'OutForDelivery' ) {
-        return res.status(400).json({ message: `Cannot cancel order in ${order.status} status` });
-      }
-
-      let refundableAmount = 0;
-      for (const item of order.items) {
-        if (item.status === "Pending") {
-          item.status = "Cancelled";
-          item.cancelReason = reason && typeof reason === 'string' ? reason.trim() : 'User cancelled';
-          item.refundProcessed = false;
-
-          await Product.findByIdAndUpdate(item.product_id, {
-            $inc: { available_quantity: item.quantity },
-          });
-
-          if (order.paymentMethod === 'ONLINE' && order.paymentStatus === 'Completed' && !item.refundProcessed) {
-            refundableAmount += item.total;
-          }
-        }
-      }
-
-      const allCancelled = order.items.every((item) => item.status === 'Cancelled');
-      if (allCancelled) {
-        order.status = 'Cancelled';
-      }
-
-      if (refundableAmount > 0) {
-        const refundResult = await refundToWallet(
-          userId,
-          refundableAmount,
-          `Refund for cancelled Order ${order.orderID}`
-        );
-        if(!refundResult) {
-          console.error('Refund failed:', refundResult);
-          return res.status(500).json({ message: 'Refund failed' });
-        }
-        order.items.forEach(item => {
-          if (item.status === 'Cancelled') {
-            item.refundProcessed = true;
-          }
-        });
-      }
+      order.status = "Cancelled";
+      order.cancellation_reason = reason || "No reason provided";
+for (const item of order.items) {
+    item.status = "Cancelled";
+    item.cancellation_reason = reason || "No reason provided";
+    await Product.findByIdAndUpdate(item.product_id._id, {
+      $inc: { available_quantity: item.quantity },
+    });
+      };
     }
-
     await order.save();
-    res.json({ message: 'Cancellation processed successfully' });
+    res.json({ success: true, message: "Cancellation processed successfully" });
   } catch (err) {
-    console.error('Error processing cancellation:', err);
-    res.status(500).json({ message: 'Error processing cancellation', error: err.message });
+    res.status(500).json({ success: false, message: "Failed to cancel order", error: err.message });
   }
 };
 
 // 5. Return Delivered Item
 export const returnOrderItem = async (req, res) => {
   try {
-    const { orderId, productId, reason } = req.body;
-    const userId = req.user._id;
+    const { orderId, itemId, reason } = req.body;
+    console.log("🔹 Step 1: Payload", req.body);
 
-    if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ message: 'Invalid order ID' });
-    }
-    if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: 'Invalid product ID' });
+    if (!mongoose.isValidObjectId(orderId) || !mongoose.isValidObjectId(itemId)) {
+      return res.status(400).json({ success: false, message: "Invalid order or item ID format" });
     }
 
-    if (!reason || typeof reason !== 'string' || reason.trim() === '') {
-      return res.status(400).json({ message: 'Return reason is required' });
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ success: false, message: "Return reason is required" });
     }
 
-    const order = await Order.findOne({ _id: orderId, user_id: userId, isDeleted: false });
-    if (!order) return res.status(404).json({ message: 'Order not found' });
+    const order = await Order.findById(orderId).populate("items.product_id");
+    console.log("🔹 Step 2: Fetched order", order);
 
-    const item = order.items.find((item) => item.product_id.toString() === productId);
-    if (!item) return res.status(404).json({ message: 'Item not found in order' });
-
-    if (item.status === 'Returned') {
-      return res.status(400).json({ message: 'Item already in return process or returned' });
-    }
-    if (item.status !== 'Delivered') {
-      return res.status(400).json({ message: 'Only delivered items can be returned' });
+    if (!order || order.user_id.toString() !== req.user._id.toString()) {
+      return res.status(404).json({ success: false, message: "Order not found or unauthorized" });
     }
 
-    const deliveryDate = item.deliveryDate || order.updated_at;
-    const daysSinceDelivery = (Date.now() - new Date(deliveryDate)) / (1000 * 60 * 60 * 24);
-    if (daysSinceDelivery > 7) {
-      return res.status(400).json({ message: 'Return period (7 days) expired' });
+    if (order.status !== "Delivered") {
+      return res.status(400).json({ success: false, message: "Only delivered orders can be returned" });
     }
 
-    item.status = 'Returned';
-    item.returnReason = reason.trim();
-    item.returnVerified = false;
-    item.returnDecision = null;
-    item.refundProcessed = false;
+    const item = order.items.find(i => i._id.toString() === itemId);
+    console.log("🔹 Step 3: Matched item", item);
 
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found in order" });
+    }
+
+    if (item.status !== "Delivered") {
+      return res.status(400).json({ success: false, message: "Item is not eligible for return" });
+    }
+
+    item.status = "Returned";
+    item.return_reason = reason;
+
+    console.log("🔹 Step 4: Updating product quantity...");
+    await Product.findByIdAndUpdate(item.product_id._id, {
+      $inc: { available_quantity: item.quantity },
+    });
+
+    console.log("🔹 Step 5: Saving order...");
     await order.save();
-    res.json({ message: "Return request submitted" });
+
+    res.json({ success: true, message: "Return request submitted" });
+
   } catch (err) {
-    console.error('Error submitting return request:', err);
-    res.status(500).json({ message: "Error submitting return request" });
+    console.error("❌ Step Error:", err);
+    res.status(500).json({ success: false, message: "Failed to process return", error: err.message });
   }
 };
+
 
 const refundToWallet = async (userId, amount, description = "Refund") => {
   const wallet = await Wallet.findOneAndUpdate(

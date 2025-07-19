@@ -72,7 +72,7 @@ const OrderDetails = () => {
         try {
           await returnOrder({
           orderId: order._id,
-          productId: item.product_id._id,
+itemId: item._id, // this is the order item's ID, not the product
           reason,
         });
           fetchOrder();
@@ -80,7 +80,7 @@ const OrderDetails = () => {
 
         } catch (err) {
           dispatch(
-            showAlert({ message: "Return request failed", type: "error" })
+            showAlert({ message: err.message, type: "error" })
           );
         } finally {
           setActionLoading(false);

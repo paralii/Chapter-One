@@ -109,7 +109,7 @@ router.get("/offers", userOfferController.getActiveOffers);
 router.post("/offers/apply-referral", userOfferController.applyReferralOffer);
 router.get("/offers/referral", verifyToken("user"), userOfferController.getReferralOffer);
 router.get("/offers/referral/coupons", verifyToken("user"), userOfferController.getReferralCoupons);
-router.post("/offers/referral/apply", verifyToken("user"), userOfferController.applyReferral);
+router.post("/offers/referral/apply", verifyToken("user"), userOfferController.validateReferral);
 router.get("/offers/referral-stats", verifyToken("user"), userOfferController.getReferralStats);
 
 

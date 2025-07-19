@@ -75,9 +75,9 @@ router.put("/offers/:offerId/toggle-referral", verifyToken("admin"), isAdmin, Ad
 router.post("/offers/referrals", verifyToken("admin"), isAdmin, AdminOfferController.getReferralOffers);
 
 // ===================== SALES REPORT =====================
-// router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport); // Fetch report data (dashboard view)
-// router.get("/sales-report/pdf", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportPDF); // Download PDF
-// router.get("/sales-report/excel", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportExcel); // Download Excel
+router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport); // Fetch report data (dashboard view)
+router.get("/sales-report/pdf", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportPDF); // Download PDF
+router.get("/sales-report/excel", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportExcel); // Download Excel
 
 
 

@@ -15,6 +15,10 @@ export const listOrders = () => {
   return userAxios.get("/orders", { withCredentials: true });
 };
 
+export const getPendingOrder = async () => {
+  return userAxios.get("/orders/pending", { withCredentials: true });
+};
+
 // Get details of a specific order
 export const getOrderDetails = (orderID) => {
   return userAxios.get(`/orders/${orderID}`, { withCredentials: true });
