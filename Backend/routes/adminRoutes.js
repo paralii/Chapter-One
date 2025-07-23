@@ -1,6 +1,7 @@
 import express from "express";
 import { verifyToken, isAdmin } from "../middlewares/authMiddleware.js";
 import * as AdminAuthController from "../controllers/admin/adminAuthController.js";
+import * as adminDashboardController from "../controllers/admin/adminDashboardController.js";
 import * as AdminCustomerController from "../controllers/admin/adminCustomerController.js";
 import * as AdminCategoryController from "../controllers/admin/adminCategoryController.js";
 import * as AdminProductController from "../controllers/admin/adminProductController.js";
@@ -10,8 +11,6 @@ import { uploadProductImages, processProductImages } from "../middlewares/upload
 import * as AdminCouponController from "../controllers/admin/adminCouponController.js";
 import * as salesReportController from "../controllers/admin/salesReportController.js";
 import * as AdminOfferController from "../controllers/admin/adminOfferController.js";
-// import { getSalesReport, generateSalesReportCSV } from "../controllers/admin/salesReportController.js";
-// import { getSalesReport, generateSalesReportPDF, generateSalesReportExcel } from "../controllers/admin/salesReportController.js";
 
 const router = express.Router();
 
@@ -19,6 +18,12 @@ const router = express.Router();
 router.post("/login", AdminAuthController.adminLogin);
 router.post("/logout", AdminAuthController.adminLogout);
 router.post("/refresh-token", AdminAuthController.refreshAdminToken);
+
+// ===================== ADMIN DASHBOARD =====================
+router.get('/dashboard/stats', adminDashboardController.getDashboardStats);
+router.get('/dashboard/top-products', adminDashboardController.getTopProducts);
+router.get('/dashboard/top-categories', adminDashboardController.getTopCategories);
+router.get('/dashboard/ledger-book', adminDashboardController.generateLedgerBook);
 
 // ===================== CUSTOMER MANAGEMENT =====================
 router.get("/customers", verifyToken("admin"), isAdmin, AdminCustomerController.getAllCustomers);

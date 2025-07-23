@@ -102,6 +102,10 @@ export const createTempOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Calculated net amount must be a positive number" });
     }
 
+    if (paymentMethod === "COD" && netAmount > 1000) {
+      return res.status(400).json({ success: false, message: "Cash on Delivery is not allowed for orders above Rs 1000" });
+    }
+
     const existingOrder = await Order.findOne({
       user_id: req.user._id,
       status: "Pending",
@@ -270,6 +274,10 @@ export const placeOrder = async (req, res) => {
       return res.status(400).json({ message: "Invalid order amount" });
     }
 
+    if (paymentMethod === "COD" && netAmount > 1000) {
+      return res.status(400).json({ message: "Cash on Delivery is not allowed for orders above Rs 1000" });
+    }
+
     if (paymentMethod === "Wallet") {
       const wallet = await Wallet.findOne({ user_id: userId });
       if (!wallet || wallet.balance < netAmount) {
@@ -331,7 +339,6 @@ export const placeOrder = async (req, res) => {
       await order.save();
     } catch (err) {
       console.error("Failed to save order:", err);
-      // Revert stock updates
       for (const { product, quantity } of stockUpdates) {
         product.available_quantity += quantity;
         await product.save();

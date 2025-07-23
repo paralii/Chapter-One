@@ -182,6 +182,8 @@ function Checkout() {
         const selectedAddress = addresses.find(a => a._id === defaultAddress);
         const shippingCost = selectedAddress ? calculateShippingCost(selectedAddress.city) : 20;
         const taxes = totalFinalPrice * 0.1;
+        const netAmount = totalFinalPrice + taxes + shippingCost - totalOfferDiscount;
+        const isCODAllowed = netAmount <= 1000;
         const orderData = {
           address_id: defaultAddress,
           shipping_chrg: shippingCost,
@@ -222,6 +224,12 @@ function Checkout() {
           } catch (pendingErr) {
             dispatch(showAlert({ message: "Failed to fetch existing order.", type: "error" }));
           }
+        } else if (err.response?.data?.message?.includes("Cash on Delivery is not allowed")) {
+            dispatch(showAlert({
+              message: "Cash on Delivery is not allowed for orders above Rs 1000. Please choose another payment method.",
+              type: "error",
+            }));
+            setPaymentMethod("ONLINE");
         } else {
           dispatch(showAlert({
             message: err.response?.data?.message || "Failed to initialize checkout.",
@@ -468,7 +476,6 @@ function Checkout() {
             } catch (err) {
               console.error("Payment verification or order creation failed:", err);
               if (err.response?.data?.message?.includes("Duplicate order detected")) {
-                // Check if the order is already completed
                 const pendingOrderRes = await getPendingOrder();
                 if (pendingOrderRes.data.order?.paymentStatus === "Completed") {
                   setTempOrderId(null);
@@ -524,16 +531,25 @@ function Checkout() {
       }
     } catch (err) {
       console.error("Order placement error:", err);
+      if (err.response?.data?.message?.includes("Cash on Delivery is not allowed")) {
+        dispatch(showAlert({
+          message: "Cash on Delivery is not allowed for orders above Rs 1000. Please choose another payment method.",
+          type: "error",
+        }));
+        setPaymentMethod("ONLINE");
+      } else {
       dispatch(showAlert({
         message: "Order failed: " + (err.response?.data?.message || err.message),
         type: "error",
       }));
+      
       navigate("/order-failure", {
         state: {
           orderId: tempOrderId,
           errorMessage: err.response?.data?.message || err.message,
         },
       });
+    }
     } finally {
       setIsLoading(false);
     }
@@ -712,8 +728,8 @@ function Checkout() {
             <div className="space-y-3">
               {[
                 { value: "ONLINE", label: "Debit/Credit Card (Razorpay)", icon: <FaCreditCard className="text-yellow-600" /> },
-                { value: "COD", label: "Cash on Delivery", icon: <FaMoneyBillWave className="text-yellow-600" /> },
-              ].map(({ value, label, icon }) => (
+                { value: "COD", label: "Cash on Delivery", icon: <FaMoneyBillWave className="text-yellow-600" />,disabled: !isCODAllowed, disabledText: "COD not available for orders above ₹1000" },
+              ].map(({ value, label, icon, disabled, disabledText }) => (
                 <label
                   key={value}
                   htmlFor={value}
@@ -727,11 +743,12 @@ function Checkout() {
                     value={value}
                     id={value}
                     checked={paymentMethod === value}
-                    onChange={() => setPaymentMethod(value)}
+                    onChange={() => !disabled && setPaymentMethod(value)}
+                    disabled={disabled}
                     className="accent-yellow-500"
                   />
                   {icon}
-                  <span className="text-gray-800">{label}</span>
+                  <span className="text-gray-800">{label} {disabled && disabledText}</span>
                 </label>
               ))}
             </div>
