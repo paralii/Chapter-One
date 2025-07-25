@@ -22,12 +22,18 @@ export const createOffer = async (req, res) => {
     if (type === "PRODUCT") {
       const product = await Product.findById(product_id);
       if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+      if (product.isDeleted || !product.isListed) {
+        return res.status(400).json({ success: false, message: "Cannot apply offer to blocked or unlisted product" });
+      }
       if (discount_type === "FLAT" && discount_value > product.price) {
         return res.status(400).json({ success: false, message: "Flat discount exceeds product price" });
       }
     } else {
       const category = await Category.findById(category_id);
       if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+      if (category.isDeleted || !category.isListed) {
+        return res.status(400).json({ success: false, message: "Cannot apply offer to unlisted category" });
+      }
     }
     const offer = new Offer({
       type,
@@ -92,8 +98,18 @@ export const updateOffer = async (req, res) => {
     if (!offer) return res.status(404).json({ success: false, message: "Offer not found" });
     if (offer.type === "PRODUCT") {
       const product = await Product.findById(offer.product_id);
+      if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+      if (product.isDeleted || !product.isListed) {
+        return res.status(400).json({ success: false, message: "Cannot apply offer to blocked or unlisted product" });
+      }
       if (discount_type === "FLAT" && discount_value > product.price) {
         return res.status(400).json({ success: false, message: "Flat discount exceeds product price" });
+      }
+    } else if (offer.type === "CATEGORY") {
+      const category = await Category.findById(offer.category_id);
+      if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+      if (category.isDeleted || !category.isListed) {
+        return res.status(400).json({ success: false, message: "Cannot apply offer to unlisted category" });
       }
     }
     if (discount_type === "PERCENTAGE" && discount_value > 100) {
