@@ -380,7 +380,9 @@ export const verifyReturnRequest = async (req, res) => {
     if (!item.returnReason || item.status !== "Returned") {
       return res.status(400).json({ success: false, message: "Item not marked for return" });
     }
-
+    if (item.status !== "Delivered" && item.status !== "Returned") {
+      return res.status(400).json({ success: false, message: "Return can only be approved for delivered items" });
+    }
     if (approve) {
       item.returnVerified = true;
       item.returnDecision = "Approved";
