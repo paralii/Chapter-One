@@ -38,7 +38,7 @@ router.delete("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerCont
 router.get("/categories", verifyToken("admin"), isAdmin, AdminCategoryController.getCategories);
 router.post("/categories", verifyToken("admin"), isAdmin, AdminCategoryController.createCategory);
 router.put("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.updateCategory);
-router.delete("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.deleteCategory);
+router.patch("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.deleteCategory);
 router.get("/categories/:category", AdminCategoryController.getBooksByCategory);
 
 // ===================== PRODUCT MANAGEMENT =====================

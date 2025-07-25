@@ -67,12 +67,40 @@ function CategoryManagement() {
     // Handle add or edit submit.
     const handleSubmit = async (e) => {
       e.preventDefault();
+
+        const trimmedName = formData.name.trim();
+        const trimmedDescription = formData.description.trim();
+
+        const validName = /^[a-zA-Z0-9\s&-]+$/;
+        if (!validName.test(trimmedName)) {
+          toast.error("Category name contains invalid characters.");
+          return;
+        }
+        const validDesc = /^[a-zA-Z0-9\s.,'’\-()&!]*$/;
+        if (trimmedDescription && !validDesc.test(trimmedDescription)) {
+          toast.error("Description contains invalid characters.");
+          return;
+        }
+        if (trimmedDescription && trimmedDescription.length < 3) {
+          toast.error("Description is too short (minimum 3 characters).");
+          return;
+        }
+        if (trimmedDescription.length > 300) {
+          toast.error("Description is too long (maximum 300 characters).");
+          return;
+        }
+
+          const cleanedData = {
+            name: trimmedName,
+            description: trimmedDescription,
+          };
+
       if (editingCategory) {
         // Edit Category
         try {
           await adminAxios.put(
             `/categories/${editingCategory._id}`,
-            formData,
+            cleanedData,
             { withCredentials: true }
           );
           toast.success("Category updated successfully!");
@@ -86,7 +114,7 @@ function CategoryManagement() {
       } else {
         // Add Category
         try {
-          await adminAxios.post(`/categories`, formData, {
+          await adminAxios.post(`/categories`, cleanedData, {
             withCredentials: true,
           });
           toast.success("Category added successfully!");
@@ -131,7 +159,7 @@ function CategoryManagement() {
                 className="bg-[#654321] text-white px-4 py-2 rounded"
                 onClick={async () => {
                   try {
-                    await adminAxios.put(
+                    await adminAxios.patch(
                       `categories/${id}`,
                       { isDeleted: !isDeleted, isListed: !isListed },
                       { withCredentials: true }
@@ -142,7 +170,7 @@ function CategoryManagement() {
                     );
                     onClose();
                   } catch (err) {
-                    toast.error("Failed to delete the category.");
+                    toast.error(err.response?.data?.error || "Failed to delete the category.");
                     onClose();
                   }
                 }}
@@ -230,7 +258,7 @@ function CategoryManagement() {
                             className={`rounded px-3 py-1 text-sm font-medium cursor-pointer ${
                               cat.isDeleted ? "bg-[#654321] hover:bg-[#543210] text-white" : "bg-[#f5deb3] hover:bg-[#e5c49b] text-black"
                             }`}
-                            onClick={() => handleDelete(cat._id, cat.isDeleted)}
+                            onClick={() => handleDelete(cat._id, cat.isDeleted, cat.isListed)}
                           >
                             {cat.isDeleted ? "Restore" : "Delete"}
                           </button>

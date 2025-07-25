@@ -3,6 +3,7 @@ import adminAxios from "../../api/adminAxios";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
+import BookLoader from "../../components/common/BookLoader";
 import { toast } from "react-toastify";
 import showConfirmDialog from "../../components/common/ConformationModal";
 import axios from "axios";
@@ -21,19 +22,33 @@ function UserManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add"); 
   const [selectedUser, setSelectedUser] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const fetchUsers = async () => {
-    try {
-      const response = await adminAxios.get(`/customers`, {
-        params: { search, page, limit },
-      });
-      setUsers(response.data.users);
-      setTotal(response.data.total);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.message || "Error fetching users");
+  setLoading(true);
+  try {
+    const response = await adminAxios.get(`/customers`, {
+      params: { search, page, limit },
+    });
+    const fetchedUsers = response.data.users;
+    const fetchedTotal = response.data.total;
+
+    // Auto-correct if page number is too high
+    const maxPage = Math.ceil(fetchedTotal / limit);
+    if (page > maxPage && maxPage > 0) {
+      setPage(maxPage); // triggers useEffect to refetch
+    } else {
+      setUsers(fetchedUsers);
+      setTotal(fetchedTotal);
     }
-  };
+    setError(null);
+  } catch (err) {
+    setError(err.response?.data?.message || "Error fetching users");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchUsers();
@@ -52,20 +67,30 @@ function UserManagement() {
     setPage(1);
   };
 
-  const toggleBlock = async (id, isBlock) => {
-    showConfirmDialog(
-      `Are you sure you want to ${isBlock ? "Unblock" : "Block"} the user?`,
-      async () => {
-        try {
-          await adminAxios.patch(`/customers/${id}/toggle-block`);
-          fetchUsers();
-          toast.success(`User status ${isBlock ? "Unblocked" : "Blocked"}`);
-        } catch (err) {
-          toast.error("Failed to update block status.");
-        }
+const toggleBlock = async (id, isBlock, name) => {
+  showConfirmDialog({
+    message: `Are you sure you want to ${isBlock ? "Unblock" : "Block"} ${name}?`,
+    twoStep: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "Cancel",
+    nextStepConfig: {
+      message: `Please confirm to ${isBlock ? "Unblock" : "Block"} ${name}`,
+      confirmButtonText: isBlock ? "Unblock" : "Block",
+      cancelButtonText: "Cancel",
+      inputs: [],
+    },
+    onConfirm: async () => {
+      try {
+        await adminAxios.patch(`/customers/${id}/toggle-block`);
+        fetchUsers();
+        toast.success(`User ${isBlock ? "Unblocked" : "Blocked"} successfully`);
+      } catch (err) {
+        toast.error("Failed to update block status.");
       }
-    );
-  };
+    },
+  });
+};
+
 
   const deleteUser = async (id) => {
     showConfirmDialog(
@@ -93,12 +118,7 @@ function UserManagement() {
   };
 
   return (
-    <>
-      {/* External Fonts & Icons */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=Roboto:wght@400;600;700&display=swap"
-        rel="stylesheet"
-      />
+    <>{loading && <BookLoader />}
       <div className="bg-[#fffbf0] min-h-screen flex flex-col sm:flex-row">
         <AdminSidebar />
         <main className="flex-1 p-5 sm:p-10">
@@ -135,6 +155,9 @@ function UserManagement() {
                 Actions
               </div>
             </div>
+            {!loading && users.length === 0 && (
+                <div className="text-center text-gray-500 py-6">No users found.</div>
+              )}
             {users.map((user) => (
               <div
                 key={user._id}
@@ -159,7 +182,7 @@ function UserManagement() {
                         ? "bg-[#654321] hover:bg-[#543210] text-white"
                         : "bg-[#f5deb3] hover:bg-[#e5c49b] text-black"
                     } rounded-[10px] py-2 px-4 text-[14px] font-medium cursor-pointer mr-4`}
-                    onClick={() => toggleBlock(user._id, user.isBlock)}
+                    onClick={() => toggleBlock(user._id, user.isBlocked, user.firstname)}
                   >
                     {user.isBlock ? "Unblock" : "Block"}
                   </button>
@@ -186,25 +209,28 @@ function UserManagement() {
           </div>
           <div className="flex items-center gap-4 mt-5">
             <button
-              onClick={() => setPage(page - 1)}
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
               className={`px-4 py-2 bg-gray-200 text-gray-800 rounded transition-opacity duration-300 ${
                 page <= 1 ? "opacity-0 invisible" : "opacity-100 visible"
               }`}
+              disabled={page <= 1}
             >
               Previous
             </button>
             <span>
-              Page {page} of {totalPages}
+              Page {page} of {totalPages || 1}
             </span>
             <button
-              onClick={() => setPage(page + 1)}
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
               className={`px-4 py-2 bg-gray-200 text-gray-800 rounded transition-opacity duration-300 ${
                 page >= totalPages ? "opacity-0 invisible" : "opacity-100 visible"
               }`}
+              disabled={page >= totalPages}
             >
               Next
             </button>
           </div>
+
         </main>
       </div>
       <UserModal
