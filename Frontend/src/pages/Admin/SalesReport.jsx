@@ -23,7 +23,31 @@ function SalesReport() {
   const totalPages = Math.ceil(total / limit);
   const navigate = useNavigate();
 
+  const validateDates = () => {
+    const today = new Date().toISOString().split("T")[0];
+    if (fromDate && new Date(fromDate) > new Date(today)) {
+      setError("From date cannot be in the future");
+      return false;
+    }
+    if (toDate && new Date(toDate) > new Date(today)) {
+      setError("To date cannot be in the future");
+      return false;
+    }
+    if (fromDate && toDate && new Date(toDate) < new Date(fromDate)) {
+      setError("To date must be after from date");
+      return false;
+    }
+    return true;
+  };
+
   const fetchReports = async () => {
+    if (filterType === "custom" && (!fromDate || !toDate)) {
+      setError("Please select both from and to dates for custom range");
+      return;
+    }
+    if (filterType === "custom" && !validateDates()) {
+      return;
+    }
     try {
       const params = { type: filterType, page, limit };
       if (filterType === "custom" && fromDate && toDate) {
@@ -52,10 +76,18 @@ function SalesReport() {
     if (e.target.value !== "custom") {
       setFromDate("");
       setToDate("");
+      setError(null);
     }
   };
 
   const handleDownload = async (format) => {
+    if (filterType === "custom" && (!fromDate || !toDate)) {
+      setError("Please select both from and to dates for custom range");
+      return;
+    }
+    if (filterType === "custom" && !validateDates()) {
+      return;
+    }
     try {
       const params = { type: filterType };
       if (filterType === "custom" && fromDate && toDate) {
@@ -76,7 +108,7 @@ function SalesReport() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError("Error downloading report");
+      setError(err.response?.data?.message || "Error downloading report");
     }
   };
 
@@ -85,6 +117,7 @@ function SalesReport() {
     setFromDate("");
     setToDate("");
     setPage(1);
+    setError(null);
     fetchReports();
   };
 
@@ -135,6 +168,7 @@ function SalesReport() {
                     value={fromDate}
                     onChange={(e) => setFromDate(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded"
+                    max={new Date().toISOString().split("T")[0]}
                   />
                 </div>
                 <div className="flex-1">
@@ -144,6 +178,8 @@ function SalesReport() {
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded"
+                    max={new Date().toISOString().split("T")[0]}
+                    min={fromDate || "2005-11-22"}
                   />
                 </div>
               </>

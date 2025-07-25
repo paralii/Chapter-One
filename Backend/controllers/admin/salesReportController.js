@@ -2,12 +2,24 @@ import Order from "../../models/Order.js";
 import PDFDocumentWithTables from "pdfkit-table";
 import ExcelJS from "exceljs";
 
-// 🔁 Common report logic
 const getFilteredOrders = async (type, fromDate, toDate) => {
   const now = new Date();
   const matchStage = { status: { $nin: ["Cancelled", "Returned"] } };
 
-  if (type === "daily") {
+  if (type === "custom" && fromDate && toDate) {
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      throw new Error("Invalid date format");
+    }
+    if (from > now || to > now) {
+      throw new Error("Dates cannot be in the future");
+    }
+    if (to < from) {
+      throw new Error("To date must be after from date");
+    }
+    matchStage.createdAt = { $gte: from, $lte: to };
+  } else if (type === "daily") {
     const start = new Date(now.setHours(0, 0, 0, 0));
     const end = new Date(now.setHours(23, 59, 59, 999));
     matchStage.createdAt = { $gte: start, $lte: end };
@@ -23,11 +35,8 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
     const start = new Date(now.getFullYear(), 0, 1);
     const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     matchStage.createdAt = { $gte: start, $lte: end };
-  } else if (type === "custom" && fromDate && toDate) {
-    matchStage.createdAt = {
-      $gte: new Date(fromDate),
-      $lte: new Date(toDate),
-    };
+  } else {
+    throw new Error("Invalid report type");
   }
 
   return await Order.find(matchStage).populate("user_id", "name email");
