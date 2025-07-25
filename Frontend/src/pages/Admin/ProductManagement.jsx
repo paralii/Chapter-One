@@ -435,7 +435,13 @@ function AddProduct({ onCancel, onLogout }) {
       toast.success("Product added successfully!");
       onCancel();
     } catch (err) {
-      setError(err.response?.data?.error || "Error adding product");
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error adding product";
+        setError(errorMessage);
+        if (errorMessage === "Product title already exists") {
+          toast.error("A product with this title already exists.");
+        } else {
+          toast.error("Failed to add product.");
+        }
     } finally {
       setLoading(false);
     }
@@ -859,9 +865,16 @@ function EditProduct({ productId, onCancel, onLogout }) {
       toast.success("Product updated successfully!");
       onCancel();
     } catch (err) {
-setError(err.response?.data?.error || err.response?.data?.message || "Error updating product");    } finally {
-      setLoading(false);
-    }
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error updating product";
+        setError(errorMessage);
+        if (errorMessage === "Product title already exists") {
+          toast.error("A product with this title already exists.");
+        } else {
+          toast.error("Failed to update product.");
+        }
+      } finally {
+        setLoading(false);
+      }
   };
 
   const handleLogout = async () => {

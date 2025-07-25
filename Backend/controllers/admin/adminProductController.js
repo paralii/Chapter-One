@@ -1,9 +1,16 @@
 import Product from "../../models/Product.js";
 import cloudinary from "../../config/cloudinary.js";
 import mongoose from "mongoose";
+import Cart from "../../models/Cart.js";
+import Wishlist from "../../models/Wishlist.js";
 
 export const createProduct = async (req, res) => {
   try {
+    const existingProduct = await Product.findOne({ title: req.body.title });
+      if (existingProduct) {
+        return res.status(400).json({ message: "Product title already exists" });
+      }
+
     if (!req.uploadedImages || req.uploadedImages.length < 3) {
       return res
         .status(400)
@@ -124,7 +131,14 @@ export const deleteProduct = async (req, res) => {
       const publicId = imageUrl.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId);
     }
-
+    await Cart.updateMany(
+      { "items.productId": req.params.id },
+      { $pull: { items: { productId: req.params.id } } }
+    );
+    await Wishlist.updateMany(
+      { "items.productId": req.params.id },
+      { $pull: { items: { productId: req.params.id } } }
+    );
     await Product.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (error) {
