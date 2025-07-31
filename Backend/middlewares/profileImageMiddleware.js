@@ -1,11 +1,9 @@
-// middlewares/profileImageUpload.js
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
-import cloudinary from "../config/cloudinary.js";
+import cloudinaryService from "../utils/services/cloudinaryService.js";
 
-// Cloudinary config for profile images
 const profileImageStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary: cloudinaryService.cloudinaryRaw,
   params: {
     folder: "profile_images",
     allowed_formats: ["jpg", "jpeg", "png", "webp"],
@@ -17,5 +15,5 @@ const profileImageStorage = new CloudinaryStorage({
 
 export const uploadProfileImage = multer({
   storage: profileImageStorage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
-}).single("profileImage"); // accepts a single file under the field name "profileImage"
+  limits: { fileSize: 2 * 1024 * 1024 }, 
+}).single("profileImage"); 

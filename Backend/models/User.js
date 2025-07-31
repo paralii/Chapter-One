@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-import { v4 as uuidv4 } from "uuid";
+import { DEFAULT_PROFILE_IMAGE } from "../utils/constants/constants.js";
+import { generateReferralCode } from "../utils/services/referralService.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -10,10 +11,8 @@ const userSchema = new mongoose.Schema(
     isBlock: { type: Boolean, default: false },
     isVerified: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
-    profileImage: { type: String, default: "https://res.cloudinary.com/chapter-one/image/upload/v1746419585/uploads/niizxavwwvje8ji82hmi.jpg" },
-    referral_code: { type: String, unique: true,
-      default: () => `REF-${uuidv4().split("-")[0].toUpperCase()}`,
-     },
+    profileImage: { type: String, default: DEFAULT_PROFILE_IMAGE },
+    referral_code: { type: String, unique: true, default: generateReferralCode},
     referred_by: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }
   },
   { timestamps: true }

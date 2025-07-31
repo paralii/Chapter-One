@@ -1,27 +1,21 @@
 import User from "../../models/User.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import cloudinary from "../../config/cloudinary.js";
 import { sendChangeEmail } from "../../utils/services/emailService.js";
-import { generateOTP } from "../../utils/services/otpGenerator.js";
+import { generateOTP, storeOtpInRedis, getOtpFromRedis, deleteOtpFromRedis } from "../../utils/services/otpService.js";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
-dotenv.config();
-
-// Get user profile
 export const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user)
       .select("-password");
 
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.status(200).json({ user });
+    if (!user) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "User not found" });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ user });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.IN).json({ message: err.message });
   }
 };
 
-// Update profile details (excluding email)
 export const updateUserProfile = async (req, res) => {
   try {
     const { firstname, lastname } = req.body;
@@ -32,13 +26,12 @@ export const updateUserProfile = async (req, res) => {
       { new: true }
     ).select("-password");
 
-    res.status(200).json({ message: "Profile updated", user: updatedUser });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Profile updated", user: updatedUser });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.IN).json({ message: err.message });
   }
 };
 
-// Change password
 export const changeUserPassword = async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   try {
@@ -46,22 +39,20 @@ export const changeUserPassword = async (req, res) => {
     const isMatch = await bcrypt.compare(oldPassword, user.password);
 
     if (!isMatch)
-      return res.status(400).json({ message: "Incorrect old password" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Incorrect old password" });
 
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    res.status(200).json({ message: "Password updated successfully" });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Password updated successfully" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.IN).json({ message: err.message });
   }
 };
 
-
-
 export const uploadProfileImage = async (req, res) => {
   if (!req.file || !req.file.path)
-    return res.status(400).json({ message: "No image file uploaded" });
+    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "No image file uploaded" });
 
   try {
     const user = await User.findByIdAndUpdate(
@@ -70,49 +61,63 @@ export const uploadProfileImage = async (req, res) => {
       { new: true }
     ).select("-password");
 
-    res.status(200).json({ message: "Profile image updated", user });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Profile image updated", user });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.IN).json({ message: err.message });
   }
 };
 
-
-// Request email change
 export const requestEmailChange = async (req, res) => {
   const { newEmail } = req.body;
-  try {
-    const otp = generateOTP();
-    console.log("Generated OTP:", otp);
-    
-    const emailChangeToken = jwt.sign(
-      { newEmail, otp, userId: req.user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "10m" }
-    );
 
-    await sendChangeEmail(newEmail, otp);
-    res.status(200).json({ message: "OTP sent", emailChangeToken });
+  try {
+    const normalizedNewEmail = newEmail.toLowerCase().trim();
+
+    const otp = generateOTP();
+    console.log("Generated Email Change OTP:", otp);
+
+    await storeOtpInRedis(`emailChange:${normalizedNewEmail}`, JSON.stringify({
+      otp,
+      userId: req.user
+    }));
+
+    await sendChangeEmail(normalizedNewEmail, otp);
+
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "OTP sent to new email" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Request Email Change Error:", err.message);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
 };
 
-// Confirm email change
 export const confirmEmailChange = async (req, res) => {
-  const { otp, emailChangeToken } = req.body;
-  try {
-    const decoded = jwt.verify(emailChangeToken, process.env.JWT_SECRET);
+  const { otp, newEmail } = req.body;
 
-    if (decoded.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+  try {
+    const normalizedEmail = newEmail.toLowerCase().trim();
+    const storedData = await getOtpFromRedis(`emailChange:${normalizedEmail}`);
+
+    if (!storedData) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "OTP expired or invalid" });
     }
+
+    const parsedData = JSON.parse(storedData);
+
+    if (parsedData.otp !== otp) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid OTP" });
+    }
+
     const user = await User.findByIdAndUpdate(
-      decoded.userId,
-      { email: decoded.newEmail.toLowerCase().trim() },
+      parsedData.userId,
+      { email: normalizedEmail },
       { new: true }
     ).select("-password");
-    res.status(200).json({ message: "Email updated", user });
+
+    await deleteOtpFromRedis(`emailChange:${normalizedEmail}`);
+
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Email updated successfully", user });
   } catch (err) {
-    res.status(400).json({ message: "OTP expired or invalid" });
+    console.error("Confirm Email Change Error:", err.message);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
 };

@@ -1,10 +1,10 @@
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
-import cloudinary from "../config/cloudinary.js";
+import cloundinaryService from "../utils/services/cloudinaryService.js"
+import STATUS_CODES from "../utils/constants/statusCodes.js";
 
-// Cloudinary storage configuration
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary: cloundinaryService.cloudinaryRaw,
   params: {
     folder: "uploads", 
     allowed_formats: ["jpg", "jpeg", "png", "webp"], 
@@ -18,25 +18,23 @@ export const uploadProductImages = multer({
 }).array("images", 10); 
 
 export const processProductImages = async (req, res, next) => {
-  // If no files are uploaded, proceed without processing images
   if (!req.files || req.files.length === 0) {
-    req.uploadedImages = []; // Set empty array to indicate no new images
+    req.uploadedImages = [];
     return next();
   }
 
   try {
-    const processedImages = req.files.map(file => file.path); // Cloudinary URLs are already in file.path
+    const processedImages = req.files.map(file => file.path);
 
-    // Optional: Validate Cloudinary URLs if needed
     if (processedImages.some(url => !url.startsWith('https://res.cloudinary.com'))) {
       console.error("Invalid Cloudinary URLs:", processedImages);
-      return res.status(500).json({ error: "Invalid image URLs from Cloudinary" });
+      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: "Invalid image URLs from Cloudinary" });
     }
 
     req.uploadedImages = processedImages;
     next();
   } catch (err) {
     console.error("Error processing images:", err);
-    res.status(500).json({ error: "Error processing images", details: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: "Error processing images", details: err.message });
   }
 };
