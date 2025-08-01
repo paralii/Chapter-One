@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --ext .js --fix"
   },
   "keywords": [],
   "author": "",
@@ -39,11 +41,15 @@
     "react-confirm-alert": "^3.0.6",
     "react-easy-crop": "^5.4.1",
     "react-hot-toast": "^2.5.2",
+    "redis": "^5.6.1",
     "sharp": "^0.33.5",
     "uuid": "^11.1.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "eslint": "^9.32.0",
+    "globals": "^16.3.0",
     "nodemon": "^3.1.9"
   }
 }
