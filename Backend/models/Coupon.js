@@ -8,10 +8,9 @@ const couponSchema = new mongoose.Schema(
     usageLimit: { type: Number, default: 1 }, 
     usedCount: { type: Number, default: 0 },
     usedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    maxDiscountAmount: { type: Number, default: null }, 
+    maxDiscountAmount: { type: Number, default: null, min: 0 }, 
     isActive: { type: Boolean, default: true }, 
     minOrderValue: { type: Number, default: 0, min: 0 },
-    maxDiscountAmount: { type: Number, default: null, min: 0 },
   },
   { timestamps: true }
 );
