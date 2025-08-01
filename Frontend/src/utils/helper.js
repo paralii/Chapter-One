@@ -21,3 +21,14 @@ export const formatCurrency = (amount, currency = "INR") => {
     return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
   };
   
+  export const handleApiResponse = async (request) => {
+  try {
+    const response = await request;
+    if (!response.data.success) {
+      throw new Error(response.data.message || "API request failed");
+    }
+    return response.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || err.message || "API request failed");
+  }
+};

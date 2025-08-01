@@ -1,4 +1,3 @@
-// src/utils/validation.js
 import { MAX_FILE_SIZE, ALLOWED_IMAGE_TYPES } from './constants';
 
 

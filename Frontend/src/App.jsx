@@ -12,8 +12,6 @@ import { SearchProvider } from './context/SearchContext';
 import withUserAuth from "./hoc/withUserAuth";
 import withAdminAuth from "./hoc/withAdminAuth";
 import CustomAlert from "./components/common/CustomAlert";
-import UserPrivateRoute from "./components/User/UserPrivateRoute";
-import AdminPrivateRoute from "./components/Admin/AdminPrivateRoute";
 import OrderSuccess from "./components/User/OrderSuccess";
 import OrderFailure from "./components/User/OrderFailure";
 
@@ -35,7 +33,6 @@ import ProductDetail from "./pages/User/Product/ProductDetail";
 import UserProfileDashboard from "./pages/User/Profile/UserProfileDashboard";
 import UserEditProfile from "./pages/User/Profile/Profile Overview/UserEditProfile";
 import UserAddresses from "./pages/User/Profile/Address/UserAddresses";
-import AddEditAddress from "./pages/User/Profile/Address/AddEditAddress";
 import UserOrder from "./pages/User/Profile/Order/UserOrder";
 import UserWallet from "./pages/User/Profile/Wallet/UserWalletHistory";
 import Cart from "./pages/User/Profile/Profile Overview/Cart";
