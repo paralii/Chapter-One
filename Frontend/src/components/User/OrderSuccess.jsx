@@ -89,4 +89,3 @@ function OrderSuccess() {
 }
 
 export default OrderSuccess;
-1;

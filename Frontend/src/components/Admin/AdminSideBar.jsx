@@ -131,7 +131,7 @@ function AdminSidebar() {
             </div>
             <span className="text-base">Sales Report</span>
           </NavLink>
-          <NavLink
+          {/* <NavLink
             to="/admin/referral-management"
             className={({ isActive }) => navItemClasses(isActive)}
           >
@@ -143,7 +143,7 @@ function AdminSidebar() {
               />
             </div>
             <span className="text-base">Referral</span>
-          </NavLink>
+          </NavLink> */}
         {/*
           <NavLink
             to="/admin/banner"

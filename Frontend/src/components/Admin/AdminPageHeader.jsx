@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState, useEffect} from "react";
 
 const PageHeader = ({
   title,
@@ -8,6 +8,21 @@ const PageHeader = ({
   handleLogout,
   searchPlaceholder = `Sreach ${title}`,
 }) => {
+  const [localSearch, setLocalSearch] = useState(search);
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (localSearch !== search) {
+        onSearchChange({ target: { value: localSearch } });
+      }
+    }, 3000); 
+
+    return () => clearTimeout(delayDebounce);
+  }, [localSearch]);
+
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
   return (
     <header className="flex flex-col items-start gap-[20px] sm:flex-row sm:justify-between sm:items-center mb-[30px]">
       <h1 className="text-[#6e4949] text-[26px] font-semibold">Manage {title}</h1>

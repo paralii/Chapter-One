@@ -4,7 +4,7 @@ import { forgotPassword } from "../../../redux/authSlice";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
-function ForgotPassword({ onClose = () => {}}) {
+function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
 
@@ -20,7 +20,6 @@ function ForgotPassword({ onClose = () => {}}) {
     };
   }, []);
 
-  // Clear email error when typing
   useEffect(() => {
     if (email) setEmailError("");
   }, [email]);
@@ -36,30 +35,23 @@ function ForgotPassword({ onClose = () => {}}) {
 
     const resultAction = await dispatch(forgotPassword({ email }));
     if (forgotPassword.fulfilled.match(resultAction)) {
-      const { otpToken } = resultAction.payload;
-      if (otpToken) {
-        localStorage.setItem("otpToken", otpToken);
-        toast.success("OTP sent to your email for password reset");
-        navigate("/verify-otp", {
-          state: {
-            email,
-            from: "forgot-password",
-            otpToken,
-            backgroundLocation: location.state?.backgroundLocation || "/",
-          },
-          replace: true,
-        });
-      } else {
-        toast.info("If an account exists for this email, reset instructions have been sent.");
-      }
-    } else {
-      toast.error(
-        resultAction.payload?.message ||
-        resultAction.error?.message ||
-        "Failed to send reset instructions."
-      );
-    }
-  };
+    toast.success("OTP sent to your email for password reset");
+    navigate("/verify-otp", {
+      state: {
+        email,
+        from: "forgot-password",
+        backgroundLocation: location.state?.backgroundLocation || "/",
+      },
+      replace: true,
+    });
+  } else {
+    toast.error(
+      resultAction.payload?.message ||
+      resultAction.error?.message ||
+      "Failed to send reset instructions."
+    );
+  }
+};
 
   return (
     <div className="w-full h-screen fixed top-0 left-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

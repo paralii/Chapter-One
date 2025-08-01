@@ -5,6 +5,7 @@ import { FaMapMarkerAlt, FaPhone, FaHome, FaEdit, FaCheckCircle, FaMoneyBillWave
 import Navbar from "../../../../components/common/Navbar";
 import Footer from "../../../../components/common/Footer";
 import BookLoader from "../../../../components/common/BookLoader";
+import { getWallet } from "../../../../api/user/walletAPI";
 import { getAddresses, addAddress, updateAddress } from "../../../../api/user/addressAPI";
 import { getCart } from "../../../../api/user/cartAPI";
 import { createOrder, createTempOrder, getPendingOrder } from "../../../../api/user/orderAPI";
@@ -40,7 +41,8 @@ function Checkout() {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [showPendingOrderDialog, setShowPendingOrderDialog] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-
+  const [isCODAllowed, setIsCODAllowed] = useState(true);
+  const [walletBalance, setWalletBalance] = useState(0);
   const fromBuyNow = location.state?.fromBuyNow;
   const buyNowItem = fromBuyNow ? JSON.parse(localStorage.getItem("buyNowItem")) : null;
 
@@ -84,7 +86,8 @@ function Checkout() {
       try {
         setCouponLoading(true);
         setCartLoading(true);
-        const [cartRes, couponsRes, addressesRes, pendingOrderRes] = await Promise.all([
+        const [walletRes, cartRes, couponsRes, addressesRes, pendingOrderRes] = await Promise.all([
+          getWallet(),
           getCart(),
           getAllCoupons(),
           getAddresses(),
@@ -93,6 +96,7 @@ function Checkout() {
             return { data: { order: null } };
           }),
         ]);
+        setWalletBalance(walletRes.data.wallet?.balance || 0);
         setCart(cartRes.data.cart?.items || []);
         setAvailableCoupons(couponsRes.data.coupons || []);
         setAddresses(addressesRes.data.addresses || []);
@@ -102,7 +106,6 @@ function Checkout() {
           setTempOrderId(pendingOrderRes.data.order._id);
           setPendingOrder(pendingOrderRes.data.order);
           if (pendingOrderRes.data.order.paymentStatus === "Completed") {
-            // Navigate to success page if order is already completed
             dispatch(showAlert({ message: "Order already completed.", type: "info" }));
             navigate("/order-success", {
               state: { orderId: pendingOrderRes.data.order._id },
@@ -183,7 +186,7 @@ function Checkout() {
         const shippingCost = selectedAddress ? calculateShippingCost(selectedAddress.city) : 20;
         const taxes = totalFinalPrice * 0.1;
         const netAmount = totalFinalPrice + taxes + shippingCost - totalOfferDiscount;
-        const isCODAllowed = netAmount <= 1000;
+        setIsCODAllowed(netAmount <= 1000);
         const orderData = {
           address_id: defaultAddress,
           shipping_chrg: shippingCost,
@@ -728,7 +731,8 @@ function Checkout() {
             <div className="space-y-3">
               {[
                 { value: "ONLINE", label: "Debit/Credit Card (Razorpay)", icon: <FaCreditCard className="text-yellow-600" /> },
-                { value: "COD", label: "Cash on Delivery", icon: <FaMoneyBillWave className="text-yellow-600" />,disabled: !isCODAllowed, disabledText: "COD not available for orders above ₹1000" },
+                { value: "COD", label: "Cash on Delivery", icon: <FaMoneyBillWave className="text-yellow-600" />,disabled: !isCODAllowed, disabledText: " not available for orders above ₹1000" },
+                { value: "Wallet", label: "Wallet ", icon: <FaWallet className="text-yellow-600" />, disabled: walletBalance <= 0, disabledText: "Balance Insufficient " },
               ].map(({ value, label, icon, disabled, disabledText }) => (
                 <label
                   key={value}
@@ -833,7 +837,7 @@ function Checkout() {
                     {isApplyingCoupon ? "Applying..." : "Apply"}
                   </button>
                 </div>
-                <label className="block mb-1 font-medium text-yellow-600">Apply Referral Code</label>
+                {/* <label className="block mb-1 font-medium text-yellow-600">Apply Referral Code</label>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -853,7 +857,7 @@ function Checkout() {
                   >
                     {isApplyingCoupon ? "Applying..." : "Apply"}
                   </button>
-                </div>
+                </div> */}
                 {bestCoupon && (
                   <p className="text-sm text-green-600">
                     Suggested: Use <strong>{bestCoupon.code}</strong> for ₹{bestCoupon.discount.toFixed(2)} off!

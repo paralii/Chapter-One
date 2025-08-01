@@ -13,14 +13,13 @@ function ReferralDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [offerRes, couponsRes, statsRes] = await Promise.all([
+        const [offerRes,  statsRes] = await Promise.all([
           getReferralOffer(),
           getReferralCoupons(),
           getReferralStats(),
         ]);
         setReferralLink(offerRes.data.referralLink);
         setReferralCode(offerRes.data.referralCode);
-        setCoupons(couponsRes.data.coupons);
         setReferrals(statsRes.data.referrals);
       } catch (err) {
         setError(err.response?.data?.message || "Error fetching referral data");
@@ -85,7 +84,7 @@ function ReferralDashboard() {
             </div>
 
             {/* Referral Link */}
-            <div className="bg-white rounded-2xl p-6 shadow-md">
+            {/* <div className="bg-white rounded-2xl p-6 shadow-md">
               <h2 className="text-lg font-bold mb-2 font-Outfit text-[#3c2712]">
                 Your Referral Link
               </h2>
@@ -111,46 +110,7 @@ function ReferralDashboard() {
                   Share
                 </button>
               </div>
-            </div>
-
-            {/* Coupons */}
-            <div className="bg-white rounded-2xl p-6 shadow-md">
-              <h2 className="text-lg font-bold mb-2 font-Outfit text-[#3c2712]">
-                Your Coupons
-              </h2>
-              {coupons.length === 0 ? (
-                <p className="text-gray-600 font-Inter">No coupons available.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-[#edece9]">
-                        <th className="p-3 text-left font-Outfit text-[#3c2712]">
-                          Coupon Code
-                        </th>
-                        <th className="p-3 text-left font-Outfit text-[#3c2712]">
-                          Discount
-                        </th>
-                        <th className="p-3 text-left font-Outfit text-[#3c2712]">
-                          Expiry Date
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {coupons.map((coupon) => (
-                        <tr key={coupon._id} className="border-b border-gray-200">
-                          <td className="p-3 font-Inter">{coupon.code}</td>
-                          <td className="p-3 font-Inter">{coupon.discountPercentage}%</td>
-                          <td className="p-3 font-Inter">
-                            {new Date(coupon.expirationDate).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            </div> */}
 
             {/* Back Button */}
             <div className="flex justify-center">

@@ -8,7 +8,7 @@ import { signupUser } from "../../../redux/authSlice";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "react-toastify";
 
-function Signup({ onClose = () => {} }) {
+function Signup() {
   const location = useLocation();
   const query = new URLSearchParams(location.search);
   const initialReferralCode = query.get("ref") || "";
@@ -34,7 +34,6 @@ function Signup({ onClose = () => {} }) {
 
   const handleClose = () => {
     navigate("/", { replace: true });
-    onClose();
   };
 
   const openModalRoute = (path) => {
@@ -101,10 +100,9 @@ function Signup({ onClose = () => {} }) {
       );
 
       if (signupUser.fulfilled.match(resultAction)) {
-        const { otpToken } = resultAction.payload || {};
         toast.success("Signup successful! Check your email for the OTP.");
         navigate("/verify-otp", {
-          state: { email, otpToken, backgroundLocation: "/", from: "signup" },
+          state: { email, backgroundLocation: "/", from: "signup" },
         });
       } else {
         const errors = resultAction.payload?.errors;

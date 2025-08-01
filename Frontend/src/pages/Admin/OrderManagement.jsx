@@ -165,54 +165,59 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
         handleClear={handleClear}
         handleLogout={onLogout}
       />
-      <div className="mb-4 flex flex-col sm:flex-row gap-4">
-        <div>
-          <label className="mr-2">Sort by:</label>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="border rounded px-2 py-1"
-          >
-            <option value="order_date">Order Date</option>
-            <option value="status">Status</option>
-          </select>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className="border rounded px-2 py-1 ml-2"
-          >
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
-          </select>
-        </div>
-        <div>
-          <label className="mr-2">Filter by Status:</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded px-2 py-1"
-          >
-            <option value="">All</option>
-            <option value="Pending">Pending</option>
-            <option value="Shipped">Shipped</option>
-            <option value="OutForDelivery">Out for Delivery</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div>
-          <label className="mr-2">Filter by Payment:</label>
-          <select
-            value={paymentMethodFilter}
-            onChange={(e) => setPaymentMethodFilter(e.target.value)}
-            className="border rounded px-2 py-1"
-          >
-            <option value="">All</option>
-            <option value="COD">COD</option>
-            <option value="ONLINE">Online</option>
-          </select>
-        </div>
-      </div>
+      <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+  <div className="flex flex-col">
+    <label className="mb-1 font-medium text-sm text-gray-700">Sort by:</label>
+    <div className="flex gap-2">
+      <select
+        value={sort}
+        onChange={(e) => setSort(e.target.value)}
+        className="border rounded px-2 py-1 flex-1"
+      >
+        <option value="order_date">Order Date</option>
+        <option value="status">Status</option>
+      </select>
+      <select
+        value={sortOrder}
+        onChange={(e) => setSortOrder(e.target.value)}
+        className="border rounded px-2 py-1 flex-1"
+      >
+        <option value="desc">Descending</option>
+        <option value="asc">Ascending</option>
+      </select>
+    </div>
+  </div>
+
+  <div className="flex flex-col">
+    <label className="mb-1 font-medium text-sm text-gray-700">Filter by Status:</label>
+    <select
+      value={statusFilter}
+      onChange={(e) => setStatusFilter(e.target.value)}
+      className="border rounded px-2 py-1"
+    >
+      <option value="">All</option>
+      <option value="Pending">Pending</option>
+      <option value="Shipped">Shipped</option>
+      <option value="OutForDelivery">Out for Delivery</option>
+      <option value="Delivered">Delivered</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+  </div>
+
+  <div className="flex flex-col">
+    <label className="mb-1 font-medium text-sm text-gray-700">Filter by Payment:</label>
+    <select
+      value={paymentMethodFilter}
+      onChange={(e) => setPaymentMethodFilter(e.target.value)}
+      className="border rounded px-2 py-1"
+    >
+      <option value="">All</option>
+      <option value="COD">COD</option>
+      <option value="ONLINE">Online</option>
+    </select>
+  </div>
+</div>
+
       {loading ? (
         <div className="text-center"><BookLoader/></div>
       ) : orders.length === 0 ? (

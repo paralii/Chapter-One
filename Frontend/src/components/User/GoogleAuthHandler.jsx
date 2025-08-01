@@ -16,7 +16,7 @@ const urlParams = new URLSearchParams(location.search);
     console.log("GoogleAuthHandler mounted, URL params:", urlParams.toString());
     console.log("Is Google callback:", isGoogleCallback, "User:", user);
 
-    if (!user && isGoogleCallback) {
+    if (user && isGoogleCallback) {
       setIsFetching(true);
       dispatch(fetchCurrentUser())
         .unwrap()

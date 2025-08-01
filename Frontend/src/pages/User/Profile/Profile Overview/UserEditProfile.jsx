@@ -12,6 +12,7 @@ import OTPVerification from "../../Authentication/OTPVerification";
 import { useDispatch } from "react-redux";
 import { showAlert } from "../../../../redux/alertSlice.js";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "react-toastify";
 
 const UserEditProfile = () => {
   const navigate = useNavigate();
@@ -25,7 +26,6 @@ const UserEditProfile = () => {
   const [originalEmail, setOriginalEmail] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
-  const [token, setToken] = useState("");
   const [file, setFile] = useState(null);
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -33,8 +33,6 @@ const UserEditProfile = () => {
     newPassword: "",
   });
   const [passwordError, setPasswordError] = useState("");
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [emailOtpData, setEmailOtpData] = useState({ email: "", otpToken: "" });
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState({
@@ -51,13 +49,16 @@ const UserEditProfile = () => {
       })
       .catch((err) => {
         console.error("Error fetching user profile:", err);
-        alert("Failed to fetch user profile. Please try again.");
+        dispatch(showAlert({
+          message: "Failed to fetch user profile. Please try again.",
+          type: "error",
+        }));
       });
   }, []);
   useEffect(() => {
     if (location.state?.emailChanged && location.state?.newEmail) {
       setForm((prev) => ({ ...prev, email: location.state.newEmail }));
-      navigate("/profile/edit", { replace: true }); // clean up URL state
+      navigate("/profile/edit", { replace: true }); 
       toast.success("Email changed successfully!");
     }
   }, [location, navigate]);
@@ -97,8 +98,7 @@ const UserEditProfile = () => {
     }
 
     requestEmailChange(form.email)
-      .then((res) => {
-        setToken(res.data.emailChangeToken);
+      .then(() => {
         setOtpSent(true);
         dispatch(
           showAlert({
@@ -122,8 +122,8 @@ const UserEditProfile = () => {
 
   const handleVerifyOtp = async () => {
     setLoading((prev) => ({ ...prev, verifyOtp: true }));
-    confirmEmailChange(otp, token)
-      .then((res) => {
+    confirmEmailChange({otp, newEmail: form.email})
+      .then(() => {
         dispatch(
           showAlert({ message: "Email updated successfully!", type: "success" })
         );
@@ -185,11 +185,9 @@ const UserEditProfile = () => {
           const token = res.data.emailChangeToken;
 
           localStorage.setItem("otpToken", token);
-          setEmailOtpData({ email: form.email, otpToken: token });
-          setShowOtpModal(true);
-          return; // stop further processing until OTP is verified
+          return; 
         } catch (err) {
-          toast.error("Failed to initiate email change verification.");
+          toast.error( err.message || "Failed to initiate email change verification.");
           return;
         } finally {
           setLoading((prev) => ({ ...prev, updateProfile: false }));
@@ -426,13 +424,7 @@ const UserEditProfile = () => {
           </div>
         </form>
       </div>
-      {showOtpModal && (
-        <OTPVerification
-          email={emailOtpData.email}
-          otpToken={emailOtpData.otpToken}
-          from="change-email"
-        />
-      )}
+      
     </div>
   );
 };

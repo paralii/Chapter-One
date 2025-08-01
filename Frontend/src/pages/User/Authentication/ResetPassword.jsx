@@ -1,21 +1,20 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { resetPassword, resetResetPasswordMessage } from "../../../redux/authSlice";
 import { Eye, EyeOff } from "lucide-react";
 
-const ResetPassword = ({ onClose = () => {}}) => {
+const ResetPassword = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { token } = useParams();
+  const { token } = location.state || {};
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { otp } = location.state || {};
 
   const { loading, error, resetPasswordMessage } = useSelector((state) => state.auth);
 
@@ -56,17 +55,6 @@ const ResetPassword = ({ onClose = () => {}}) => {
     }
   }, [error, navigate]);
 
-  useEffect(() => {
-    if (!token || !otp) {
-      toast.error("Session expired! Please try again.", { toastId: "session-expired" });
-      navigate("/forgot-password", {
-        state: { backgroundLocation: location.state?.backgroundLocation || "/" },
-        replace: true,
-      });
-    }
-  }, [token, otp, navigate]);
-
-
   const isStrongPassword = (password) => {
     const regex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -88,7 +76,7 @@ const ResetPassword = ({ onClose = () => {}}) => {
       return;
     }
 
-    dispatch(resetPassword({ otpToken: token, otp, newPassword }));
+    dispatch(resetPassword({ token, newPassword }));
   };
 
   return (

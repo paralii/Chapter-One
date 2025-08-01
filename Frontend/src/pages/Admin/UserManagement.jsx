@@ -130,12 +130,12 @@ const toggleBlock = async (id, isBlock, name) => {
             handleLogout={handleLogout}
           />
 
-          <button
+          {/* <button
             className="py-2 px-4 bg-[#654321] hover:bg-[#543210] text-white rounded-lg mb-4 font-medium"
             onClick={() => openModal("add")}
           >
             + Add New User
-          </button>
+          </button> */}
 
           <div className="bg-[#eee9dc] rounded-[15px] mb-[30px] overflow-x-auto sm:overflow-hidden">
             <div className="bg-[#eee9dc] border-b border-b-white p-[10px] flex min-w-[800px] sm:min-w-0">
@@ -148,9 +148,9 @@ const toggleBlock = async (id, isBlock, name) => {
               <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
                 Name
               </div>
-              <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
+              {/* <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
                 Block Status
-              </div>
+              </div> */}
               <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
                 Actions
               </div>
@@ -172,9 +172,9 @@ const toggleBlock = async (id, isBlock, name) => {
                 <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
                   {`${user.firstname} ${user.lastname}`}
                 </div>
-                <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
+                {/* <div className="flex-1 p-[10px] text-[#484848] text-[14px] font-medium flex items-center">
                   {user.isBlock ? "Blocked" : "Active"}
-                </div>
+                </div> */}
                 <div className="flex-1 p-[10px] flex items-center">
                   <button
                     className={`${
