@@ -1,7 +1,7 @@
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import User from '../models/User.js';
-import { generateTokens } from '../utils/auth/generateTokens.js';
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import User from "../models/User.js";
+import { generateTokens } from "../utils/auth/generateTokens.js";
 
 passport.use(
   new GoogleStrategy(
@@ -19,11 +19,13 @@ passport.use(
             lastname: profile.name.familyName,
             email: profile.emails[0].value,
             isVerified: true,
-            password: '',
+            password: "",
           });
           await user.save();
         } else if (!user.isVerified) {
-          return done(null, false, { message: 'Please verify your email first.' });
+          return done(null, false, {
+            message: "Please verify your email first.",
+          });
         }
         const tokens = generateTokens(user, false);
         return done(null, { user, tokens });
