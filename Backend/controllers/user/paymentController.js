@@ -4,6 +4,7 @@ import Order from "../../models/Order.js";
 import mongoose from "mongoose";
 import Product from "../../models/Product.js";
 import Wallet from "../../models/Wallet.js";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const createRazorpayOrder = async (req, res) => {
   try {
@@ -11,18 +12,18 @@ export const createRazorpayOrder = async (req, res) => {
 
 
     if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ message: `Invalid amount: ${amount}` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Invalid amount: ${amount}` });
     }
     if (!mongoose.isValidObjectId(order_id)) {
-      return res.status(400).json({ message: `Invalid order ID: ${order_id}` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Invalid order ID: ${order_id}` });
     }
 
     const order = await Order.findById(order_id);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Order not found" });
     }
     if (order.paymentStatus === "Completed") {
-      return res.status(400).json({ message: "Order already paid" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Order already paid" });
     }
 
     const options = {
@@ -32,10 +33,10 @@ export const createRazorpayOrder = async (req, res) => {
     };
 
     const razorpayOrder = await razorpay.orders.create(options);
-    res.status(200).json({ success: true, order: razorpayOrder });
+    res.status(STATUS_CODES.SUCCESS.CREATED).json({ success: true, order: razorpayOrder });
   } catch (err) {
     console.error("Razorpay order creation failed:", err);
-    res.status(500).json({ message: "Failed to create Razorpay order" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to create Razorpay order" });
   }
 };
 
@@ -54,7 +55,15 @@ export const verifyPayment = async (req, res) => {
     razorpay_signature = razorpay_signature.trim();
 
     if (!mongoose.isValidObjectId(order_id)) {
-      return res.status(400).json({ message: "Invalid order ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid order ID" });
+    }
+
+    const order = await Order.findById(order_id);
+    if (!order) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
+    }
+    if (order.paymentStatus === "Completed") {
+      return res.status(STATUS_CODES.SUCCESS.CREATED).json({ success: true, message: "Payment already verified" });
     }
 
     const generatedSignature = crypto
@@ -65,25 +74,10 @@ export const verifyPayment = async (req, res) => {
       await Order.findByIdAndUpdate(order_id, { paymentStatus: "Failed" });
 
       return res
-        .status(400)
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
         .json({ success: false, message: "Invalid signature" });
     }
-
-    // 🔍 Find order by Razorpay order ID
-    const order = await Order.findOne({ _id: order_id });
-    if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    }
-    // 🛑 Prevent double verification
-    if (order.paymentStatus === "Completed") {
-      return res
-        .status(200)
-        .json({ success: true, message: "Payment already verified" });
-    }
-
-    // ✅ Update payment status
+    
     order.paymentStatus = "Completed";
     order.payment_id = razorpay_payment_id;
     order.razorpay_order_id = razorpay_order_id;
@@ -91,7 +85,7 @@ export const verifyPayment = async (req, res) => {
     await order.save();
 
     res
-      .status(200)
+      .status(STATUS_CODES.SUCCESS.CREATED)
       .json({ success: true, message: "Payment verified and order updated" });
   } catch (err) {
     console.error("Payment verification failed:", err);
@@ -107,6 +101,6 @@ export const verifyPayment = async (req, res) => {
           }
         }
     }
-    res.status(500).json({ message: "Internal server error" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Internal server error" });
   }
   }}

@@ -1,6 +1,6 @@
 import Address from "../../models/Address.js";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
-// Add Address
 export const addAddress = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -12,9 +12,11 @@ export const addAddress = async (req, res) => {
     const newAddress = new Address({ ...req.body, user_id: userId });
     const saved = await newAddress.save();
 
-    res.status(201).json({ message: "Address added successfully", address: saved });
+    res
+      .status(STATUS_CODES.SUCCESS.CREATED)
+      .json({ message: "Address added successfully", address: saved });
   } catch (error) {
-    res.status(500).json({ message: "Failed to add address", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to add address", error });
   }
 };
 
@@ -23,48 +25,48 @@ export const getAddressById = async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
 
-    // Fetch address by address ID and ensure it belongs to the current user
-    const address = await Address.findOne({ _id: id, user_id: userId })
-      .populate('user_id', 'name email'); // populate user data (name, email, etc.)
+    const address = await Address.findOne({
+      _id: id,
+      user_id: userId,
+    }).populate("user_id", "name email");
 
-    if (!address) return res.status(404).json({ message: "Address not found" });
+    if (!address) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Address not found" });
 
-    res.status(200).json({ address });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ address });
   } catch (error) {
-    res.status(500).json({ message: "Failed to get address", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to get address", error });
   }
 };
 
-// Modify API to get the default address by the user_id
 export const getDefaultAddress = async (req, res) => {
   try {
-    const userId = req.user._id;  // Get user ID from auth middleware
+    const userId = req.user._id;
 
     const address = await Address.findOne({ user_id: userId, isDefault: true });
     if (!address) {
-      return res.status(404).json({ message: "Default address not found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Default address not found" });
     }
 
-    res.status(200).json({ address });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ address });
   } catch (error) {
-    res.status(500).json({ message: "Failed to get default address", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to get default address", error });
   }
 };
 
-
-// Get all addresses
 export const getAllUserAddresses = async (req, res) => {
   try {
     const userId = req.user._id;
-    const addresses = await Address.find({ user_id: userId }).sort({ isDefault: -1, createdAt: -1 });
+    const addresses = await Address.find({ user_id: userId }).sort({
+      isDefault: -1,
+      createdAt: -1,
+    });
 
-    res.status(200).json({ addresses });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ addresses });
   } catch (error) {
-    res.status(500).json({ message: "Failed to get addresses", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to get addresses", error });
   }
 };
 
-// Update Address
 export const updateAddress = async (req, res) => {
   try {
     const { id } = req.params;
@@ -80,38 +82,39 @@ export const updateAddress = async (req, res) => {
       { new: true }
     );
 
-    if (!updated) return res.status(404).json({ message: "Address not found" });
+    if (!updated) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Address not found" });
 
-    res.status(200).json({ message: "Address updated", address: updated });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Address updated", address: updated });
   } catch (error) {
-    res.status(500).json({ message: "Failed to update address", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to update address", error });
   }
 };
 
-// Delete Address
 export const deleteAddress = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const deleted = await Address.findOneAndDelete({ _id: id, user_id: userId });
+    const deleted = await Address.findOneAndDelete({
+      _id: id,
+      user_id: userId,
+    });
     if (deleted.isDefault) {
       await Address.findOneAndUpdate(
         { user_id: userId },
         { isDefault: true },
-        { sort: { createdAt: -1 } } // Most recent address becomes default
+        { sort: { createdAt: -1 } }
       );
     }
-    
-    if (!deleted) return res.status(404).json({ message: "Address not found" });
 
-    res.status(200).json({ message: "Address deleted" });
+    if (!deleted) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Address not found" });
+
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Address deleted" });
   } catch (error) {
-    res.status(500).json({ message: "Failed to delete address", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to delete address", error });
   }
 };
 
-// Set Default Address
 export const setDefaultAddress = async (req, res) => {
   try {
     const { id } = req.params;
@@ -125,10 +128,10 @@ export const setDefaultAddress = async (req, res) => {
       { new: true }
     );
 
-    if (!updated) return res.status(404).json({ message: "Address not found" });
+    if (!updated) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Address not found" });
 
-    res.status(200).json({ message: "Default address set", address: updated });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Default address set", address: updated });
   } catch (error) {
-    res.status(500).json({ message: "Failed to set default address", error });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to set default address", error });
   }
 };

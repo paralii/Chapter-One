@@ -3,6 +3,7 @@ import Product from "../../models/Product.js";
 import Category from "../../models/Category.js";
 import Coupon from "../../models/Coupon.js";
 import User from "../../models/User.js";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const getReferralOffer = async (req, res) => {
   try {
@@ -10,7 +11,7 @@ export const getReferralOffer = async (req, res) => {
     if (!offer) {
       const user = await User.findById(req.user._id);
       if (!user) {
-        return res.status(404).json({ success: false, message: "User not found" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "User not found" });
       }
       offer = new Offer({
         type: "REFERRAL",
@@ -19,18 +20,18 @@ export const getReferralOffer = async (req, res) => {
         discount_type: "PERCENTAGE",
         discount_value: 10,
         start_date: new Date(),
-        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
         is_active: true,
       });
       await offer.save();
     }
     if (!offer.is_active) {
-      return res.status(403).json({ success: false, message: offer.block_message || "Referral offer is disabled" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ success: false, message: offer.block_message || "Referral offer is disabled" });
     }
     const referralLink = `${process.env.CORS_URL}/signup?ref=${offer.referral_code}`;
     res.json({ success: true, referralCode: offer.referral_code, referralLink });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -39,7 +40,7 @@ export const getReferralStats = async (req, res) => {
     const referrals = await User.countDocuments({ referred_by: req.user._id });
     res.json({ success: true, referrals });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -54,7 +55,7 @@ export const getReferralCoupons = async (req, res) => {
     });
     res.json({ success: true, coupons });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -78,7 +79,7 @@ export const validateReferral = async (req, res) => {
     }
     res.json({ success: true, message: "Referral code validated", offer: referrerOffer });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -96,7 +97,7 @@ export const getActiveOffers = async (req, res) => {
       .populate("user_id", "email");
     res.json({ success: true, offers });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -112,9 +113,9 @@ export const applyReferralOffer = async (req, res) => {
       is_active: true,
       end_date: { $gte: new Date() },
     }).populate("user_id", "email");
-    if (!offer) return res.status(404).json({ success: false, message: "Invalid or inactive referral code" });
+    if (!offer) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Invalid or inactive referral code" });
     res.json({ success: true, offer });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };

@@ -1,4 +1,5 @@
 import Product from "../../models/Product.js";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const getProducts = async (req, res) => {
   const {
@@ -65,9 +66,9 @@ export const getProducts = async (req, res) => {
       .skip(skip)
       .limit(limitNumber);
 
-    res.status(200).json({ products, total, totalPages });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ products, total, totalPages });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
 
@@ -75,10 +76,10 @@ export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate("category_id");
     if (!product || product.isDeleted) {
-      return res.status(404).json({ message: "Product not available" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Product not available" });
     }
-    res.status(200).json(product);
+    res.status(STATUS_CODES.SUCCESS.OK).json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };

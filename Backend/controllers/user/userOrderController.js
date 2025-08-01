@@ -8,6 +8,7 @@ import fsPromises from "fs/promises";
 import path from "path";
 import Cart from "../../models/Cart.js";
 import mongoose from "mongoose";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 const INVOICE_DIR = path.join(process.cwd(), 'invoices');
 
@@ -25,7 +26,7 @@ export const getPendingOrder = async (req, res) => {
     res.json({ success: true, order });
   } catch (err) {
     console.error("Error fetching pending order:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch pending order", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to fetch pending order", error: err.message });
   }
 };
 
@@ -45,22 +46,22 @@ export const createTempOrder = async (req, res) => {
     } = req.body;
 
     if (!address_id) {
-      return res.status(400).json({ success: false, message: "Address ID is required" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Address ID is required" });
     }
     if (!mongoose.isValidObjectId(address_id)) {
-      return res.status(400).json({ success: false, message: "Invalid address ID format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid address ID format" });
     }
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: "Items array is required and cannot be empty" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Items array is required and cannot be empty" });
     }
     if (!paymentMethod || !["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
-      return res.status(400).json({ success: false, message: "Payment method must be COD, ONLINE, or Wallet" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Payment method must be COD, ONLINE, or Wallet" });
     }
     if (amount == null || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, message: "Amount must be a positive number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Amount must be a positive number" });
     }
     if (total == null || isNaN(total) || total <= 0) {
-      return res.status(400).json({ success: false, message: "Total must be a positive number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Total must be a positive number" });
     }
 
     const validatedItems = items.map((item) => {
@@ -88,22 +89,22 @@ export const createTempOrder = async (req, res) => {
     });
 
     if (isNaN(shipping_chrg) || shipping_chrg < 0) {
-      return res.status(400).json({ success: false, message: "Shipping charge must be a non-negative number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Shipping charge must be a non-negative number" });
     }
     if (isNaN(discount) || discount < 0) {
-      return res.status(400).json({ success: false, message: "Discount must be a non-negative number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Discount must be a non-negative number" });
     }
     if (isNaN(taxes) || taxes < 0) {
-      return res.status(400).json({ success: false, message: "Taxes must be a non-negative number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Taxes must be a non-negative number" });
     }
 
     const netAmount = total - discount + taxes + shipping_chrg;
     if (isNaN(netAmount) || netAmount <= 0) {
-      return res.status(400).json({ success: false, message: "Calculated net amount must be a positive number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Calculated net amount must be a positive number" });
     }
 
     if (paymentMethod === "COD" && netAmount > 1000) {
-      return res.status(400).json({ success: false, message: "Cash on Delivery is not allowed for orders above Rs 1000" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cash on Delivery is not allowed for orders above Rs 1000" });
     }
 
     const existingOrder = await Order.findOne({
@@ -172,7 +173,7 @@ export const createTempOrder = async (req, res) => {
     res.json({ success: true, message: "Temporary order created successfully", order });
   } catch (err) {
     console.error("Error creating temporary order:", err);
-    res.status(500).json({ success: false, message: "Failed to create temporary order", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to create temporary order", error: err.message });
   }
 };
 
@@ -197,30 +198,30 @@ export const placeOrder = async (req, res) => {
     console.log("placeOrder request payload:", req.body);
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "No items to order" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "No items to order" });
     }
     if (!mongoose.isValidObjectId(address_id)) {
-      return res.status(400).json({ message: "Invalid address ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid address ID" });
     }
     if (!["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
-      return res.status(400).json({ message: `Invalid payment method: ${paymentMethod}. Allowed values: COD, ONLINE, Wallet` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Invalid payment method: ${paymentMethod}. Allowed values: COD, ONLINE, Wallet` });
     }
     if (paymentMethod === "ONLINE" && (!razorpay_order_id || !payment_id)) {
-      return res.status(400).json({ message: "Razorpay order ID and payment ID are required for ONLINE payment" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Razorpay order ID and payment ID are required for ONLINE payment" });
     }
     if (paymentMethod === "Wallet" && !payment_id) {
-      return res.status(400).json({ message: "Payment ID is required for Wallet payment" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Payment ID is required for Wallet payment" });
     }
     if (amount == null || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ message: "Amount must be a positive number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Amount must be a positive number" });
     }
     if (total == null || isNaN(total) || total <= 0) {
-      return res.status(400).json({ message: "Total must be a positive number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Total must be a positive number" });
     }
 
     const address = await Address.findOne({ _id: address_id, user_id: userId });
     if (!address) {
-      return res.status(400).json({ message: "Invalid or unauthorized address" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid or unauthorized address" });
     }
 
     let subtotal = 0;
@@ -229,14 +230,14 @@ export const placeOrder = async (req, res) => {
 
     for (const item of items) {
       if (!mongoose.isValidObjectId(item.product_id)) {
-        return res.status(400).json({ message: `Invalid product ID: ${item.product_id}` });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Invalid product ID: ${item.product_id}` });
       }
       const product = await Product.findById(item.product_id);
       if (!product || product.isDeleted) {
-        return res.status(400).json({ message: `Product not available: ${item.product_id}` });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Product not available: ${item.product_id}` });
       }
       if (product.available_quantity < item.quantity) {
-        return res.status(400).json({ message: `Insufficient stock for: ${product.title}` });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Insufficient stock for: ${product.title}` });
       }
 
       const price = product.price * (1 - (product.discount || 0) / 100);
@@ -260,28 +261,28 @@ export const placeOrder = async (req, res) => {
     }
 
     if (isNaN(shipping_chrg) || shipping_chrg < 0) {
-      return res.status(400).json({ message: "Shipping charge must be a non-negative number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Shipping charge must be a non-negative number" });
     }
     if (isNaN(discount) || discount < 0) {
-      return res.status(400).json({ message: "Discount must be a non-negative number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Discount must be a non-negative number" });
     }
     if (isNaN(taxes) || taxes < 0) {
-      return res.status(400).json({ message: "Taxes must be a non-negative number" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Taxes must be a non-negative number" });
     }
 
     const netAmount = subtotal + shipping_chrg + taxes - discount;
     if (isNaN(netAmount) || netAmount <= 0) {
-      return res.status(400).json({ message: "Invalid order amount" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid order amount" });
     }
 
     if (paymentMethod === "COD" && netAmount > 1000) {
-      return res.status(400).json({ message: "Cash on Delivery is not allowed for orders above Rs 1000" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Cash on Delivery is not allowed for orders above Rs 1000" });
     }
 
     if (paymentMethod === "Wallet") {
       const wallet = await Wallet.findOne({ user_id: userId });
       if (!wallet || wallet.balance < netAmount) {
-        return res.status(400).json({ message: "Insufficient wallet balance" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Insufficient wallet balance" });
       }
       await Wallet.findOneAndUpdate(
         { user_id: userId },
@@ -307,7 +308,7 @@ export const placeOrder = async (req, res) => {
         ],
       });
       if (existingOrder) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({
           message: `Duplicate order detected: ${existingOrder.razorpay_order_id ? `razorpay_order_id ${razorpay_order_id}` : `payment_id ${payment_id}`}`,
         });
       }
@@ -343,31 +344,29 @@ export const placeOrder = async (req, res) => {
         product.available_quantity += quantity;
         await product.save();
       }
-      return res.status(500).json({ message: "Failed to save order", error: err.message });
+      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to save order", error: err.message });
     }
 
     try {
       await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
     } catch (err) {
       console.error("Failed to clear cart:", err);
-      // Optionally revert order and stock
       await Order.findByIdAndDelete(order._id);
       for (const { product, quantity } of stockUpdates) {
         product.available_quantity += quantity;
         await product.save();
       }
-      return res.status(500).json({ message: "Failed to clear cart", error: err.message });
+      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to clear cart", error: err.message });
     }
 
     res.status(201).json({ message: "Order placed successfully", order });
   } catch (err) {
     console.error("Order placement failed:", err);
-    res.status(500).json({ message: "Internal server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Internal server error", error: err.message });
   }
 };
 
 
-// 2. List Orders for User
 export const getUserOrders = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -376,7 +375,7 @@ export const getUserOrders = async (req, res) => {
     const limitNum = parseInt(limit);
 
     if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
-      return res.status(400).json({ message: 'Invalid page or limit' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: 'Invalid page or limit' });
     }
 
     const skip = (pageNum - 1) * limitNum;
@@ -399,18 +398,17 @@ export const getUserOrders = async (req, res) => {
     res.json({ orders, total });
   } catch (err) {
     console.error('Error fetching orders:', err);
-    res.status(500).json({ message: 'Error fetching orders' });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: 'Error fetching orders' });
   }
 };
 
-// 3. Get Order Details
 export const getOrderDetails = async (req, res) => {
   try {
     const userId = req.user._id;
     const orderId = req.params.id;
 
         if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ message: 'Invalid order ID' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: 'Invalid order ID' });
     }
 
     const order = await Order.findOne({ _id: orderId, user_id: userId })
@@ -418,33 +416,32 @@ export const getOrderDetails = async (req, res) => {
       .populate("address_id")
       .populate("user_id", "firstname lastname email");
 
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Order not found" });
 
     res.json(order);
   } catch (err) {
     console.error('Error fetching order details:', err);
-    res.status(500).json({ message: "Error fetching order details" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Error fetching order details" });
   }
 };
 
-// 4. Cancel Order or Item
 export const cancelOrderOrItem = async (req, res) => {
   try {
     const { orderId, itemId, reason } = req.body;
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ success: false, message: "Invalid order ID format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order ID format" });
     }
     const order = await Order.findById(orderId).populate("items.product_id");
     if (!order || order.user_id.toString() !== req.user._id.toString()) {
-      return res.status(404).json({ success: false, message: "Order not found or unauthorized" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found or unauthorized" });
     }
     if (["Delivered", "Returned", "Cancelled"].includes(order.status)) {
-      return res.status(400).json({ success: false, message: `Order cannot be cancelled, current status: ${order.status}` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: `Order cannot be cancelled, current status: ${order.status}` });
     }
     if (itemId) {
       const item = order.items.find(i => i._id.toString() === itemId);
       if (!item) {
-        return res.status(404).json({ success: false, message: "Item not found in order" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Item not found in order" });
       }
       item.status = "Cancelled";
       item.cancellation_reason = reason || "No reason provided";
@@ -470,48 +467,47 @@ for (const item of order.items) {
     await order.save();
     res.json({ success: true, message: "Cancellation processed successfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to cancel order", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to cancel order", error: err.message });
   }
 };
 
-// 5. Return Delivered Item
 export const returnOrderItem = async (req, res) => {
   try {
     const { orderId, itemId, reason } = req.body;
     console.log("🔹 Step 1: Payload", req.body);
 
     if (!mongoose.isValidObjectId(orderId) || !mongoose.isValidObjectId(itemId)) {
-      return res.status(400).json({ success: false, message: "Invalid order or item ID format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order or item ID format" });
     }
 
     if (!reason || !reason.trim()) {
-      return res.status(400).json({ success: false, message: "Return reason is required" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Return reason is required" });
     }
 
     const order = await Order.findById(orderId).populate("items.product_id");
     console.log("🔹 Step 2: Fetched order", order);
 
     if (!order || order.user_id.toString() !== req.user._id.toString()) {
-      return res.status(404).json({ success: false, message: "Order not found or unauthorized" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found or unauthorized" });
     }
 
     if (order.status !== "Delivered") {
-      return res.status(400).json({ success: false, message: "Only delivered orders can be returned" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Only delivered orders can be returned" });
     }
 
     const item = order.items.find(i => i._id.toString() === itemId);
     console.log("🔹 Step 3: Matched item", item);
 
     if (!item) {
-      return res.status(404).json({ success: false, message: "Item not found in order" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Item not found in order" });
     }
 
     if (item.status !== "Delivered") {
-      return res.status(400).json({ success: false, message: "Item is not eligible for return" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Item is not eligible for return" });
     }
 
     item.status = "Returned";
-    item.return_reason = reason;
+    item.returnReason = reason;
 
     console.log("🔹 Step 4: Updating product quantity...");
     await Product.findByIdAndUpdate(item.product_id._id, {
@@ -525,7 +521,7 @@ export const returnOrderItem = async (req, res) => {
 
   } catch (err) {
     console.error("❌ Step Error:", err);
-    res.status(500).json({ success: false, message: "Failed to process return", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to process return", error: err.message });
   }
 };
 
@@ -549,7 +545,6 @@ const refundToWallet = async (userId, amount, description = "Refund") => {
   return wallet;
 };
 
-// 6. Download Invoice
 export const downloadInvoice = async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -560,9 +555,8 @@ export const downloadInvoice = async (req, res) => {
       .populate("address_id")
       .populate("user_id", "firstname lastname email");
 
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Order not found" });
 
-    // Create productMap: { productId: productData }
     const productMap = {};
     order.items.forEach(item => {
       if (item.product_id) {
@@ -588,7 +582,7 @@ export const downloadInvoice = async (req, res) => {
     await generateInvoicePDF(order, order.user_id, address, productMap, invoicePath);
 
     if (!fs.existsSync(invoicePath)) {
-      return res.status(400).json({ message: "Invoice file not generated" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invoice file not generated" });
     }
 
     const pdfBuffer = await fsPromises.readFile(invoicePath);
@@ -599,7 +593,7 @@ export const downloadInvoice = async (req, res) => {
     await fsPromises.unlink(invoicePath).catch(err => console.warn('Invoice cleanup failed:', err));
   } catch (err) {
     console.error('Error generating invoice:', err);
-    res.status(500).json({ message: "Error generating invoice" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Error generating invoice" });
   }
 };
 

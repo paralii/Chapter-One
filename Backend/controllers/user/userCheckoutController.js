@@ -1,10 +1,9 @@
 import Address from "../../models/Address.js";
 import Cart from "../../models/Cart.js";
-import Product from "../../models/Product.js";
 import Order from "../../models/Order.js";
 import Offer from "../../models/Offer.js";
-import Coupon from "../../models/Coupon.js";
 import mongoose from "mongoose";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 const calculateShippingCost = (city) => {
   const shippingCosts = {
@@ -35,30 +34,30 @@ export default async function checkout(req, res) {
 
   try {
     if (!address_id || !orderId) {
-      return res.status(400).json({ success: false, message: "Address ID and Order ID are required" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Address ID and Order ID are required" });
     }
     if (!mongoose.Types.ObjectId.isValid(address_id) || !mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({ success: false, message: "Invalid Address ID or Order ID format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid Address ID or Order ID format" });
     }
     if (paymentMethod && !["COD", "ONLINE"].includes(paymentMethod)) {
-      return res.status(400).json({ success: false, message: "Invalid payment method" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid payment method" });
     }
 
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).populate("items.product_id");
     if (!order || !order.address_id.equals(address_id)) {
-      return res.status(404).json({ success: false, message: "Order not found or address mismatch" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found or address mismatch" });
     }
 
     const cart = await Cart.findOne({ user_id: req.user._id }).populate("items.product_id");
     if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ success: false, message: "Cart is empty" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cart is empty" });
     }
 
     let address = await Address.findById(address_id);
     if (!address) {
       address = await Address.findOne({ user_id: req.user._id, isDefault: true });
       if (!address) {
-        return res.status(400).json({ success: false, message: "No address available" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "No address available" });
       }
     }
 
@@ -77,18 +76,18 @@ export default async function checkout(req, res) {
         end_date: { $gte: new Date() },
       });
       if (!referralOffer) {
-        return res.status(400).json({ success: false, message: "Invalid or inactive referral code" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid or inactive referral code" });
       }
     }
 
     for (const item of cart.items) {
       const product = item.product_id;
       if (!product || product.isDeleted) {
-        return res.status(400).json({ message: `Product not available: ${item.product_id}` });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Product not available: ${item.product_id}` });
       }
 
       if (product.available_quantity < item.quantity) {
-        return res.status(400).json({ message: `Insufficient stock for: ${product.title}` });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Insufficient stock for: ${product.title}` });
       }
 
       const productOffers = await Offer.find({
@@ -136,6 +135,7 @@ export default async function checkout(req, res) {
         finalItemTotal,
         applied_offer: appliedOffer ? appliedOffer._id : null,
         refundProcessed: false,
+        product_imgs: product.product_imgs || [],
       });
     }
 

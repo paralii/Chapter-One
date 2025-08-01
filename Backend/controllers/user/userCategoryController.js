@@ -1,6 +1,7 @@
 import Product from "../../models/Product.js";
 import Category from "../../models/Category.js"; 
 import mongoose from "mongoose";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const getCategoriesUser = async (req, res) => {
   const { search = "", sort = "desc", page = 1, limit = 16, isDeleted } = req.query;
@@ -29,9 +30,9 @@ export const getCategoriesUser = async (req, res) => {
 
     const hasMore = pageNumber * limitNumber < total;
 
-    res.status(200).json({ categories, total, page: pageNumber, limit: limitNumber, hasMore });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ categories, total, page: pageNumber, limit: limitNumber, hasMore });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
 
@@ -51,10 +52,10 @@ export const getBooksByCategory = async (req, res) => {
 
     const total = await Product.countDocuments({ category_id: categoryId });
 
-    res.status(200).json({ products: books, total });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ products: books, total });
   } catch (error) {
     console.error("Error fetching books by category:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
 };
 

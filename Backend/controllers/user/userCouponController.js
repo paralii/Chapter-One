@@ -1,6 +1,7 @@
 import Coupon from "../../models/Coupon.js";
 import Order from "../../models/Order.js";
 import mongoose from "mongoose";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const getAvailableCoupons = async (req, res) => {
   try {
@@ -12,7 +13,7 @@ export const getAvailableCoupons = async (req, res) => {
     res.json({ success: true, coupons });
   } catch (err) {
     console.error("Error fetching available coupons:", err.stack);
-    res.status(500).json({ success: false, message: "Failed to fetch coupons due to a server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to fetch coupons due to a server error", error: err.message });
   }
 };
 
@@ -20,24 +21,24 @@ export const applyCoupon = async (req, res) => {
   try {
     const { couponCode, orderId } = req.body;
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ success: false, message: "Invalid order ID format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order ID format" });
     }
     if (!couponCode || typeof couponCode !== "string" || !couponCode.trim()) {
-      return res.status(400).json({ success: false, message: "Coupon code is required" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Coupon code is required" });
     }
 
     const order = await Order.findById(orderId).populate("items.product_id");
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
     }
     if (order.status !== "Pending") {
-      return res.status(400).json({ success: false, message: "Coupons can only be applied to pending orders" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Coupons can only be applied to pending orders" });
     }
     if (!order.items.length) {
-      return res.status(400).json({ success: false, message: "Order has no items" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Order has no items" });
     }
     if (order.coupon === couponCode.toUpperCase()) {
-      return res.status(400).json({ success: false, message: "This coupon is already applied to the order" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "This coupon is already applied to the order" });
     }
 
     const coupon = await Coupon.findOne({
@@ -48,17 +49,17 @@ export const applyCoupon = async (req, res) => {
     });
 
     if (!coupon) {
-      return res.status(400).json({ success: false, message: "Coupon is invalid, expired, or usage limit exceeded" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Coupon is invalid, expired, or usage limit exceeded" });
     }
 
     if (order.total < (coupon.minOrderValue || 0)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({
         success: false,
         message: `Minimum order value of ₹${coupon.minOrderValue} is required for this coupon (current total: ₹${order.total.toFixed(2)})`,
       });
     }
     if (coupon.usedBy?.map(id => id.toString()).includes(order.user_id.toString())) {
-      return res.status(400).json({ success: false, message: "You have already used this coupon" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "You have already used this coupon" });
     }
 
     let discount = (order.total * coupon.discountPercentage) / 100;
@@ -67,7 +68,7 @@ export const applyCoupon = async (req, res) => {
     }
     const netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0) - discount;
     if (netAmount < 0) {
-      return res.status(400).json({ success: false, message: "Discount cannot exceed order total" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Discount cannot exceed order total" });
     }
 
     order.discount = discount;
@@ -105,13 +106,13 @@ export const applyCoupon = async (req, res) => {
       checkoutDetails.subtotal + checkoutDetails.taxes + checkoutDetails.shippingCost - checkoutDetails.discount
     ) {
       console.warn("Price calculation mismatch:", checkoutDetails);
-      return res.status(500).json({ success: false, message: "Price calculation error" });
+      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Price calculation error" });
     }
 
     res.json({ success: true, message: "Coupon applied successfully", checkoutDetails });
   } catch (err) {
     console.error("Error applying coupon:", err.stack);
-    res.status(500).json({ success: false, message: "Failed to apply coupon due to a server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to apply coupon due to a server error", error: err.message });
   }
 };
 
@@ -120,16 +121,16 @@ export const removeCoupon = async (req, res) => {
     const { orderId } = req.body;
 
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ success: false, message: "Invalid order ID format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order ID format" });
     }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
     }
 
     if (!order.coupon) {
-      return res.status(400).json({ success: false, message: "No coupon applied to this order" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "No coupon applied to this order" });
     }
 
     const coupon = await Coupon.findOneAndUpdate(
@@ -159,12 +160,12 @@ export const removeCoupon = async (req, res) => {
       checkoutDetails.subtotal + checkoutDetails.taxes + checkoutDetails.shippingCost - checkoutDetails.discount
     ) {
       console.warn("Price calculation mismatch:", checkoutDetails);
-      return res.status(500).json({ success: false, message: "Price calculation error" });
+      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Price calculation error" });
     }
 
     res.json({ success: true, message: "Coupon removed successfully", checkoutDetails });
   } catch (err) {
     console.error("Error removing coupon:", err.stack);
-    res.status(500).json({ success: false, message: "Failed to remove coupon due to a server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to remove coupon due to a server error", error: err.message });
   }
 };
