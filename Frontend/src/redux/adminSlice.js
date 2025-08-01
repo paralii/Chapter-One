@@ -10,7 +10,7 @@ export const adminLogin = createAsyncThunk(
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/login`, credentials, { withCredentials: true });
       return response.data.admin; 
     } catch (err) {
-      console.error("Login error:", err.response?.data);  // Log the error response for debugging
+      console.error("Login error:", err.response?.data);  
       return rejectWithValue(err.response?.data || "Login failed");
     }
   }
@@ -82,7 +82,7 @@ const adminSlice = createSlice({
       localStorage.removeItem("admin");
       })
       
-      .addCase(refreshAdminSession.fulfilled, (state, action) => {
+      .addCase(refreshAdminSession.fulfilled, (state) => {
         state.loading = false;
       })
       .addCase(refreshAdminSession.rejected, (state) => {

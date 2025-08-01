@@ -1,4 +1,3 @@
-// redux/alertSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const alertSlice = createSlice({
@@ -6,12 +5,12 @@ const alertSlice = createSlice({
   initialState: {
     message: "",
     isOpen: false,
-    type: "info", // add this line
+    type: "info", 
   },
   reducers: {
     showAlert: (state, action) => {
       state.message = action.payload.message;
-      state.type = action.payload.type || "info"; // default to "info"
+      state.type = action.payload.type || "info"; 
       state.isOpen = true;
     },
     hideAlert: (state) => {
