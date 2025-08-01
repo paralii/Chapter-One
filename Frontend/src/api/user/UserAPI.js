@@ -27,6 +27,6 @@ export const resendOTP = (email) => {
   return userAxios.post("/profile/resend-otp", { email });
 };
 
-export const confirmEmailChange = (otp, emailChangeToken) => {
-  return userAxios.post("/profile/confirm-email-change", { otp, emailChangeToken });
+export const confirmEmailChange = ({otp, newEmail}) => {
+  return userAxios.post("/profile/confirm-email-change", { otp, newEmail });
 };

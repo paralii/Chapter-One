@@ -1,40 +1,43 @@
-// src/api/orderAPI.js
 import userAxios from "../userAxios";
 
-// Place a new order (COD or Online)
 export const createOrder = (orderData) => {
   return userAxios.post("/orders", orderData, { withCredentials: true });
 };
 
-export const createTempOrder = (orderData) => {
-  return userAxios.post("/orders/temp", orderData, { withCredentials: true });
+export const createTempOrder = async (orderData) => {
+  try {
+    const response = await userAxios.post("/orders/temp", orderData);
+    return { data: { success: true, order: response.data.order } };
+  } catch (err) {
+    return { data: { success: false, message: err.response?.data?.message || "Failed to create temp order" } };
+  }
 };
 
-// Get all orders for the logged-in user
 export const listOrders = () => {
   return userAxios.get("/orders", { withCredentials: true });
 };
 
 export const getPendingOrder = async () => {
-  return userAxios.get("/orders/pending", { withCredentials: true });
+  try {
+    const response = await userAxios.get("/orders/pending");
+    return { data: { success: true, order: response.data.order } };
+  } catch (err) {
+    return { data: { success: false, order: null, message: err.response?.data?.message || "No pending order" } };
+  }
 };
 
-// Get details of a specific order
 export const getOrderDetails = (orderID) => {
   return userAxios.get(`/orders/${orderID}`, { withCredentials: true });
 };
 
-// Cancel entire order or a product (backend handles both)
 export const cancelOrder = (data) => {
   return userAxios.put("/orders/cancel", data, { withCredentials: true });
 };
 
-// Return a product from an order
 export const returnOrder = (data) => {
   return userAxios.put("/orders/return", data, { withCredentials: true });
 };
 
-// Download invoice PDF
 export const downloadInvoice = (orderID) => {
   return userAxios.get(`/orders/invoice/${orderID}`, {
     responseType: "blob",

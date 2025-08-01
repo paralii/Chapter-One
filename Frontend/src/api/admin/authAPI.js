@@ -1,4 +1,3 @@
-// src/api/admin/authAPI.js
 import adminAxios from "../adminAxios";
 
 export const adminLogin = (credentials) => {

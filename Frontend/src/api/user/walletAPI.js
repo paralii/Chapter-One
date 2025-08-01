@@ -1,11 +1,29 @@
 import userAxios from "../userAxios";
 
 export const getWallet = () => {
-  return userAxios.get("/wallet");
+  return userAxios.get("/wallet/details"); 
 };
 
-export const getWalletTransactions = () => {
-  return userAxios.get("/wallet/transactions");
+export const getWalletBalance = () => {
+  return userAxios.get("/wallet/balance"); 
 };
 
-export default { getWallet, getWalletTransactions };
+export const creditWallet = (data) => {
+  return userAxios.post("/wallet/credit", data); 
+};
+
+export const debitWallet = (data) => {
+  return userAxios.post("/wallet/debit", data); 
+};
+
+export const checkIntegrity = () => {
+  return userAxios.post("/wallet/integrity-check"); 
+};
+
+export default {
+  getWallet,
+  getWalletBalance,
+  creditWallet,
+  debitWallet,
+  checkIntegrity,
+};

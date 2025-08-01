@@ -6,13 +6,11 @@ export const getProducts = (params) => {
 
 export const createProduct = (productData) => {
   const formData = new FormData();
-  // Append all non-image fields.
   Object.keys(productData).forEach((key) => {
     if (key !== "images") {
       formData.append(key, productData[key]);
     }
   });
-  // Append each image file.
   if (productData.images && productData.images.length > 0) {
     productData.images.forEach((image) => {
       formData.append("images", image);
@@ -29,13 +27,11 @@ export const getProductById = (id) => {
 
 export const updateProduct = (id, productData) => {
   const formData = new FormData();
-  // Append non-image fields.
   Object.keys(productData).forEach((key) => {
     if (key !== "images") {
       formData.append(key, productData[key]);
     }
   });
-  // Append image files if provided.
   if (productData.images && productData.images.length > 0) {
     productData.images.forEach((image) => {
       formData.append("images", image);

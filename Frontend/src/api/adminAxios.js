@@ -1,4 +1,3 @@
-// src/api/adminAxios.js
 import axios from "axios";
 import store from "../redux/store";
 import { refreshAdminSession, logoutAdmin } from "../redux/adminSlice";
@@ -19,6 +18,7 @@ adminAxios.interceptors.response.use(
         await store.dispatch(refreshAdminSession());
         return adminAxios(originalRequest);
       } catch (err) {
+        console.error("Session refresh failed:", err);
         store.dispatch(logoutAdmin());
         window.location.href = "/admin/login";
       }
