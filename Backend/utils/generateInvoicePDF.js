@@ -64,7 +64,6 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
   const pageWidth = doc.page.width || 612; 
   const leftColumnX = 50;
   const rightColumnX = Number.isFinite(pageWidth / 2) ? pageWidth / 2 : 306;
-  const columnWidth = Number.isFinite(pageWidth / 2 - 75) ? pageWidth / 2 - 75 : 231;
 
 
   doc
