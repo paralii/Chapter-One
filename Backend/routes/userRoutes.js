@@ -1,5 +1,4 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import passport from "passport";
 
 import * as userAuthController from "../controllers/user/userAuthController.js";
@@ -112,12 +111,12 @@ router.get("/offers/referral/coupons", verifyToken("user"), userOfferController.
 router.post("/offers/referral/apply", verifyToken("user"), userOfferController.validateReferral);
 router.get("/offers/referral-stats", verifyToken("user"), userOfferController.getReferralStats);
 
-
-router.get("/details", verifyToken("user"), userWalletController.getWalletDetails);
-router.post("/credit", verifyToken("user"), userWalletController.creditWallet);
-router.post("/debit", verifyToken("user"), userWalletController.debitWallet);
-router.get("/balance", verifyToken("user"), userWalletController.checkWalletBalance);
-router.post("/integrity-check", verifyToken("user"), userWalletController.ensureWalletIntegrity);
+// ===================== WALLET =====================
+router.get("/wallet/details", verifyToken("user"), userWalletController.getWalletDetails);
+router.post("/wallet/credit", verifyToken("user"), userWalletController.creditWallet);
+router.post("/wallet/debit", verifyToken("user"), userWalletController.debitWallet);
+router.get("/wallet/balance", verifyToken("user"), userWalletController.checkWalletBalance);
+router.post("/wallet/integrity-check", verifyToken("user"), userWalletController.ensureWalletIntegrity);
 
 
 export default router;
