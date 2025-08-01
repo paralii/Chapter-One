@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Navbar from "../../../components/common/Navbar";
 import Footer from "../../../components/common/Footer";
 import { useDispatch } from "react-redux";
 import { getUserProfile } from "../../../api/user/UserAPI";
@@ -46,14 +45,25 @@ const UserProfileDashboard = () => {
         console.error("Failed to fetch latest order", error);
       });
 
-    // getWallet()
-    // .then((response) => {
-    //   setWalletBalance(response.data.balance);
-    // })
-    // .catch((error) => {
-    //   console.error("Failed to fetch wallet balance", error);
-    // });
+    getWallet()
+    .then((response) => {
+      setWalletBalance(response.data.balance);
+    })
+    .catch((error) => {
+      console.error("Failed to fetch wallet balance", error);
+    });
   }, []);
+
+  const copyToClipboard = (text) => {
+  navigator.clipboard.writeText(text).then(() => toast.success("Copied to clipboard!"));
+};
+
+const shareToWhatsApp = () => {
+  const referralLink = `${window.location.origin}/signup?ref=${user.referral_code}`;
+  const text = `Join now and get 10% off with my referral link: ${referralLink}`;
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
+};
+
 
   const handleLogout = () => {
     dispatch(logoutUser())
@@ -159,7 +169,7 @@ const UserProfileDashboard = () => {
           {/* Order History Section */}
           <div className="flex justify-between mb-8">
             <div className="w-full lg:w-1/2">
-              <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Latest Order</h3>
+              <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Orders</h3>
               {latestOrder ? (
                 <p>
                   Latest Order Status: {latestOrder.status} <br />
@@ -168,7 +178,7 @@ const UserProfileDashboard = () => {
                   ))}
                 </p>
               ) : (
-                <p>No orders placed yet. Go ahead and place one!</p>
+                <p> </p>
               )}
             </div>
             <div className="w-full lg:w-1/2 text-right mt-4 lg:mt-0">
@@ -180,9 +190,39 @@ const UserProfileDashboard = () => {
               </Link>
             </div>
           </div>
-          <Link to="/profile/referrals" className="block py-3 px-4 text-[#8e4700] hover:bg-[#edece9]">
-  Referral Program
-</Link>
+          {/* Referral Section */}
+          <div className="flex justify-between mb-8">
+            <div className="w-full">
+              <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Referral Program</h3>
+
+              <div className="flex flex-col md:flex-row gap-4">
+                {/* Referral Code Input */}
+                <div className="flex-1 flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={user.referral_code}
+                    readOnly
+                    className="w-full h-[50px] px-5 rounded-[20px] bg-[#edece9] outline-none text-[16px] font-Inter"
+                  />
+                  <button
+                    onClick={() => copyToClipboard(user.referral_code)}
+                    className="h-[50px] px-6 rounded-[20px] bg-[#3c2712] text-white font-semibold font-Outfit hover:bg-[#4d321b] transition disabled:opacity-60"
+                  >
+                    Copy
+                  </button>
+                </div>
+
+                {/* WhatsApp Share Button */}
+                <button
+                  onClick={shareToWhatsApp}
+                  className="h-[50px] px-6 rounded-[20px] bg-green-500 text-white font-semibold font-Outfit hover:bg-green-600 transition"
+                >
+                  Share
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Logout Button */}
           <div className="mt-6">
             <button

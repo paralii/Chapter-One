@@ -4,14 +4,12 @@ import jwt from "jsonwebtoken";
 import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTokens.js";
 import setAuthCookies from "../../utils/setAuthCookies.js";
 import { sendOTPEmail, resendOtpForVerifyEmail, sendForgotPasswordOTP } from "../../utils/services/emailService.js";
-import Coupon from "../../models/Coupon.js";
 import Wallet from "../../models/Wallet.js";
 import Cart from "../../models/Cart.js";
 import Wishlist from "../../models/Wishlist.js";
-import { v4 as uuidv4 } from "uuid";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 import { generateOTP, storeOtpInRedis, getOtpFromRedis, deleteOtpFromRedis } from "../../utils/services/otpService.js";
-
+import { creditWallet } from "./userWalletController.js";
 
 
 
@@ -130,23 +128,21 @@ export const verifyOTP = async (req, res) => {
       });
 
       await user.save();
-      await Promise.all([
+      
+      const ops = [
         Wallet.create({ user_id: user._id, balance: 0 }),
         Cart.create({ user_id: user._id, items: [] }),
         Wishlist.create({ user_id: user._id, products: [] })
-      ]);
+      ];
 
       if (parsedData.referred_by) {
-        const couponCode = `COUPON-${uuidv4().split("-")[0].toUpperCase()}`;
-        const coupon = new Coupon({
-          code: couponCode,
-          discountPercentage: 10,
-          expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          usedBy: [parsedData.referred_by],
-          minOrderValue: 100
-        });
-        await coupon.save();
-      }
+        ops.push(
+          creditWallet(user._id, 50, "Referral bonus for signing up"),
+          creditWallet(parsedData.referred_by, 100, `Referral reward for inviting ${parsedData.firstname}`)
+        );
+      }  
+        await Promise.all(ops);
+
     } else {
       user.isVerified = true;
       await user.save();
