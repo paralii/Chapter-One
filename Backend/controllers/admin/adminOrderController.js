@@ -1,24 +1,22 @@
 import mongoose from "mongoose";
 import Order from "../../models/Order.js";
 import User from "../../models/User.js";
-import Wallet from "../../models/Wallet.js";
 import Product from "../../models/Product.js";
 import { creditWallet } from "../user/userWalletController.js";
 import { generateInvoicePDF } from "../../utils/generateInvoicePDF.js";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 const INVOICE_DIR = path.resolve("invoices");
 
 const generateAndSaveInvoice = async (order, user, address, invoicePath) => {
   try {
-    // Validate invoicePath
     if (!invoicePath || typeof invoicePath !== 'string' || invoicePath.trim() === '') {
       throw new Error('Invalid or missing invoice path');
     }
 
-    // Ensure INVOICE_DIR exists and is writable
     if (!fs.existsSync(INVOICE_DIR)) {
       fs.mkdirSync(INVOICE_DIR, { recursive: true });
     }
@@ -53,7 +51,6 @@ const generateAndSaveInvoice = async (order, user, address, invoicePath) => {
   }
 };
 
-// List all active orders with pagination and search
 export const listAllOrders = async (req, res) => {
   try {
     const { search = '', page = 1, limit = 10, sort = 'order_date', sortOrder = 'desc', status, paymentMethod } = req.query;
@@ -61,7 +58,7 @@ export const listAllOrders = async (req, res) => {
     const limitNum = parseInt(limit);
 
     if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
-      return res.status(400).json({ success: false, message: 'Invalid page or limit' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: 'Invalid page or limit' });
     }
 
     const skip = (pageNum - 1) * limitNum;
@@ -103,11 +100,11 @@ export const listAllOrders = async (req, res) => {
 
     res.json({ success: true, orders, total });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error fetching orders' });
+    console.error("Error fetching orders:", err);
+    res.status().json({ success: false, message: 'Error fetching orders' });
   }
 };
 
-// Get full order details by ID
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, isDeleted: false })
@@ -115,39 +112,39 @@ export const getOrderById = async (req, res) => {
       .populate("address_id")
       .populate("user_id", "firstname lastname email");
 
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
 
     res.json({ success: true, order });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Error fetching order details" });
+    console.error("Error fetching order details:", err);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error fetching order details" });
   }
 };
 
-// Admin update overall order status
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
     const orderId = req.params.id;
     
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ success: false, message: 'Invalid order ID' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: 'Invalid order ID' });
     }
 
     const validOrderStatuses = ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled", "Returned"];
     if (!validOrderStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid order status" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order status" });
     }
     
     const order = await Order.findOne({ _id: req.params.id, isDeleted: false });
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
     }
 
     if (order.status === "Cancelled") {
-      return res.status(400).json({ success: false, message: "Cancelled orders can't be updated" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cancelled orders can't be updated" });
     }
     if (order.status === 'Delivered' && status !== 'Cancelled') {
-      return res.status(400).json({ success: false, message: 'Delivered orders can only be cancelled' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: 'Delivered orders can only be cancelled' });
     }
 
     const validTransitions = {
@@ -158,7 +155,7 @@ export const updateOrderStatus = async (req, res) => {
       Cancelled: [],
     };
     if (!validTransitions[order.status].includes(status)) {
-      return res.status(400).json({ success: false, message: `Cannot transition from ${order.status} to ${status}` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: `Cannot transition from ${order.status} to ${status}` });
     }
 
     if (status === 'Cancelled') {
@@ -206,28 +203,27 @@ export const updateOrderStatus = async (req, res) => {
     await order.save();
     res.json({ success: true, message: `Order status updated to ${status}` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Error updating order status' });
+    console.error("Error updating order status:", err);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Error updating order status' });
   } 
 };
 
-// Mark item as delivered
 export const markItemDelivered = async (req, res) => {
   try {
     const { orderId, productId } = req.body;
 
     const order = await Order.findOne({ _id: orderId, isDeleted: false });
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
 
     const item = order.items.find(i => i.product_id.toString() === productId);
-    if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+    if (!item) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Item not found" });
 
     if (["Cancelled", "Returned", "Delivered"].includes(item.status)) {
-      return res.status(400).json({ success: false, message: `Item already ${item.status}` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: `Item already ${item.status}` });
     }
 
-    // Check if the order is cancelled
     if (order.status === "Cancelled") {
-      return res.status(400).json({ success: false, message: "Order is cancelled, items can't be delivered" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Order is cancelled, items can't be delivered" });
     }
 
     item.status = "Delivered";
@@ -240,16 +236,16 @@ export const markItemDelivered = async (req, res) => {
     await order.save();
     res.json({ success: true, message: "Item marked as delivered" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Error marking item delivered" });
+    console.error("Error marking item delivered:", err);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error marking item delivered" });
   }
 };
 
-// Admin invoice download
 export const downloadAdminInvoice = async (req, res) => {
   try {
     const orderId = req.params.id;
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ success: false, message: 'Invalid order ID' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: 'Invalid order ID' });
     }
 
     const order = await Order.findOne({ _id: orderId, isDeleted: false })
@@ -262,16 +258,15 @@ export const downloadAdminInvoice = async (req, res) => {
       .populate('user_id', 'firstname lastname email');
 
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: 'Order not found' });
     }
     if (!order.address_id) {
-      return res.status(400).json({ success: false, message: 'Order missing address information' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: 'Order missing address information' });
     }
     if (!order.user_id) {
-      return res.status(400).json({ success: false, message: 'Order missing user information' });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: 'Order missing user information' });
     }
 
-    // Validate orderID
     let invoicePath;
     if (!order.orderID || typeof order.orderID !== 'string' || order.orderID.trim() === '') {
       console.warn('Invalid orderID, using _id as fallback', { orderId, orderID: order.orderID });
@@ -283,20 +278,19 @@ export const downloadAdminInvoice = async (req, res) => {
     await generateAndSaveInvoice(order, order.user_id, order.address_id, invoicePath);
 
     if (!fs.existsSync(invoicePath)) {
-      return res.status(500).json({ success: false, message: 'Invoice file not generated' });
+      return res.status().json({ success: false, message: 'Invoice file not generated' });
     }
 
     const pdfBuffer = await fsPromises.readFile(invoicePath);
     if (!pdfBuffer || pdfBuffer.length === 0) {
       await fsPromises.unlink(invoicePath).catch(() => {});
-      return res.status(500).json({ success: false, message: 'Generated invoice is empty or corrupted' });
+      return res.status().json({ success: false, message: 'Generated invoice is empty or corrupted' });
     }
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=invoice_${order.orderID || order._id}.pdf`);
     res.send(pdfBuffer);
 
-    // Retry file cleanup
     const retryUnlink = async (filePath, retries = 3, delay = 1000) => {
       for (let i = 0; i < retries; i++) {
         try {
@@ -310,29 +304,27 @@ export const downloadAdminInvoice = async (req, res) => {
     };
     await retryUnlink(invoicePath);
   } catch (err) {
-    res.status(500).json({ success: false, message: `Failed to generate invoice: ${err.message}` });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: `Failed to generate invoice: ${err.message}` });
   }
 };
 
-// Admin soft delete order
 export const softDeleteOrder = async (req, res) => {
   try {
     const orderId = req.params.id;
     const order = await Order.findById(orderId);
 
     if (!order || order.isDeleted) {
-      return res.status(404).json({ success: false, message: "Order not found or already deleted" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found or already deleted" });
     }
 
     if (order.status === "delivered") {
-      return res.status(400).json({ success: false, message: "Delivered orders can't be deleted" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Delivered orders can't be deleted" });
     }
 
     if (['Delivered', 'OutForDelivery'].includes(order.status)) {
-      return res.status(400).json({ success: false, message: `Cannot delete order in ${order.status} status` });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: `Cannot delete order in ${order.status} status` });
     }
 
-    // Handle item restocking
     for (const item of order.items) {
       if (item.status === 'Pending') {
         await Product.findByIdAndUpdate(
@@ -363,7 +355,8 @@ export const softDeleteOrder = async (req, res) => {
     await order.save();
     res.json({ success: true, message: "Order soft deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Error deleting order" });
+    console.error("Error deleting order:", err);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error deleting order" });
   }
 };
 
@@ -372,22 +365,21 @@ export const verifyReturnRequest = async (req, res) => {
     const { orderId, productId, approve } = req.body;
 
     const order = await Order.findOne({ _id: orderId, isDeleted: false });
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
 
     const item = order.items.find(i => i.product_id.toString() === productId);
-    if (!item) return res.status(404).json({ success: false, message: "Item not found in order" });
+    if (!item) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Item not found in order" });
 
     if (!item.returnReason || item.status !== "Returned") {
-      return res.status(400).json({ success: false, message: "Item not marked for return" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Item not marked for return" });
     }
     if (item.status !== "Delivered" && item.status !== "Returned") {
-      return res.status(400).json({ success: false, message: "Return can only be approved for delivered items" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Return can only be approved for delivered items" });
     }
     if (approve) {
       item.returnVerified = true;
       item.returnDecision = "Approved";
 
-      // Refund to wallet if online payment & not already refunded
       if (
         order.paymentMethod === "ONLINE" &&
         order.paymentStatus === "Completed" &&
@@ -400,7 +392,7 @@ export const verifyReturnRequest = async (req, res) => {
         );
 
         if (!creditResult.success) {
-          return res.status(500).json({ success: false, message: "Wallet refund failed" });
+          return res.status(STATUS_CODES.SERVER_ERROR.SERVICE_UNAVAILABLE).json({ success: false, message: "Wallet refund failed" });
         }
 
         item.refundProcessed = true;
@@ -414,6 +406,6 @@ export const verifyReturnRequest = async (req, res) => {
     return res.json({ success: true, message: `Return ${approve ? "approved" : "rejected"}` });
   } catch (err) {
     console.error("Return verification error:", err);
-    return res.status(500).json({ success: false, message: "Internal error verifying return" });
+    return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Internal error verifying return" });
   }
 };

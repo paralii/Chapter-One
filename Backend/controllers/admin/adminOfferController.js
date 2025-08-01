@@ -1,38 +1,38 @@
 import Offer from "../../models/Offer.js";
 import Product from "../../models/Product.js";
 import Category from "../../models/Category.js";
-import Coupon from "../../models/Coupon.js";
 import mongoose from "mongoose";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const createOffer = async (req, res) => {
   const { type, product_id, category_id, discount_type, discount_value, start_date, end_date } = req.body;
   try {
     if (!["PRODUCT", "CATEGORY"].includes(type)) {
-      return res.status(400).json({ success: false, message: "Invalid offer type" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid offer type" });
     }
     if (type === "PRODUCT" && !mongoose.isValidObjectId(product_id)) {
-      return res.status(400).json({ success: false, message: "Invalid product ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid product ID" });
     }
     if (type === "CATEGORY" && !mongoose.isValidObjectId(category_id)) {
-      return res.status(400).json({ success: false, message: "Invalid category ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid category ID" });
     }
     if (discount_type === "PERCENTAGE" && discount_value > 100) {
-      return res.status(400).json({ success: false, message: "Percentage discount must be <= 100" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Percentage discount must be <= 100" });
     }
     if (type === "PRODUCT") {
       const product = await Product.findById(product_id);
-      if (!product) return res.status(404).json({ success: false, message: "Product not found" });
-      if (product.isDeleted || !product.isListed) {
-        return res.status(400).json({ success: false, message: "Cannot apply offer to blocked or unlisted product" });
+      if (!product) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Product not found" });
+      if (product.isDeleted) {
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cannot apply offer to blocked or unlisted product" });
       }
       if (discount_type === "FLAT" && discount_value > product.price) {
-        return res.status(400).json({ success: false, message: "Flat discount exceeds product price" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Flat discount exceeds product price" });
       }
     } else {
       const category = await Category.findById(category_id);
-      if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+      if (!category) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Category not found" });
       if (category.isDeleted || !category.isListed) {
-        return res.status(400).json({ success: false, message: "Cannot apply offer to unlisted category" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cannot apply offer to unlisted category" });
       }
     }
     const offer = new Offer({
@@ -47,7 +47,7 @@ export const createOffer = async (req, res) => {
     await offer.save();
     res.json({ success: true, message: "Offer created successfully", offer });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message, error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message, error: err.message });
   }
 };
 
@@ -66,7 +66,7 @@ export const getOffers = async (req, res) => {
     );
     res.json({ success: true, offers: includeInactive === "true" ? offers : filteredOffers });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -74,16 +74,16 @@ export const getOfferById = async (req, res) => {
   try {
     const { offerId } = req.params;
     if (!mongoose.isValidObjectId(offerId)) {
-      return res.status(400).json({ success: false, message: "Invalid offer ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid offer ID" });
     }
     const offer = await Offer.findById(offerId)
       .populate("product_id", "title price")
       .populate("category_id", "name")
       .populate("user_id", "firstname email");
-    if (!offer) return res.status(404).json({ success: false, message: "Offer not found" });
+    if (!offer) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Offer not found" });
     res.json({ success: true, offers: [offer] });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -92,37 +92,37 @@ export const updateOffer = async (req, res) => {
     const { offerId } = req.params;
     const { discount_type, discount_value, start_date, end_date, is_active, referral_code } = req.body;
     if (!mongoose.isValidObjectId(offerId)) {
-      return res.status(400).json({ success: false, message: "Invalid offer ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid offer ID" });
     }
     const offer = await Offer.findById(offerId);
-    if (!offer) return res.status(404).json({ success: false, message: "Offer not found" });
+    if (!offer) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Offer not found" });
     if (offer.type === "PRODUCT") {
       const product = await Product.findById(offer.product_id);
-      if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+      if (!product) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Product not found" });
       if (product.isDeleted || !product.isListed) {
-        return res.status(400).json({ success: false, message: "Cannot apply offer to blocked or unlisted product" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cannot apply offer to blocked or unlisted product" });
       }
       if (discount_type === "FLAT" && discount_value > product.price) {
-        return res.status(400).json({ success: false, message: "Flat discount exceeds product price" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Flat discount exceeds product price" });
       }
     } else if (offer.type === "CATEGORY") {
       const category = await Category.findById(offer.category_id);
-      if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+      if (!category) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Category not found" });
       if (category.isDeleted || !category.isListed) {
-        return res.status(400).json({ success: false, message: "Cannot apply offer to unlisted category" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cannot apply offer to unlisted category" });
       }
     }
     if (discount_type === "PERCENTAGE" && discount_value > 100) {
-      return res.status(400).json({ success: false, message: "Percentage discount must be <= 100" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Percentage discount must be <= 100" });
     }
     if (offer.type === "REFERRAL" && referral_code && !/^[A-Z0-9-]+$/.test(referral_code)) {
-      return res.status(400).json({ success: false, message: "Invalid referral code format" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid referral code format" });
     }
     Object.assign(offer, { discount_type, discount_value, start_date, end_date, is_active, referral_code });
     await offer.save();
     res.json({ success: true, message: "Offer updated successfully", offer });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -131,18 +131,18 @@ export const toggleReferralOffer = async (req, res) => {
     const { offerId } = req.params;
     const { is_active, block_message } = req.body;
     if (!mongoose.isValidObjectId(offerId)) {
-      return res.status(400).json({ success: false, message: "Invalid offer ID" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid offer ID" });
     }
     const offer = await Offer.findById(offerId);
     if (!offer || offer.type !== "REFERRAL") {
-      return res.status(404).json({ success: false, message: "Referral offer not found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Referral offer not found" });
     }
     offer.is_active = is_active;
     offer.block_message = is_active ? null : block_message || "Referral code is currently disabled";
     await offer.save();
     res.json({ success: true, message: `Referral offer ${is_active ? "activated" : "deactivated"}`, offer });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
@@ -153,7 +153,7 @@ export const getReferralOffers = async (req, res) => {
 
     if (offerId) {
       if (!mongoose.isValidObjectId(offerId)) {
-        return res.status(400).json({ success: false, message: "Invalid offer ID" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid offer ID" });
       }
       query._id = offerId;
     }
@@ -174,6 +174,6 @@ export const getReferralOffers = async (req, res) => {
 
     res.json({ success: true, offers, total });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Server error", error: err.message });
   }
 };

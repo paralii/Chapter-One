@@ -1,6 +1,7 @@
 import Order from "../../models/Order.js";
 import PDFDocumentWithTables from "pdfkit-table";
 import ExcelJS from "exceljs";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 const getFilteredOrders = async (type, fromDate, toDate) => {
   const now = new Date();
@@ -42,7 +43,6 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
   return await Order.find(matchStage).populate("user_id", "name email");
 };
 
-// 📊 View sales report (in admin dashboard)
 export const getSalesReport = async (req, res) => {
   try {
     const { type, fromDate, toDate } = req.query;
@@ -64,18 +64,17 @@ export const getSalesReport = async (req, res) => {
     });
   } catch (err) {
     console.error("Error in getSalesReport:", err);
-    res.status(500).json({ success: false, message: "Error fetching report" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error fetching report" });
   }
 };
 
-// 📄 Download as PDF
 export const generateSalesReportPDF = async (req, res) => {
   try {
     const { type, fromDate, toDate } = req.query;
     const orders = await getFilteredOrders(type, fromDate, toDate);
 
     if (!orders.length) {
-      return res.status(404).json({ success: false, message: "No orders found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "No orders found" });
     }
 
     const doc = new PDFDocumentWithTables({ margin: 50 });
@@ -83,13 +82,10 @@ export const generateSalesReportPDF = async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename=sales-report-${type || "custom"}.pdf`);
     doc.pipe(res);
 
-    // Page width for layout
-    const pageWidth = doc.page.width || 612; // Default to A4 width
+    const pageWidth = doc.page.width || 612; 
     const leftColumnX = 50;
     const rightColumnX = pageWidth / 2;
-    const columnWidth = pageWidth / 2 - 75;
 
-    // HEADER: Text Logo (Left) and Report Title (Right)
     doc
       .fontSize(24)
       .font('Helvetica-Bold')
@@ -102,7 +98,6 @@ export const generateSalesReportPDF = async (req, res) => {
       .text(`Generated on: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`, pageWidth - 250, doc.y, { align: 'right' })
       .moveDown(2);
 
-    // Report Details (Left) and Company Details (Right)
     const reportTypeText = type.charAt(0).toUpperCase() + type.slice(1) || "Custom";
     let dateRangeText = "";
     if (type === "daily") {
@@ -138,7 +133,6 @@ export const generateSalesReportPDF = async (req, res) => {
 
     doc.moveDown(2);
 
-    // Orders Table
     const tableData = orders.map((order, index) => ({
       siNo: index + 1,
       orderID: order.orderID || 'UNKNOWN',
@@ -176,13 +170,12 @@ export const generateSalesReportPDF = async (req, res) => {
         },
         columnSpacing: 10,
         padding: 5,
-        width: pageWidth - 100, // Full width minus margins
+        width: pageWidth - 100,
       }
     );
 
     doc.moveDown(1.5);
 
-    // Summary Section
     const totalSales = orders.reduce((acc, order) => acc + (Number.isFinite(order.total) ? order.total : 0), 0);
     const totalDiscount = orders.reduce((acc, order) => acc + (Number.isFinite(order.discount) ? order.discount : 0), 0);
     const netRevenue = orders.reduce((acc, order) => acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0), 0);
@@ -196,7 +189,6 @@ export const generateSalesReportPDF = async (req, res) => {
       .text(`Net Revenue: Rs.${netRevenue.toFixed(2)}`, { align: 'right' })
       .moveDown(1);
 
-    // Footer Message
     doc
       .fontSize(10)
       .font('Helvetica-Oblique')
@@ -205,18 +197,17 @@ export const generateSalesReportPDF = async (req, res) => {
     doc.end();
   } catch (err) {
     console.error("PDF error:", err);
-    res.status(500).json({ success: false, message: "PDF download failed" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "PDF download failed" });
   }
 };
 
-// 📊 Download as Excel
 export const generateSalesReportExcel = async (req, res) => {
   try {
     const { type, fromDate, toDate } = req.query;
     const orders = await getFilteredOrders(type, fromDate, toDate);
 
     if (!orders.length) {
-      return res.status(404).json({ success: false, message: "No orders found" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "No orders found" });
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -253,6 +244,6 @@ export const generateSalesReportExcel = async (req, res) => {
     res.end();
   } catch (err) {
     console.error("Excel error:", err);
-    res.status(500).json({ success: false, message: "Excel download failed" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Excel download failed" });
   }
 };

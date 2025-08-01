@@ -1,5 +1,7 @@
 import Category from "../../models/Category.js";
 import Product from "../../models/Product.js"
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import { validationMessages } from "../../utils/validationMessages/admin.js";
 
 export const createCategory = async (req, res) => {
   try {
@@ -8,29 +10,29 @@ export const createCategory = async (req, res) => {
     const desc = req.body.description?.trim() || "";
 
     if (!validName.test(trimmedName)) {
-      return res.status(400).json({ error: "Category name contains invalid characters." });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: validationMessages.category.invalidName });
     }
     if (desc && desc.length < 3) {
-      return res.status(400).json({ error: "Description is too short." });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: validationMessages.category.descTooShort });
     }
     if (desc.length > 300) {
-      return res.status(400).json({ error: "Description is too long." });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: validationMessages.category.descTooLong });
     }
     const existing = await Category.findOne({ name: trimmedName });
-    if (existing) return res.status(400).json({ error: "Category already exists" });
+    if (existing) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: validationMessages.category.alreadyExists });
 
     const category = new Category({ ...req.body, name: trimmedName });
     await category.save();
 
-    res.status(201).json({ message: "Category created successfully", category });
+    res.status(STATUS_CODES.SUCCESS.CREATED).json({ message: validationMessages.category.added, category });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
 
 
 export const getCategories = async (req, res) => {
-  const { search = "", sort = "desc", page = 1, limit = 10, isDeleted } = req.query;
+  const { search = "", sort = "desc", page = 1, limit, isDeleted } = req.query;
 
   try {
     const query = {};
@@ -56,9 +58,9 @@ export const getCategories = async (req, res) => {
 
     const hasMore = pageNumber * limitNumber < total;
 
-    res.status(200).json({ categories, total, page: pageNumber, limit: limitNumber, hasMore });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ categories, total, page: pageNumber, limit: limitNumber, hasMore });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
 
@@ -68,12 +70,13 @@ export const getBooksByCategory = async (req, res) => {
 const books = await Product.find({ category_id: category });
 
     if (!books.length) {
-      return res.status(404).json({ message: "No books found in this category" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "No books found in this category" });
     }
 
-    res.status(200).json(books);
+    res.status(STATUS_CODES.SUCCESS.OK).json(books);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching books by category:", error);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
 };
 
@@ -83,11 +86,11 @@ export const updateCategory = async (req, res) => {
     const trimmedName = req.body.name.trim();
 
     if (!validName.test(trimmedName)) {
-      return res.status(400).json({ error: "Category name contains invalid characters." });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: "Category name contains invalid characters." });
     }
 
     const existing = await Category.findOne({ name: trimmedName, _id: { $ne: req.params.id } });
-    if (existing) return res.status(400).json({ error: "Category name already in use" });
+    if (existing) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: "Category name already in use" });
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
@@ -95,11 +98,11 @@ export const updateCategory = async (req, res) => {
       { new: true }
     );
 
-    if (!category) return res.status(404).json({ message: "Category not found" });
+    if (!category) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Category not found" });
 
-    res.status(200).json({ message: "Category updated successfully", category });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Category updated successfully", category });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
 
@@ -111,7 +114,7 @@ export const deleteCategory = async (req, res) => {
     if (isDeleted === true) {
       const products = await Product.find({ category_id: req.params.id, isDeleted: false });
       if (products.length > 0) {
-        return res.status(400).json({ error: "Cannot delete category with associated products" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: "Cannot delete category with associated products" });
       }
     }
 
@@ -121,10 +124,10 @@ export const deleteCategory = async (req, res) => {
       { new: true }
     );
 
-    if (!category) return res.status(404).json({ message: "Category not found" });
+    if (!category) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Category not found" });
 
-    res.status(200).json({ message: "Category updated successfully", category });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Category updated successfully", category });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };

@@ -1,33 +1,26 @@
-import mongoose from 'mongoose';
 import PDFDocument from 'pdfkit';
 import User from '../../models/User.js';
 import Order from '../../models/Order.js';
-import Product from '../../models/Product.js';
-import Category from '../../models/Category.js';
+import STATUS_CODES from '../../utils/constants/statusCodes.js';
 
-// Get dashboard stats (total users, orders, sales) with filters
 export const getDashboardStats = async (req, res) => {
   try {
-    const { filter = 'yearly', year = new Date().getFullYear(), month } = req.query;
+    const { year = new Date().getFullYear(), month } = req.query;
 
-    // Define date range for filtering
     const startDate = new Date(year, month ? parseInt(month) - 1 : 0, 1);
     const endDate = month
-      ? new Date(year, parseInt(month), 0) // Last day of the month
-      : new Date(year + 1, 0, 0); // End of the year
+      ? new Date(year, parseInt(month), 0) 
+      : new Date(year + 1, 0, 0);
 
-    // Total Users
     const totalUsers = await User.countDocuments({
       createdAt: { $gte: startDate, $lte: endDate },
     });
 
-    // Total Orders
     const totalOrders = await Order.countDocuments({
       createdAt: { $gte: startDate, $lte: endDate },
       status: { $in: ['Processing', 'Completed'] },
     });
 
-    // Total Sales
     const salesData = await Order.aggregate([
       {
         $match: {
@@ -45,19 +38,18 @@ export const getDashboardStats = async (req, res) => {
 
     const totalSales = salesData[0]?.totalSales || 0;
 
-    res.status(200).json({
+    res.status(STATUS_CODES.SUCCESS.OK).json({
       success: true,
       data: { totalUsers, totalOrders, totalSales },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
   }
 };
 
-// Get top 10 best-selling products
 export const getTopProducts = async (req, res) => {
   try {
-    const { filter = 'yearly', year = new Date().getFullYear(), month } = req.query;
+    const { year = new Date().getFullYear(), month } = req.query;
 
     const startDate = new Date(year, month ? parseInt(month) - 1 : 0, 1);
     const endDate = month
@@ -97,30 +89,43 @@ export const getTopProducts = async (req, res) => {
       { $limit: 10 },
     ]);
 
-    res.status(200).json({ success: true, data: topProducts });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ success: true, data: topProducts });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
   }
 };
 
-// Get top 10 best-selling categories
 export const getTopCategories = async (req, res) => {
   try {
-    const { filter = 'yearly', year = new Date().getFullYear(), month } = req.query;
+    const {  year = new Date().getFullYear(), month } = req.query;
 
-    const startDate = new Date(year, month ? parseInt(month) - 1 : 0, 1);
-    const endDate = month
-      ? new Date(year, parseInt(month), 0)
-      : new Date(year + 1, 0, 0);
+    const parsedYear = parseInt(year);
+    const parsedMonth = month ? parseInt(month) : null;
+    if (isNaN(parsedYear)) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid year parameter" });
+    }
+    if (parsedMonth !== null && (parsedMonth < 1 || parsedMonth > 12)) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid month parameter" });
+    }
+
+    const startDate = new Date(parsedYear, parsedMonth ? parsedMonth - 1 : 0, 1);
+    const endDate = parsedMonth
+      ? new Date(parsedYear, parsedMonth, 0)
+      : new Date(parsedYear + 1, 0, 0);
 
     const topCategories = await Order.aggregate([
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          status: 'Completed',
+          status: 'Delivered', 
         },
       },
       { $unwind: '$items' },
+      {
+        $match: {
+          'items.status': 'Delivered',
+        },
+      },
       {
         $lookup: {
           from: 'products',
@@ -129,7 +134,12 @@ export const getTopCategories = async (req, res) => {
           as: 'product',
         },
       },
-      { $unwind: '$product' },
+      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+      {
+        $match: {
+          'product.category_id': { $exists: true }, 
+        },
+      },
       {
         $group: {
           _id: '$product.category_id',
@@ -144,10 +154,10 @@ export const getTopCategories = async (req, res) => {
           as: 'category',
         },
       },
-      { $unwind: '$category' },
+      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          name: '$category.name',
+          name: { $ifNull: ['$category.name', 'Unknown Category'] },
           totalSold: 1,
         },
       },
@@ -155,13 +165,21 @@ export const getTopCategories = async (req, res) => {
       { $limit: 10 },
     ]);
 
-    res.status(200).json({ success: true, data: topCategories });
+    if (topCategories.length === 0) {
+      return res.status(STATUS_CODES.SUCCESS.OK).json({
+        success: true,
+        data: [],
+        message: 'No categories found for the specified period',
+      });
+    }
+
+    res.status(STATUS_CODES.SUCCESS.OK).json({ success: true, data: topCategories });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('🔹 Top categories error:', err.message, err.stack);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Internal error fetching top categories' });
   }
 };
 
-// Generate ledger book (PDF)
 export const generateLedgerBook = async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
@@ -183,7 +201,6 @@ export const generateLedgerBook = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=ledger-book-${year}.pdf`);
     doc.pipe(res);
 
-    // Header
     doc
       .fontSize(24)
       .font('Helvetica-Bold')
@@ -196,7 +213,6 @@ export const generateLedgerBook = async (req, res) => {
       .text(`Generated on: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`, 400, 90, { align: 'right' })
       .moveDown(2);
 
-    // Company Details
     doc
       .fontSize(10)
       .font('Helvetica-Bold')
@@ -210,7 +226,6 @@ export const generateLedgerBook = async (req, res) => {
       .text('GST Registration No: 29ABCDE1234F1Z5', 400)
       .moveDown(2);
 
-    // Orders Table
     doc
       .fontSize(12)
       .font('Helvetica-Bold')
@@ -258,7 +273,6 @@ export const generateLedgerBook = async (req, res) => {
 
     doc.moveDown(1);
 
-    // Summary
     const totalNetAmount = orders.reduce((acc, order) => acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0), 0);
     doc
       .fontSize(10)
@@ -267,7 +281,6 @@ export const generateLedgerBook = async (req, res) => {
       .text(`Total Net Amount: Rs.${totalNetAmount.toFixed(2)}`, 400, doc.y, { align: 'right' })
       .moveDown(1);
 
-    // Footer
     doc
       .fontSize(10)
       .font('Helvetica-Oblique')
@@ -276,6 +289,6 @@ export const generateLedgerBook = async (req, res) => {
     doc.end();
   } catch (err) {
     console.error('PDF error:', err);
-    res.status(500).json({ success: false, message: 'PDF download failed' });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: 'PDF download failed' });
   }
 };
