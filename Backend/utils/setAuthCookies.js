@@ -6,14 +6,14 @@ const setAuthCookies = (res, accessToken, refreshToken, type = "user") => {
     httpOnly: true,
     secure: process.env.NODE_ENV !== "development",
     sameSite: "Lax",
-    maxAge: 60 * 60 * 1000, // 1 hour
+    maxAge: 60 * 60 * 1000, 
   });
 
   res.cookie(refreshCookieName, refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV !== "development",
     sameSite: "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000, 
   });
 };
 

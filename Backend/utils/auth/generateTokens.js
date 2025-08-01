@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import User from "../../models/User.js";
 import Admin from "../../models/Admin.js";
+import STATUS_CODES from "../constants/statusCodes.js";
 
 dotenv.config();
 
@@ -27,7 +28,7 @@ export const refreshAccessToken = async (req, res, type = "user") => {
   const refreshToken = req.cookies[refreshCookieName];
 
   if (!refreshToken) {
-    return res.status(401).json({ message: "No refresh token provided" });
+    return res.status(STATUS_CODES.CLIENT_ERROR.UNAUTHORIZED).json({ message: "No refresh token provided" });
   }
 
   jwt.verify(
@@ -35,19 +36,19 @@ export const refreshAccessToken = async (req, res, type = "user") => {
     process.env.JWT_REFRESH_SECRET,
     async (err, decoded) => {
       if (err) {
-        return res.status(403).json({ message: "Invalid refresh token" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Invalid refresh token" });
       }
 
       let entity;
       if (type === "admin") {
         entity = await Admin.findById(decoded.id);
         if (!entity || !entity.isAdmin) {
-          return res.status(404).json({ message: "Admin not found" });
+          return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Admin not found" });
         }
       } else {
         entity = await User.findById(decoded.id);
         if (!entity) {
-          return res.status(404).json({ message: "User not found" });
+          return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "User not found" });
         }
       }
 
@@ -71,7 +72,7 @@ export const refreshAccessToken = async (req, res, type = "user") => {
       });
 
       console.log(`New ${type} access token generated`);
-      res.status(200).json({ accessToken, message: "Token refreshed" });
+      res.status(STATUS_CODES.SUCCESS.OK).json({ accessToken, message: "Token refreshed" });
     }
   );
 };

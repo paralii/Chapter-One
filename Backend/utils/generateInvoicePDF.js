@@ -1,12 +1,10 @@
 import fs from 'fs';
 import PDFDocumentWithTables from 'pdfkit-table';
 
-// Generate consistent invoice ID based on orderID
 const generateInvoiceID = (orderID) => {
   return `INV-${orderID || 'UNKNOWN'}`;
 };
 
-// Convert number to words (handles up to thousands)
 function numberToWords(num) {
   if (!Number.isFinite(num) || num < 0) return 'Zero only';
 
@@ -58,20 +56,17 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
 
 
 
-  // Validate inputs
   if (!order || !user || !address || !productMap) {
     console.error('Missing required inputs');
     throw new Error('Missing required inputs for invoice generation');
   }
 
-  // Validate page width
-  const pageWidth = doc.page.width || 612; // Default to A4 width (612) if undefined
+  const pageWidth = doc.page.width || 612; 
   const leftColumnX = 50;
   const rightColumnX = Number.isFinite(pageWidth / 2) ? pageWidth / 2 : 306;
   const columnWidth = Number.isFinite(pageWidth / 2 - 75) ? pageWidth / 2 - 75 : 231;
 
 
-  // HEADER: Text Logo (Left) and Invoice Title (Right)
   doc
     .fontSize(24)
     .font('Helvetica-Bold')
@@ -84,7 +79,6 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
     .text('(Original for Recipient)', pageWidth - 250, doc.y, { align: 'right' })
     .moveDown(2);
 
-  // Sold By (Left) and Billing Address (Right)
   doc
     .fontSize(10)
     .font('Helvetica-Bold')
@@ -95,7 +89,6 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
     .text('Dubai, Al Rashidiya', leftColumnX)
     .text('Dubai, United Arab Emirates', leftColumnX);
 
-  // Validate address fields
   const safeAddress = {
     firstname: user.firstname || 'Unknown',
     lastname: user.lastname || '',
@@ -118,7 +111,6 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
 
   doc.moveDown(2);
 
-  // PAN/GST (Left) and Shipping Address (Right)
   doc
     .font('Helvetica-Bold')
     .text('PAN No: ABCDE1234F', leftColumnX, doc.y)
@@ -138,8 +130,7 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
 
   doc.moveDown(2);
 
-  // Order Details (Left) and Invoice Details (Right)
-  // Save the starting Y-position for the two-column section
+
   const startY = doc.y;
   doc
     .font('Helvetica-Bold')
@@ -155,12 +146,10 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
     .text(`Invoice Details: ${invoiceID}-2425`, rightColumnX)
     .text(`Invoice Date: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`, rightColumnX);
 
-  // Move cursor below both columns
-  const leftColumnHeight = doc.y - startY; // Height of left column
-  doc.y = startY + leftColumnHeight + 20; // Add padding
-  doc.x = leftColumnX; // Reset X to left margin
+  const leftColumnHeight = doc.y - startY;
+  doc.y = startY + leftColumnHeight + 20; 
+  doc.x = leftColumnX; 
 
-  // Table: Items Purchased
   const tableData = [];
   (order.items || []).forEach((item, index) => {
     const productId = item.product_id?._id?.toString() || item.product_id?.toString() || 'UNKNOWN';
@@ -197,13 +186,12 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
       },
       columnSpacing: 10,
       padding: 5,
-      width: pageWidth - 100, // Full width minus margins
+      width: pageWidth - 100,
     }
   );
 
   doc.moveDown(1.5);
 
-  // Summary
   const safeTotal = Number.isFinite(order.total) ? order.total : 0;
   const safeShipping = Number.isFinite(order.shipping_chrg) ? order.shipping_chrg : 0;
   const safeDiscount = Number.isFinite(order.discount) ? order.discount : 0;
@@ -218,7 +206,6 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
     .text(`Net Amount: Rs.${safeNetAmount}`, { align: 'right' })
     .moveDown(1);
 
-  // Amount in Words
   doc
     .font('Helvetica')
     .fontSize(10)
@@ -226,7 +213,6 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
 
   doc.moveDown(2);
 
-  // Thank You Message
   doc
     .fontSize(10)
     .font('Helvetica-Oblique')
