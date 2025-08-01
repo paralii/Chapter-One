@@ -196,7 +196,6 @@ export const placeOrderValidator = [
     .withMessage("Payment method is required"),
 ];
 
-// Validation for canceling an order or product
 export const cancelOrderValidator = [
   body("orderID")
     .notEmpty()
@@ -213,7 +212,6 @@ export const cancelOrderValidator = [
     .withMessage("Cancellation reason must be a string"),
 ];
 
-// Validation for returning an order or product
 export const returnOrderValidator = [
   body("orderID")
     .notEmpty()

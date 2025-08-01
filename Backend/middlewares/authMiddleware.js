@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import dotenv from "dotenv";
+import STATUS_CODES from "../utils/constants/statusCodes.js";
 dotenv.config();
 
 export const verifyToken = (type = "user") => async (req, res, next) => {
@@ -9,7 +10,7 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
   const token =
     req.cookies[tokenName] || req.headers.authorization?.split(" ")[1];
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized: No token provided" });
+    return res.status(STATUS_CODES.CLIENT_ERROR.UNAUTHORIZED).json({ message: "Unauthorized: No token provided" });
   }
 
   try {
@@ -19,30 +20,31 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
       const Admin = (await import("../models/Admin.js")).default;
       const admin = await Admin.findById(decoded.id);
       if (!admin || !admin.isAdmin) {
-        return res.status(403).json({ message: "Unauthorized admin" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Unauthorized admin" });
       }
       req.user = admin;
     } else {
       const user = await User.findById(decoded.id);
       if (!user) {
-        return res.status(401).json({ message: "Unauthorized: User not found" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.UNAUTHORIZED).json({ message: "Unauthorized: User not found" });
       }
       if (user.isBlock) {
-        return res.status(403).json({ message: "Blocked account" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Blocked account" });
       }
       req.user = user;
     }
 
     next();
   } catch (err) {
-    return res.status(403).json({ message: "Forbidden: Invalid or expired token" });
+    console.error("Token verification failed:", err);
+    return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Forbidden: Invalid or expired token" });
   }
 };
 
 export const isAdmin = (req, res, next) => {
   if (!req.user || !req.user.isAdmin) {
     return res
-      .status(403)
+      .status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN)
       .json({ message: "Forbidden: Admin access required" });
   }
   next();
