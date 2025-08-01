@@ -1,14 +1,24 @@
-// src/App.jsx
 import React from "react";
+
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ToastContainer } from "react-toastify";
+
 import "react-toastify/dist/ReactToastify.css";
+
+
+import { SearchProvider } from './context/SearchContext';
+
+import withUserAuth from "./hoc/withUserAuth";
+import withAdminAuth from "./hoc/withAdminAuth";
 import CustomAlert from "./components/common/CustomAlert";
 import UserPrivateRoute from "./components/User/UserPrivateRoute";
 import AdminPrivateRoute from "./components/Admin/AdminPrivateRoute";
 import OrderSuccess from "./components/User/OrderSuccess";
 import OrderFailure from "./components/User/OrderFailure";
+
+axios.defaults.withCredentials = true;
+
 
 // --- User Authentication ---
 import Login from "./pages/User/Authentication/Login";
@@ -48,11 +58,32 @@ import OfferManagement from "./pages/Admin/OfferManagement";
 import ReferralManagment from "./pages/Admin/ReferralManagement";
 import SalesReport from "./pages/Admin/SalesReport";
 
-import { SearchProvider } from './context/SearchContext';
-axios.defaults.withCredentials = true;
+const ProtectedUserProfileDashboard = withUserAuth(UserProfileDashboard);
+const ProtectedUserEditProfile = withUserAuth(UserEditProfile);
+const ProtectedUserAddresses = withUserAuth(UserAddresses);
+const ProtectedUserWallet = withUserAuth(UserWallet);
+const ProtectedCart = withUserAuth(Cart);
+const ProtectedCheckout = withUserAuth(Checkout);
+const ProtectedOrderDetails = withUserAuth(OrderDetails);
+const ProtectedOrder = withUserAuth(UserOrder);
+const ProtectedWishlist = withUserAuth(Wishlist);
+const ProtectedReferralDashboard = withUserAuth(ReferralDashboard);
+const ProtectedOrderSuccess = withUserAuth(OrderSuccess);
+const ProtectedOrderFailure = withUserAuth(OrderFailure);
+
+const ProtectedAdminDashboard = withAdminAuth(AdminDashboard);
+const ProtectedCategoryManagement = withAdminAuth(CategoryManagement);
+const ProtectedProductManagement = withAdminAuth(ProductManagement);
+const ProtectedUserManagement = withAdminAuth(UserManagement);
+const ProtectedOrderManagement = withAdminAuth(OrderManagement);
+const ProtectedInventoryManagement = withAdminAuth(InventoryManagement);
+const ProtectedCouponManagement = withAdminAuth(CouponManagement);
+const ProtectedOfferManagement = withAdminAuth(OfferManagement);
+const ProtectedReferralManagment = withAdminAuth(ReferralManagment);
+const ProtectedSalesReport = withAdminAuth(SalesReport);
 
 function App() {
-  const location = useLocation();
+  const location = useLocation(); 
   const state = location.state;
   const navigate = useNavigate();
 
@@ -68,46 +99,38 @@ function App() {
         <Route path="/auth/google/callback" element={<GoogleAuthHandler />} />
         <Route path="/verify-otp" element={<OTPVerification />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/products" element={<ProductList />} />
         <Route path="/products/:id" element={<ProductDetail />} />
 
         {/* --- Protected User Routes --- */}
-        <Route element={<UserPrivateRoute />}>
-          <Route path="/profile" element={<UserProfileDashboard />} />
-          <Route path="/profile/edit" element={<UserEditProfile />} />
-          <Route path="/profile/addresses" element={<UserAddresses />} />
-          <Route path="/profile/addresses/add" element={<AddEditAddress />} />
-          <Route path="/profile/addresses/edit/:id" element={<AddEditAddress />} />
-          <Route path="/profile/orders" element={<UserOrder />} />
-          <Route path="/orders/:id" element={<OrderDetails />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/profile/referrals" element={<ReferralDashboard />} />
-          <Route path="/profile/wallet" element={<UserWallet />} />
-          <Route path="/wishlist" element={<Wishlist />} />
-
-          <Route path="/order-success" element={<OrderSuccess />} />
-          <Route path="/order-failure" element={<OrderFailure />} />
-        </Route>
+        <Route path="/profile" element={<ProtectedUserProfileDashboard />} />
+        <Route path="/profile/edit" element={<ProtectedUserEditProfile />} />
+        <Route path="/profile/addresses" element={<ProtectedUserAddresses />} />
+        <Route path="/profile/wallet" element={<ProtectedUserWallet />} />
+        <Route path="/cart" element={<ProtectedCart />} />
+        <Route path="/checkout" element={<ProtectedCheckout />} />
+        <Route path="/orders/:id" element={<ProtectedOrderDetails />} />
+        <Route path="/profile/orders" element={<ProtectedOrder />} />
+        <Route path="/wishlist" element={<ProtectedWishlist />} />
+        <Route path="/profile/referrals" element={<ProtectedReferralDashboard />} />
+        <Route path="/order-success" element={<ProtectedOrderSuccess />} />
+        <Route path="/order-failure" element={<ProtectedOrderFailure />} />
 
         {/* --- Public Admin Route --- */}
         <Route path="/admin/login" element={<AdminSignin />} />
 
         {/* --- Protected Admin Routes --- */}
-        <Route element={<AdminPrivateRoute />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/category-management" element={<CategoryManagement />} />
-          <Route path="/admin/product-management" element={<ProductManagement />} />
-          <Route path="/admin/user-management" element={<UserManagement />} />
-          <Route path="/admin/order-management" element={<OrderManagement />} />
-          <Route path="/admin/inventory-management" element={<InventoryManagement />} />
-          <Route path="/admin/coupon-management" element={<CouponManagement />} />
-          <Route path="/admin/offer-management" element={<OfferManagement />} />
-          <Route path="/admin/referral-management" element={<ReferralManagment />} />
-          <Route path="/admin/sales-report" element={<SalesReport />} />
-
-        </Route>
+        <Route path="/admin/dashboard" element={<ProtectedAdminDashboard />} />
+        <Route path="/admin/category-management" element={<ProtectedCategoryManagement />} />
+        <Route path="/admin/product-management" element={<ProtectedProductManagement />} />
+        <Route path="/admin/user-management" element={<ProtectedUserManagement />} />
+        <Route path="/admin/order-management" element={<ProtectedOrderManagement />} />
+        <Route path="/admin/inventory-management" element={<ProtectedInventoryManagement />} />
+        <Route path="/admin/coupon-management" element={<ProtectedCouponManagement />} />
+        <Route path="/admin/offer-management" element={<ProtectedOfferManagement />} />
+        <Route path="/admin/referral-management" element={<ProtectedReferralManagment />} />
+        <Route path="/admin/sales-report" element={<ProtectedSalesReport />} />
       </Routes>
 
       {/* --- Modal Routes (Background Routes Handling) --- */}
@@ -117,7 +140,7 @@ function App() {
           <Route path="/login" element={<Login onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/verify-otp" element={<OTPVerification onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/forgot-password" element={<ForgotPassword onClose={() => navigate(state.backgroundLocation)} />} />
-          <Route path="/reset-password/:token" element={<ResetPassword onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/reset-password" element={<ResetPassword onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/profile/edit" element={<UserEditProfile onClose={() => navigate(state.backgroundLocation)} />} />
         </Routes>
       )}
