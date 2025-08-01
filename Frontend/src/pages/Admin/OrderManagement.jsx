@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import adminAxios from "../../api/adminAxios";
 import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import { adminLogout } from "../../redux/adminSlice";
@@ -8,6 +7,7 @@ import { listOrdersAdmin, getOrderDetailsAdmin, updateOrderStatus, markItemDeliv
 import BookLoader from "../../components/common/BookLoader";
 import { showAlert } from "../../redux/alertSlice";
 import { useDispatch } from "react-redux";
+import showConfirmDialog from "../../components/common/ConformationModal";
 // Main OrderManagement Component
 function OrderManagement() {
   const [activeView, setActiveView] = useState("dashboard");
@@ -115,26 +115,32 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
   };
   const totalPages = Math.ceil(total / limit);
 
-    const handleSoftDeleteOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to delete this order?')) return;
-    try {
-      await softDeleteOrder(orderId);
-      const data = await listOrdersAdmin({
-        search,
-        page,
-        limit,
-        sort,
-        sortOrder,
-        status: statusFilter,
-        paymentMethod: paymentMethodFilter,
-      });
-      setOrders(data.orders || []);
-      setTotal(data.total || 0);
-      dispatch(showAlert({ message: 'Order deleted successfully!', type: 'success' }));
-    } catch (err) {
-      dispatch(showAlert({ message: err.message || 'Failed to delete order', type: 'error' }));
-    }
-  };
+    const handleSoftDeleteOrder = (orderId) => {
+  showConfirmDialog({
+    message: "Do you really want to delete this order?",
+    requireReason: true,
+    placeholder: "Provide reason for deletion",
+    onConfirm: async (reason) => {
+      try {
+        await softDeleteOrder(orderId, reason); // include reason in backend if expected
+        const data = await listOrdersAdmin({
+          search,
+          page,
+          limit,
+          sort,
+          sortOrder,
+          status: statusFilter,
+          paymentMethod: paymentMethodFilter,
+        });
+        setOrders(data.orders || []);
+        setTotal(data.total || 0);
+        dispatch(showAlert({ message: "Order deleted successfully!", type: "success" }));
+      } catch (err) {
+        dispatch(showAlert({ message: err.message || "Failed to delete order", type: "error" }));
+      }
+    },
+  });
+};
 
   const handleDownloadInvoice = async (orderId) => {
     try {
@@ -337,20 +343,26 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
     }
   };
 
-    const handleSoftDeleteOrder = async () => {
-    if (!window.confirm('Are you sure you want to delete this order?')) return;
-    setLoading(true);
-    setError('');
-    try {
-      await softDeleteOrder(orderId);
-      dispatch(showAlert({ message: 'Order deleted successfully!', type: 'success' }));
-      onCancel();
-    } catch (err) {
-      setError(err.message || 'Failed to delete order');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleSoftDeleteOrder = () => {
+  showConfirmDialog({
+    message: "Are you sure you want to delete this order?",
+    requireReason: true,
+    placeholder: "Please provide a reason for deleting this order",
+    onConfirm: async (reason) => {
+      setLoading(true);
+      setError("");
+      try {
+        await softDeleteOrder(orderId, reason); // include reason if needed
+        dispatch(showAlert({ message: "Order deleted successfully!", type: "success" }));
+        onCancel();
+      } catch (err) {
+        setError(err.message || "Failed to delete order");
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+};
 
   if (loading) return <div className="p-10"><BookLoader/></div>;
   if (error) return <div className="p-10 text-red-600">{error}</div>;
