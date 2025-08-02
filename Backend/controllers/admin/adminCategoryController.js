@@ -70,13 +70,13 @@ export const getBooksByCategory = async (req, res) => {
 const books = await Product.find({ category_id: category });
 
     if (!books.length) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "No books found in this category" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: validationMessages.category.noBooks });
     }
 
     res.status(STATUS_CODES.SUCCESS.OK).json(books);
   } catch (error) {
     console.error("Error fetching books by category:", error);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: error.message });
   }
 };
 
@@ -86,11 +86,11 @@ export const updateCategory = async (req, res) => {
     const trimmedName = req.body.name.trim();
 
     if (!validName.test(trimmedName)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: "Category name contains invalid characters." });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: validationMessages.category.invalidName });
     }
 
     const existing = await Category.findOne({ name: trimmedName, _id: { $ne: req.params.id } });
-    if (existing) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: "Category name already in use" });
+    if (existing) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ error: validationMessages.category.alreadyExists });
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
@@ -98,9 +98,9 @@ export const updateCategory = async (req, res) => {
       { new: true }
     );
 
-    if (!category) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Category not found" });
+    if (!category) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: validationMessages.category.notFound });
 
-    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Category updated successfully", category });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ message: validationMessages.adminAuth.updateCategory, category });
   } catch (err) {
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }

@@ -15,6 +15,8 @@ export const validationMessages = {
     notFound: "Category not found",
     deleteWithProducts: "Cannot delete category with associated products",
     updateSuccess: "Category updated successfully",
+    deleteSuccess: "Category deleted successfully",
+    noBooks: "No books found in this category",
   },
   coupon: {
     codeRequired: "Coupon code and discount percentage are required",

@@ -131,59 +131,6 @@ function AdminSidebar() {
             </div>
             <span className="text-base">Sales Report</span>
           </NavLink>
-          {/* <NavLink
-            to="/admin/referral-management"
-            className={({ isActive }) => navItemClasses(isActive)}
-          >
-            <div className="mr-2 ml-2">
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/5525/5525268.png"
-                alt="Referral icon"
-                className="w-4 h-6 object-contain"
-              />
-            </div>
-            <span className="text-base">Referral</span>
-          </NavLink> */}
-        {/*
-          <NavLink
-            to="/admin/banner"
-            className={({ isActive }) => navItemClasses(isActive)}
-          >
-            <div className="mr-2">
-              <img
-                src="https://cdn.builder.io/api/v1/image/assets/725e3931e5524a72a2f89a378008974f/a5f3707cf9a70e0fefedd291ecc4ba87d28f432cd3c6c140f91080530db1f64b?placeholderIfAbsent=true"
-                alt="Banner icon"
-              />
-            </div>
-            <span className="text-base">Banner management</span>
-          </NavLink>
-
-          <NavLink
-            to="/admin/manage-reviews"
-            className={({ isActive }) => navItemClasses(isActive)}
-          >
-            <div className="mr-2">
-              <img
-                src="https://cdn.builder.io/api/v1/image/assets/725e3931e5524a72a2f89a378008974f/2897cc0ce7ace4dd1f7e6d2c1b779540e7fa6d14150e07ac6bd13caecdf99b1a?placeholderIfAbsent=true"
-                alt="Reviews icon"
-              />
-            </div>
-            <span className="text-base">Reviews</span>
-          </NavLink>
-
-          <NavLink
-            to="/admin/contactus"
-            className={({ isActive }) => navItemClasses(isActive)}
-          >
-            <div className="mr-2">
-              <img
-                src="https://cdn.builder.io/api/v1/image/assets/725e3931e5524a72a2f89a378008974f/ec87dc681e37debe99a62493cd54aec112d27a3f2efb2b092fea56d5226dbe94?placeholderIfAbsent=true"
-                alt="Contact icon"
-                className="w-5 h-6 object-contain"
-              />
-            </div>
-            <span className="text-base">Contact us</span>
-          </NavLink> */}
         </nav>
       </div>
     </aside>

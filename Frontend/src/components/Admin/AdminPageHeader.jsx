@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from "react";
+import PropTypes from "prop-types";
 
 const PageHeader = ({
   title,
@@ -51,6 +52,15 @@ const PageHeader = ({
       </button>
     </header>
   );
+};
+
+PageHeader.propTypes = {
+  title: PropTypes.string.isRequired,
+  search: PropTypes.string,
+  onSearchChange: PropTypes.func.isRequired,
+  handleClear: PropTypes.func,
+  handleLogout: PropTypes.func,
+  searchPlaceholder: PropTypes.string,
 };
 
 export default PageHeader;

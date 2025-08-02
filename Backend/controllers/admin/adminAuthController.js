@@ -1,9 +1,6 @@
 import Admin from "../../models/Admin.js";
 import bcrypt from "bcryptjs";
-import {
-  generateTokens,
-  refreshAccessToken,
-} from "../../utils/auth/generateTokens.js";
+import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTokens.js";
 import setAuthCookies from "../../utils/setAuthCookies.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 import { validationMessages } from "../../utils/validationMessages/admin.js";

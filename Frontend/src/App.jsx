@@ -39,7 +39,6 @@ import Cart from "./pages/User/Profile/Profile Overview/Cart";
 import Checkout from "./pages/User/Profile/Profile Overview/Checkout";
 import OrderDetails from "./pages/User/Profile/Order/OrderDetails";
 import Wishlist from "./pages/User/Profile/Profile Overview/Wishlist";
-import ReferralDashboard from "./pages/User/Profile/Profile Overview/ReferralDashboard";
 // --- Admin Authentication & Dashboard ---
 import AdminSignin from "./pages/Admin/AdminSignin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -52,7 +51,6 @@ import OrderManagement from "./pages/Admin/OrderManagement";
 import InventoryManagement from "./pages/Admin/InventoryManagement";
 import CouponManagement from "./pages/Admin/CouponManagement";
 import OfferManagement from "./pages/Admin/OfferManagement";
-import ReferralManagment from "./pages/Admin/ReferralManagement";
 import SalesReport from "./pages/Admin/SalesReport";
 
 const ProtectedUserProfileDashboard = withUserAuth(UserProfileDashboard);
@@ -64,7 +62,6 @@ const ProtectedCheckout = withUserAuth(Checkout);
 const ProtectedOrderDetails = withUserAuth(OrderDetails);
 const ProtectedOrder = withUserAuth(UserOrder);
 const ProtectedWishlist = withUserAuth(Wishlist);
-const ProtectedReferralDashboard = withUserAuth(ReferralDashboard);
 const ProtectedOrderSuccess = withUserAuth(OrderSuccess);
 const ProtectedOrderFailure = withUserAuth(OrderFailure);
 
@@ -76,7 +73,6 @@ const ProtectedOrderManagement = withAdminAuth(OrderManagement);
 const ProtectedInventoryManagement = withAdminAuth(InventoryManagement);
 const ProtectedCouponManagement = withAdminAuth(CouponManagement);
 const ProtectedOfferManagement = withAdminAuth(OfferManagement);
-const ProtectedReferralManagment = withAdminAuth(ReferralManagment);
 const ProtectedSalesReport = withAdminAuth(SalesReport);
 
 function App() {
@@ -110,7 +106,6 @@ function App() {
         <Route path="/orders/:id" element={<ProtectedOrderDetails />} />
         <Route path="/profile/orders" element={<ProtectedOrder />} />
         <Route path="/wishlist" element={<ProtectedWishlist />} />
-        <Route path="/profile/referrals" element={<ProtectedReferralDashboard />} />
         <Route path="/order-success" element={<ProtectedOrderSuccess />} />
         <Route path="/order-failure" element={<ProtectedOrderFailure />} />
 
@@ -126,7 +121,6 @@ function App() {
         <Route path="/admin/inventory-management" element={<ProtectedInventoryManagement />} />
         <Route path="/admin/coupon-management" element={<ProtectedCouponManagement />} />
         <Route path="/admin/offer-management" element={<ProtectedOfferManagement />} />
-        <Route path="/admin/referral-management" element={<ProtectedReferralManagment />} />
         <Route path="/admin/sales-report" element={<ProtectedSalesReport />} />
       </Routes>
 
