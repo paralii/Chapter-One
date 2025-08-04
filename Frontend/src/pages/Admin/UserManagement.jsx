@@ -104,16 +104,7 @@ const toggleBlock = async (id, isBlock, name) => {
       }
     );
   };
-
-  const handleLogout = async () => {
-    try {
-      await adminAxios.post("/logout", {}, { withCredentials: true });
-      navigate("/admin/login");
-    } catch (err) {
-      console.error("Logout failed:", err.response?.data?.message || err.message);
-    }
-  };
-
+  
   useEffect(()=> {
     if (search !== debouncedSearch) {
       setSearch(debouncedSearch);
@@ -142,7 +133,6 @@ const toggleBlock = async (id, isBlock, name) => {
             search={search}
             onSearchChange={handleSearchChange}
             handleClear={handleClearSearch}
-            handleLogout={handleLogout}
           />
 
           {/* <button

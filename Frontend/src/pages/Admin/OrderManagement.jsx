@@ -116,6 +116,7 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
     setPaymentMethodFilter('');
     setSort('order_date');
     setSortOrder('desc');
+    setPage(1);
   };
   const totalPages = Math.ceil(total / limit);
 
@@ -179,7 +180,6 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
         search={search}
         onSearchChange={handleSearchChange}
         handleClear={handleClear}
-        handleLogout={onLogout}
       />
       <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
   <div className="flex flex-col">

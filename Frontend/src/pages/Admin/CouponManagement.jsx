@@ -7,8 +7,10 @@ import PageHeader from "../../components/Admin/AdminPageHeader";
 import BookLoader from "../../components/common/BookLoader";
 import { getAllCoupons, createCoupon, deleteCoupon, getCouponById, updateCoupon } from "../../api/admin/couponAPI";
 import showConfirmDialog from "../../components/common/ConformationModal";
+import { adminLogout } from "../../redux/adminSlice";
 
 function CouponManagement() {
+
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedCouponId, setSelectedCouponId] = useState(null);
   const [coupons, setCoupons] = useState([]);
@@ -35,6 +37,16 @@ function CouponManagement() {
 
   const refreshCoupons = async () => {
     await fetchCoupons();
+  };
+
+    const handleLogout = async () => {
+    try {
+      await adminAxios.post("/logout", {}, { withCredentials: true });
+      dispatch(adminLogout());
+      navigate("/admin/login");
+    } catch (err) {
+      setError(err.response?.data?.message || "Logout failed");
+    }
   };
 
   const renderView = () => {
@@ -71,7 +83,7 @@ function CouponManagement() {
               },
             });
           }}
-          onLogout={() => navigate("/login")}
+          onLogout={handleLogout}
         />
       );
     } else if (activeView === "edit") {
@@ -112,7 +124,15 @@ function CouponManagement() {
 function CouponsDashboard({ coupons, loading, onAdd, onEdit, onDelete, onLogout }) {
   return (
     <div className="flex-1 p-5 sm:p-10">
-      <PageHeader title="Coupons" handleLogout={onLogout} />
+      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
+          <h1 className="text-[#6e4949] text-[26px] font-semibold">Coupons</h1>
+          <button
+            className="w-full sm:w-[132px] h-[46px] text-[#1d0500] bg-[#ff8266] border border-[#b5b5b5] rounded-[19px] text-[16px] font-semibold cursor-pointer"
+            onClick={onLogout}
+          >
+            Log out
+          </button>
+        </header>
       <button
         onClick={onAdd}
         className="bg-green-500 text-white px-6 py-2 rounded-md mb-4 hover:bg-green-600"

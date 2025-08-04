@@ -4,9 +4,9 @@ import PageHeader from '../../components/Admin/AdminPageHeader';
 import { useDispatch } from 'react-redux';
 import { showAlert } from '../../redux/alertSlice';
 import BookLoader from '../../components/common/BookLoader';
-import axios from 'axios';
 import { getInventory, inventoryReport, updateStock } from '../../api/admin/inventoryAPI';
 import showConfirmDialog from '../../components/common/ConformationModal';
+import useDebounce from '../../hooks/useDebounce';
 
 export default function InventoryDashboard({ onEdit, onLogout }) {
   const [inventory, setInventory] = useState([]);
@@ -18,6 +18,9 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
   const [report, setReport] = useState(null);
   const limit = 10;
   const dispatch = useDispatch();
+
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 500);
 
   useEffect(() => {
     fetchInventory();
@@ -108,10 +111,21 @@ const handleShowUpdateStockModal = (item) => {
   });
 };
 
-  const handleClear = () => {
-    setSearch('');
-    setPage(1);
-  };
+    useEffect(() => {
+      if (search !== debouncedSearch) {
+        setSearch(debouncedSearch);
+        setPage(1);
+      }
+    },[debouncedSearch]);
+      
+    const handleSearchChange = (value) => {
+      setSearchInput(value);
+    } 
+
+    const handleClear = () => {
+      setSearch('');
+      setPage(1);
+    };
 
   const totalPages = Math.ceil(total / limit);
 
@@ -122,9 +136,8 @@ const handleShowUpdateStockModal = (item) => {
         <PageHeader
           title="Inventory"
           search={search}
-          onSearchChange={(e) => setSearch(e.target.value)}
+          onSearchChange={handleSearchChange}
           handleClear={handleClear}
-          handleLogout={onLogout}
         />
         {report && (
           <div className="mb-6 bg-[#eee9dc] p-4 rounded-[15px]">

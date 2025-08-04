@@ -203,8 +203,8 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
         search={search}
         onSearchChange={handleSearchChange}
         handleClear={handleClear}
-        handleLogout={onLogout}
       />
+      
       <div className="mb-4">
         <button
           className="py-2 px-4 bg-[#654321] hover:bg-[#543210] text-white rounded-lg font-medium"

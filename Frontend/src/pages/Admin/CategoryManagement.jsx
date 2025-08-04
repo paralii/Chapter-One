@@ -6,7 +6,8 @@ import adminAxios from "../../api/adminAxios";
 import { toast } from "react-toastify";
 import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css";
-
+import useDebounce from "../../hooks/useDebounce";
+import { use } from "react";
 
 function CategoryManagement() {
     const navigate = useNavigate();
@@ -31,6 +32,9 @@ function CategoryManagement() {
     // Added error state.
     const [error, setError] = useState(null);
   
+    const [searchInput, setSearchInput] = useState(search);
+    const debouncedSearch = useDebounce(searchInput, 500);
+
     // Fetch categories from API.
     const fetchCategories = async () => {
       try {
@@ -56,13 +60,6 @@ function CategoryManagement() {
     useEffect(() => {
       fetchCategories();
     }, [page, search, showListedOnly]);
-  
-    // Clear search/filter inputs.
-    const handleClear = () => {
-      setSearch("");
-      setPage(1);
-      fetchCategories();
-    };
   
     // Handle add or edit submit.
     const handleSubmit = async (e) => {
@@ -189,16 +186,21 @@ function CategoryManagement() {
       });
     };
   
-    // Logout handler.
-    const handleLogout = async () => {
-      try {
-        await adminAxios.post("/logout", {}, { withCredentials: true });
-        navigate("/admin/login");
-      } catch (err) {
-        console.error("Logout failed:", err.response?.data?.message || err.message);
+    useEffect(() => {
+      if (search !== debouncedSearch) {
+        setSearch(debouncedSearch);
+        setPage(1);
       }
+    },[debouncedSearch]);
+      
+    const handleSearchChange = (value) => {
+      setSearchInput(value);
+    }  
+    
+    const handleClear = () => {
+      setSearch("");
+      setPage(1);
     };
-  
     return (
       <>
           <div className="flex min-h-screen bg-[#fffbf0]">
@@ -207,9 +209,8 @@ function CategoryManagement() {
             <PageHeader
               title="Categories"
               search={search}
-              onSearchChange={(e) => setSearch(e.target.value)}
+              onSearchChange={handleSearchChange}
               handleClear={handleClear}
-              handleLogout={handleLogout}
             />
   
             <button
