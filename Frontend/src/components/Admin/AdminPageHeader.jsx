@@ -1,20 +1,33 @@
 import React, {useState, useEffect} from "react";
 import PropTypes from "prop-types";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { adminLogout } from "../../redux/adminSlice";
 
 const PageHeader = ({
   title,
   search,
   onSearchChange,
   handleClear,
-  handleLogout,
   searchPlaceholder = `Search ${title}`,
 }) => {
 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [localSearch, setLocalSearch] = useState(search);
   
   useEffect(() => {
     setLocalSearch(search);
   },[search]);
+
+  const handleLogout = async () => {
+  const result = await dispatch(adminLogout());
+  if (adminLogout.fulfilled.match(result)) {
+    navigate("/admin/login");
+  } else {
+    console.error("Logout failed:", result.payload || result.error);
+  }
+};
 
   return (
     <header className="flex flex-col items-start gap-[20px] sm:flex-row sm:justify-between sm:items-center mb-[30px]">
@@ -56,7 +69,6 @@ PageHeader.propTypes = {
   search: PropTypes.string,
   onSearchChange: PropTypes.func.isRequired,
   handleClear: PropTypes.func,
-  handleLogout: PropTypes.func,
   searchPlaceholder: PropTypes.string,
 };
 

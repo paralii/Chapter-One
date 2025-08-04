@@ -8,9 +8,8 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import adminAxios from "../../api/adminAxios";
-import * as productApi from "../../api/admin/productAPI";
+import useDebounce from "../../hooks/useDebounce";
 
-// ---------- Helper Function for Cropping ----------
 const getCroppedImg = (imageSrc, pixelCrop) => {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -107,6 +106,9 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
   const [loading, setLoading] = useState(false);
   const limit = 10;
 
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 500);
+
   const fetchProducts = async () => {
     setLoading(true);
     try {
@@ -175,6 +177,18 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
     });
   };
 
+  useEffect(() => {
+    if(search !== debouncedSearch){
+      setSearch(debouncedSearch);
+      setPage(1);
+    }
+  },[debouncedSearch]);
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value)
+
+  }
+
   const handleClear = () => {
     setSearch("");
     setPage(1);
@@ -187,7 +201,7 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
       <PageHeader 
         title="Products"
         search={search}
-        onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchChange={handleSearchChange}
         handleClear={handleClear}
         handleLogout={onLogout}
       />
