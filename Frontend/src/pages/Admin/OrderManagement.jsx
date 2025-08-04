@@ -8,7 +8,8 @@ import BookLoader from "../../components/common/BookLoader";
 import { showAlert } from "../../redux/alertSlice";
 import { useDispatch } from "react-redux";
 import showConfirmDialog from "../../components/common/ConformationModal";
-// Main OrderManagement Component
+import useDebounce from "../../hooks/useDebounce";
+
 function OrderManagement() {
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -68,6 +69,7 @@ function OrderManagement() {
 
 function OrdersDashboard({ onEdit, onView, onLogout }) {
   const [search, setSearch] = useState("");
+
   const [orders, setOrders] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -79,6 +81,8 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
   const [error, setError] = useState('');
   const limit = 10;
 
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 500);
   const dispatch = useDispatch();
 
     useEffect(() => {
@@ -156,12 +160,24 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
     }
   };
 
+  useEffect(() => {
+    if(search !== debouncedSearch) {
+      setSearch(debouncedSearch);
+      setPage(1);
+    }
+  },[debouncedSearch]);
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+  };
+
+  
   return (
     <div className="flex-1 p-5 sm:p-10">
       <PageHeader
         title="Orders"
         search={search}
-        onSearchChange={(e) => setSearch(e.target.value)}
+        onSearchChange={handleSearchChange}
         handleClear={handleClear}
         handleLogout={onLogout}
       />

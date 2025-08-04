@@ -127,12 +127,8 @@ const toggleBlock = async (id, isBlock, name) => {
   
   const handleClearSearch = () => {
   setSearchInput("");
-  console.log("Clearing search input");
   setPage(1);
   };
-
-  console.log("current search :", search);
-  console.log("API URL:", `/admin/customers?search=${search}&page=${page}&limit=${limit}`)
 
   return (
     <>{loading && <BookLoader />}
