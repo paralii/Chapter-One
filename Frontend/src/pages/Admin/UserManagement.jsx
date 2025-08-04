@@ -7,7 +7,7 @@ import BookLoader from "../../components/common/BookLoader";
 import { toast } from "react-toastify";
 import showConfirmDialog from "../../components/common/ConformationModal";
 import axios from "axios";
-
+import useDebounce from "../../hooks/useDebounce";
 
 function UserManagement() {
   const navigate = useNavigate();
@@ -24,6 +24,9 @@ function UserManagement() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const [searchInput, setSearchInput] = useState(""); 
+  const debouncedSearch = useDebounce(searchInput, 500);
+
   const fetchUsers = async () => {
   setLoading(true);
   try {
@@ -33,10 +36,9 @@ function UserManagement() {
     const fetchedUsers = response.data.users;
     const fetchedTotal = response.data.total;
 
-    // Auto-correct if page number is too high
     const maxPage = Math.ceil(fetchedTotal / limit);
     if (page > maxPage && maxPage > 0) {
-      setPage(maxPage); // triggers useEffect to refetch
+      setPage(maxPage); 
     } else {
       setUsers(fetchedUsers);
       setTotal(fetchedTotal);
@@ -62,11 +64,6 @@ function UserManagement() {
 
   const closeModal = () => setIsModalOpen(false);
 
-  const handleClear = () => {
-    setSearch("");
-    setPage(1);
-  };
-
 const toggleBlock = async (id, isBlock, name) => {
   showConfirmDialog({
     message: `Are you sure you want to ${isBlock ? "Unblock" : "Block"} ${name}?`,
@@ -85,7 +82,7 @@ const toggleBlock = async (id, isBlock, name) => {
         fetchUsers();
         toast.success(`User ${isBlock ? "Unblocked" : "Blocked"} successfully`);
       } catch (err) {
-        toast.error("Failed to update block status.");
+        toast.error( err.message || "Failed to update block status.");
       }
     },
   });
@@ -117,16 +114,38 @@ const toggleBlock = async (id, isBlock, name) => {
     }
   };
 
+  useEffect(()=> {
+    if (search !== debouncedSearch) {
+      setSearch(debouncedSearch);
+      setPage(1);
+    }
+  },[debouncedSearch]);
+
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+  };
+  
+  const handleClearSearch = () => {
+  setSearchInput("");
+  console.log("Clearing search input");
+  setPage(1);
+  };
+
+  console.log("current search :", search);
+  console.log("API URL:", `/admin/customers?search=${search}&page=${page}&limit=${limit}`)
+
   return (
     <>{loading && <BookLoader />}
       <div className="bg-[#fffbf0] min-h-screen flex flex-col sm:flex-row">
         <AdminSidebar />
         <main className="flex-1 p-5 sm:p-10">
+          {error && <div className="text-red-500 mb-4">{error}</div>}
+          {loading && search && <div className="text-gray-500 mb-4">Searching...</div>}
           <PageHeader 
             title="Users"
             search={search}
-            onSearchChange={(e) => setSearch(e.target.value)}
-            handleClear={handleClear}
+            onSearchChange={handleSearchChange}
+            handleClear={handleClearSearch}
             handleLogout={handleLogout}
           />
 

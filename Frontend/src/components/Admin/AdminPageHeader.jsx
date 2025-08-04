@@ -7,22 +7,14 @@ const PageHeader = ({
   onSearchChange,
   handleClear,
   handleLogout,
-  searchPlaceholder = `Sreach ${title}`,
+  searchPlaceholder = `Search ${title}`,
 }) => {
+
   const [localSearch, setLocalSearch] = useState(search);
-  useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      if (localSearch !== search) {
-        onSearchChange({ target: { value: localSearch } });
-      }
-    }, 3000); 
-
-    return () => clearTimeout(delayDebounce);
-  }, [localSearch]);
-
+  
   useEffect(() => {
     setLocalSearch(search);
-  }, [search]);
+  },[search]);
 
   return (
     <header className="flex flex-col items-start gap-[20px] sm:flex-row sm:justify-between sm:items-center mb-[30px]">
@@ -33,11 +25,15 @@ const PageHeader = ({
             type="text"
             placeholder={searchPlaceholder}
             className="w-full h-[50px] px-[20px] text-[#202224] bg-[#f5efdf] border border-[#b5b5b5] rounded-[12px] text-[14px]"
-            value={search}
-            onChange={onSearchChange}
+            value={localSearch}
+            onChange={(e) => {
+              setLocalSearch(e.target.value);
+              onSearchChange(e.target.value);
+            }}
           />
         </div>
         <button
+          type="button"
           className="ml-2 h-[50px] px-4 border border-[#b5b5b5] rounded-[12px] text-[14px] text-[#1d0500] hover:bg-gray-200"
           onClick={handleClear}
         >
@@ -45,6 +41,7 @@ const PageHeader = ({
         </button>
       </div>
       <button
+        type="button"
         className="w-full sm:w-[132px] h-[46px] text-[#1d0500] bg-[#ff8266] border border-[#b5b5b5] rounded-[19px] text-[16px] font-semibold cursor-pointer"
         onClick={handleLogout}
       >
