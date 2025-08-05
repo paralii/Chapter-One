@@ -12,13 +12,13 @@ export const updateCategory = (id, categoryData) => {
   return adminAxios.put(`/categories/${id}`, categoryData);
 };
 
-export const deleteCategory = (id) => {
-  return adminAxios.delete(`/categories/${id}`);
+export const deleteCategory = (id,{params}) => {
+  return adminAxios.patch(`/categories/${id}`, params);
 };
 
 export const getBooksByCategory = async (category) => {
     try {
-        const response = await adminAxios.get(`/categories/${category}`);
+        const response = await adminAxios.get(`/categories/${category}/bokks`);
         return response.data;
     } catch (error) {
         console.error("Error fetching books by category:", error);

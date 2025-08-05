@@ -70,12 +70,11 @@ export const toggleBlockCustomer = async (req, res) => {
 export const updateCustomer = async (req, res) => {
   const { firstname, lastname, email } = req.body;
 
-  // Only validate what's being updated
   const validationErrors = validateUserInput({
     firstname,
     lastname,
     email,
-    password: "Password@123", // required by current validator logic
+    password: "Password@123",
   });
 
   if (validationErrors.length > 0) {

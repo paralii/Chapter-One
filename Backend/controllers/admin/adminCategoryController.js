@@ -54,11 +54,10 @@ export const getCategories = async (req, res) => {
     const categories = await Category.find(query)
       .sort({ createdAt: sort === "asc" ? 1 : -1 })
       .skip((pageNumber - 1) * limitNumber)
-      .limit(limitNumber);
+      .limit(limitNumber)
+      .select("_id name description isListed isDeleted");
 
-    const hasMore = pageNumber * limitNumber < total;
-
-    res.status(STATUS_CODES.SUCCESS.OK).json({ categories, total, page: pageNumber, limit: limitNumber, hasMore });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ categories, total, page: pageNumber, limit: limitNumber,  });
   } catch (err) {
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
