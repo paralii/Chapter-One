@@ -1,39 +1,7 @@
 import User from "../../models/User.js";
-import bcrypt from "bcryptjs";
 import { validateUserInput } from "../../utils/validators/userValidator.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
-export const createCustomer = async (req, res) => {
-  const { firstname, lastname, email, password } = req.body;
-
-  const errors = validateUserInput({ firstname, lastname, email, password });
-
-  if (errors.length > 0) {
-    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ errors });
-  }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const normalizedPassword = password.trim();
-
-  try {
-
-    let user = await User.findOne({ email:normalizedEmail });
-    if (user) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "User already exists" });
-
-    const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
-    user = new User({
-      firstname,
-      lastname,
-      email,
-      password: hashedPassword,
-    });
-    await user.save();
-
-    res.status(STATUS_CODES.SUCCESS.CREATED).json({ message: "User created successfully", user });
-  } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: err.message });
-  }
-};
 
 export const getAllCustomers = async (req, res) => {
   const { search = "", page = 1, limit = 10 } = req.query;
@@ -50,7 +18,8 @@ export const getAllCustomers = async (req, res) => {
     const users = await User.find(query)
       .sort({ _id: -1 })
       .skip((page - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .select("_id firstname lastname email isBlock isVerified isDeleted");
 
     res.status(STATUS_CODES.SUCCESS.OK).json({ users, total });
   } catch (err) {
@@ -60,7 +29,7 @@ export const getAllCustomers = async (req, res) => {
 
 export const getCustomerById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select("_id firstname lastname email isBlock isVerified isDeleted");
     if (!user) return res.status(404).json({ message: "User not found" });
     res.status(STATUS_CODES.SUCCESS.OK).json(user);
   } catch (err) {
@@ -81,13 +50,16 @@ export const userCount = async (req, res) => {
 export const toggleBlockCustomer = async (req, res) => {
   const { id } = req.params;
   try {
-    const user = await User.findById(id);
+    const user = await User.findById(id).select("_id isBlock firstname");
     if (!user) return res.status(404).json({ message: "User not found" });
     user.isBlock = !user.isBlock;
     await user.save();
     res
       .status(STATUS_CODES.SUCCESS.OK)
       .json({
+        _id: user._id,
+        firstname: user.firstname,
+        isBlock: user.isBlock,
         message: `User ${user.isBlock ? "blocked" : "unblocked"} successfully`,
       });
   } catch (err) {
@@ -96,31 +68,55 @@ export const toggleBlockCustomer = async (req, res) => {
 };
 
 export const updateCustomer = async (req, res) => {
+  const { firstname, lastname, email } = req.body;
+
+  // Only validate what's being updated
+  const validationErrors = validateUserInput({
+    firstname,
+    lastname,
+    email,
+    password: "Password@123", // required by current validator logic
+  });
+
+  if (validationErrors.length > 0) {
+    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ errors: validationErrors });
+  }
+
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    const updateFields = {};
+
+    if (firstname) updateFields.firstname = firstname;
+    if (lastname) updateFields.lastname = lastname;
+
+    if (email) {
+      const normalizedEmail = email.toLowerCase().trim();
+      const existingUser = await User.findOne({ email: normalizedEmail });
+
+      if (existingUser && existingUser._id.toString() !== req.params.id) {
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Email already in use" });
+      }
+
+      updateFields.email = normalizedEmail;
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateFields, { new: true });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const { _id, firstname: fn, lastname: ln, email: em, isBlock } = user;
+    res.status(STATUS_CODES.SUCCESS.OK).json({
+      _id,
+      firstname: fn,
+      lastname: ln,
+      email: em,
+      isBlock,
     });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.status(STATUS_CODES.SUCCESS.OK).json(user);
   } catch (err) {
+    console.error("Error in updateCustomer:", err);
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: err.message });
   }
 };
 
-export const softDeleteUser = async (req, res) => {
-  const { userId } = req.params;
-  try {
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.isDeleted = true;
-    await user.save();
-
-    res.status(STATUS_CODES.SUCCESS.OK).json({ message: "User soft deleted successfully" });
-  } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: err.message });
-  }
-};
 
 export const deleteCustomer = async (req, res) => {
   try {
