@@ -2,6 +2,7 @@ import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinaryService from "../utils/services/cloudinaryService.js";
 
+
 const profileImageStorage = new CloudinaryStorage({
   cloudinary: cloudinaryService.cloudinaryRaw,
   params: {

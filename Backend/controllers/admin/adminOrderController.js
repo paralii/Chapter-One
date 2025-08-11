@@ -8,6 +8,7 @@ import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import { logger, errorLogger } from "../../utils/logger.js";
 
 const INVOICE_DIR = path.resolve("invoices");
 
@@ -45,8 +46,13 @@ const generateAndSaveInvoice = async (order, user, address, invoicePath) => {
     };
 
     await generateInvoicePDF(order, user, address, productMap, invoicePath, seller);
+    logger.info(`Invoice generated successfully at ${invoicePath}`);
     return invoicePath;
   } catch (err) {
+    errorLogger.error("Error generating invoice", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     throw new Error(`Failed to generate invoice: ${err.message}`);
   }
 };
@@ -98,9 +104,15 @@ export const listAllOrders = async (req, res) => {
       Order.countDocuments(filter),
     ]);
 
+    logger.info(
+      `Fetched ${orders.length} orders with search: "${search}", page: ${pageNum}, limit: ${limitNum}, sort: ${sort}, sortOrder: ${sortOrder}`
+    );
     res.json({ success: true, orders, total });
   } catch (err) {
-    console.error("Error fetching orders:", err);
+    errorLogger.error("Error fetching orders", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status().json({ success: false, message: 'Error fetching orders' });
   }
 };
@@ -114,9 +126,13 @@ export const getOrderById = async (req, res) => {
 
     if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
 
+    logger.info(`Fetched order details for order ID: ${order._id}`);
     res.json({ success: true, order });
   } catch (err) {
-    console.error("Error fetching order details:", err);
+    errorLogger.error("Error fetching order by ID", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error fetching order details" });
   }
 };
@@ -201,9 +217,13 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     await order.save();
+    logger.info(`Order ${orderId} status updated to ${status}`);
     res.json({ success: true, message: `Order status updated to ${status}` });
   } catch (err) {
-    console.error("Error updating order status:", err);
+    errorLogger.error("Error updating order status", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Error updating order status' });
   } 
 };
@@ -234,9 +254,14 @@ export const markItemDelivered = async (req, res) => {
     }
 
     await order.save();
+
+    logger.info(`Item ${productId} in order ${orderId} marked as delivered`);
     res.json({ success: true, message: "Item marked as delivered" });
   } catch (err) {
-    console.error("Error marking item delivered:", err);
+    errorLogger.error("Error marking item delivered", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error marking item delivered" });
   }
 };
@@ -303,7 +328,12 @@ export const downloadAdminInvoice = async (req, res) => {
       }
     };
     await retryUnlink(invoicePath);
+    logger.info(`Invoice ${invoicePath} downloaded and deleted successfully`);
   } catch (err) {
+    errorLogger.error("Error downloading admin invoice", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: `Failed to generate invoice: ${err.message}` });
   }
 };
@@ -353,9 +383,14 @@ export const softDeleteOrder = async (req, res) => {
       }
     }
     await order.save();
+
+    logger.info(`Order ${orderId} soft deleted successfully`);
     res.json({ success: true, message: "Order soft deleted" });
   } catch (err) {
-    console.error("Error deleting order:", err);
+    errorLogger.error("Error soft deleting order", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error deleting order" });
   }
 };
@@ -403,9 +438,14 @@ export const verifyReturnRequest = async (req, res) => {
     }
 
     await order.save();
+
+    logger.info(`Return request for item ${productId} in order ${orderId} ${approve ? "approved" : "rejected"}`);
     return res.json({ success: true, message: `Return ${approve ? "approved" : "rejected"}` });
   } catch (err) {
-    console.error("Return verification error:", err);
+    errorLogger.error("Error verifying return request", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Internal error verifying return" });
   }
 };
