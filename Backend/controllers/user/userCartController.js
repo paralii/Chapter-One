@@ -3,6 +3,8 @@ import Product from "../../models/Product.js";
 import Wishlist from "../../models/Wishlist.js";
 import  Offer from "../../models/Offer.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import { logger, errorLogger } from "../../utils/logger.js";
+
 
       const MAX_LIMIT = 5;
 

@@ -22,21 +22,21 @@ import * as userOfferController from "../controllers/user/userOfferController.js
 const router = express.Router();
 
 // ===================== USER AUTHENTICATION =====================
-router.post("/signup", userValidation.validateUserSignup , userAuthController.userSignup);
-router.post("/verify-otp", userAuthController.verifyOTP);
-router.post("/resend-otp-verify", userAuthController.resendOtpForVerify);
-router.post("/login", userValidation.validateUserLogin, userAuthController.login);
-router.post("/logout", userAuthController.logout);
-router.post("/refresh-token", userAuthController.refreshUserToken);
-router.post("/forgot-password", userValidation.validateForgotPassword, userAuthController.forgotPassword);
-router.post("/verify-forgot-password-otp", userAuthController.verifyForgotPasswordOTP);
-router.post("/resend-forgot-password-otp", userAuthController.resendForgotPasswordOTP);
-router.post("/reset-password", userValidation.validateResetPassword, userAuthController.resetPassword);
+router.post("/auth/signup", userValidation.validateUserSignup , userAuthController.userSignup);
+router.post("/auth/verify-otp", userAuthController.verifyOTP);
+router.post("/auth/resend-otp-verify", userAuthController.resendOtpForVerify);
+router.post("/auth/login", userValidation.validateUserLogin, userAuthController.login);
+router.post("/auth/logout", userAuthController.logout);
+router.post("/auth/refresh-token", userAuthController.refreshUserToken);
+router.post("/auth/forgot-password", userValidation.validateForgotPassword, userAuthController.forgotPassword);
+router.post("/auth/verify-forgot-password-otp", userAuthController.verifyForgotPasswordOTP);
+router.post("/auth/resend-forgot-password-otp", userAuthController.resendForgotPasswordOTP);
+router.post("/auth/reset-password", userValidation.validateResetPassword, userAuthController.resetPassword);
 
 // ===================== USER SSO (google) AUTHENTICATION =====================
 router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 router.get("/auth/google/callback", passport.authenticate("google", { session: false }), googleAuthCallback);
-router.get("/me", verifyToken, (req, res) => {
+router.get("/auth/me", verifyToken, (req, res) => {
     const { _id, firstname, lastname, email, profileImage, isVerified } = req.user;
     res.status(200).json({ _id, firstname, lastname, email, profileImage, isVerified });
   });
@@ -52,28 +52,28 @@ router.get("/categories/:id",  userCategoryController.getBooksByCategory);
 // ===================== PROFILE =====================
 router.get("/profile", verifyToken("user"), userProfileController.getUserProfile);
 router.put("/profile", verifyToken("user"), userValidation.validateProfileUpdate, userProfileController.updateUserProfile);
-router.put("/profile/change-password", verifyToken("user"), userProfileController.changeUserPassword);
-router.put("/profile/upload-image", verifyToken("user"), uploadProfileImage, userProfileController.uploadProfileImage);
-router.post("/profile/request-email-change", verifyToken("user"), userValidation.validateEmailChangeRequest, userProfileController.requestEmailChange);
-router.post("/profile/resend-otp", userAuthController.resendOTP);
-router.post("/profile/confirm-email-change", verifyToken("user"), userValidation.validateConfirmEmailChange, userProfileController.confirmEmailChange);
+router.put("/profile/password", verifyToken("user"), userProfileController.changeUserPassword);
+router.put("/profile/image", verifyToken("user"), uploadProfileImage, userProfileController.uploadProfileImage);
+router.post("/profile/email/request", verifyToken("user"), userValidation.validateEmailChangeRequest, userProfileController.requestEmailChange);
+router.post("/profile/email/resend-otp", userAuthController.resendOTP);
+router.post("/profile/email/confirm", verifyToken("user"), userValidation.validateConfirmEmailChange, userProfileController.confirmEmailChange);
 
 // ===================== ADDRESS =====================
 router.post("/addresses", verifyToken("user"), userValidation.validateAddress, userAddressController.addAddress);
 router.put("/addresses/:id", verifyToken("user"), userValidation.validateUpdateAddress, userAddressController.updateAddress);
 router.delete("/addresses/:id", verifyToken("user"), userAddressController.deleteAddress);
 router.get("/addresses", verifyToken("user"), userAddressController.getAllUserAddresses);
-router.put("/addresses/default/:id", verifyToken("user"), userAddressController.setDefaultAddress);
+router.put("/addresses/:id/default", verifyToken("user"), userAddressController.setDefaultAddress);
 router.get("/addresses/:id", verifyToken("user"), userAddressController.getAddressById);
-router.get('/address/default', verifyToken('user'), userAddressController.getDefaultAddress);
+router.get('/addresses/default', verifyToken('user'), userAddressController.getDefaultAddress);
 
 // ===================== CART =====================
-router.get("/", verifyToken("user"), userCartController.getCart);
-router.post("/add", verifyToken("user"), userCartController.addToCart);
-router.patch("/update", verifyToken("user"), userCartController.updateCartItemQuantity);
-router.patch("/increment", verifyToken("user"), userCartController.incrementCartItemQuantity);
-router.patch("/decrement", verifyToken("user"), userCartController.decrementCartItemQuantity);
-router.delete("/remove/:product_id", verifyToken("user"), userCartController.removeCartItem);
+router.get("/cart", verifyToken("user"), userCartController.getCart);
+router.post("/cart/add", verifyToken("user"), userCartController.addToCart);
+router.patch("/cart/update", verifyToken("user"), userCartController.updateCartItemQuantity);
+router.patch("/cart/increment", verifyToken("user"), userCartController.incrementCartItemQuantity);
+router.patch("/cart/decrement", verifyToken("user"), userCartController.decrementCartItemQuantity);
+router.delete("/cart/:id/remove", verifyToken("user"), userCartController.removeCartItem);
 
 // ===================== CHECKOUT =====================
 router.post("/checkout", verifyToken("user"), userValidation.validateCheckout, checkout);
@@ -82,20 +82,20 @@ router.post("/checkout", verifyToken("user"), userValidation.validateCheckout, c
 router.get("/orders", verifyToken("user"), userOrderController.getUserOrders);
 router.post("/orders/temp", verifyToken("user"), userOrderController.createTempOrder);
 router.post("/orders", verifyToken("user"), userOrderController.placeOrder);
-router.get("/orders/pending", verifyToken("user"), userOrderController.getPendingOrder);
+router.get("/orders/status/pending", verifyToken("user"), userOrderController.getPendingOrder);
 router.get("/orders/:id", verifyToken("user"), userOrderController.getOrderDetails);
 router.put("/orders/cancel", verifyToken("user"), userOrderController.cancelOrderOrItem);
 router.put("/orders/return", verifyToken("user"), userOrderController.returnOrderItem);
-router.get("/orders/invoice/:id", verifyToken("user"), userOrderController.downloadInvoice);
+router.get("/orders/:id/invoice", verifyToken("user"), userOrderController.downloadInvoice);
 
 // ===================== RAZORPAY =====================
-router.post("/create-order", verifyToken("user"), paymentController.createRazorpayOrder);
-router.post("/verify-payment", verifyToken("user"), paymentController.verifyPayment);
+router.post("/payment/create-order", verifyToken("user"), paymentController.createRazorpayOrder);
+router.post("/payment/verify", verifyToken("user"), paymentController.verifyPayment);
 
 // ===================== COUPON ===================== 
 router.get("/coupons", verifyToken("user"), userCouponController.getAvailableCoupons);
-router.post("/apply-coupon", verifyToken("user"), userCouponController.applyCoupon);
-router.post("/remove-coupon", verifyToken("user"), userCouponController.removeCoupon);
+router.post("/coupons/apply", verifyToken("user"), userCouponController.applyCoupon);
+router.post("/coupons/remove", verifyToken("user"), userCouponController.removeCoupon);
 
 // ===================== WISHLIST ===================== 
 router.get("/wishlist", verifyToken("user"), userWishlistController.getWishlist);
@@ -105,11 +105,10 @@ router.post("/wishlist/move-to-cart/:productId", verifyToken("user"), userWishli
 
 // ===================== OFFERS =====================
 router.get("/offers", userOfferController.getActiveOffers);
-router.post("/offers/apply-referral", userOfferController.applyReferralOffer);
+router.post("/offers/referral/apply", userOfferController.applyReferralOffer);
 router.get("/offers/referral", verifyToken("user"), userOfferController.getReferralOffer);
 router.get("/offers/referral/coupons", verifyToken("user"), userOfferController.getReferralCoupons);
-router.post("/offers/referral/apply", verifyToken("user"), userOfferController.validateReferral);
-router.get("/offers/referral-stats", verifyToken("user"), userOfferController.getReferralStats);
+router.get("/offers/referral/stats", verifyToken("user"), userOfferController.getReferralStats);
 
 // ===================== WALLET =====================
 router.get("/wallet/details", verifyToken("user"), userWalletController.getWalletDetails);

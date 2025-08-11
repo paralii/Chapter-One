@@ -10,7 +10,7 @@ import Wishlist from "../../models/Wishlist.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 import { generateOTP, storeOtpInRedis, getOtpFromRedis, deleteOtpFromRedis } from "../../utils/services/otpService.js";
 import { creditWallet } from "./userWalletController.js";
-
+import { logger, errorLogger } from "../../utils/logger.js";
 
 
 export const login = async (req, res) => {
@@ -25,7 +25,7 @@ export const login = async (req, res) => {
   try {
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-       console.log(`Login attempt failed: User not found for email ${normalizedEmail}`);
+      logger.warn(`Login attempt failed: User with email ${normalizedEmail} does not exist`);
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "User with this email does not exist" });
 }
     if (!user.isVerified) {
@@ -38,19 +38,24 @@ export const login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(normalizedPassword, user.password);
     if (!isMatch) {
-        console.log(`Login attempt failed: Incorrect password for email ${normalizedEmail}`);
+      logger.warn(`Login attempt failed: Incorrect password for user ${normalizedEmail}`);
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Incorrect password, please try again" });
     }
 
     const { accessToken, refreshToken } = generateTokens(user, false);
     setAuthCookies(res, accessToken, refreshToken, "user");
+    logger.info(`User ${user.email} logged in successfully`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ user, message: "Login successful" });
   } catch (err) {
-    console.error(`Login error for ${normalizedEmail}:`, err.message);
+    errorLogger.error("User login error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error", error: err.message });  }
 };
 
 export const logout = (req, res) => {
+  logger.info(`User ${req.user.email} logged out successfully`);
   res.clearCookie("accessToken_user");
   res.clearCookie("refreshToken_user");
   res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Logged out successfully" });
@@ -89,9 +94,13 @@ export const userSignup = async (req, res) => {
     await sendOTPEmail(normalizedEmail, otp);
     console.log("SignUp OTP:", otp);
 
+    logger.info(`OTP sent to ${normalizedEmail} for signup`);
     res.status(STATUS_CODES.SUCCESS.CREATED).json({ message: "OTP sent to email", email: normalizedEmail });
   } catch (err) {
-   console.error("Signup error:", err.message);
+    errorLogger.error("User signup error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error", error: err.message });  }
 };
 
@@ -153,6 +162,7 @@ export const verifyOTP = async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(user, false);
     setAuthCookies(res, accessToken, refreshToken, "user");
 
+    logger.info(`User ${user.email} verified and signed up successfully`);
     res.status(STATUS_CODES.SUCCESS.OK).json({
       message: "OTP verified, account created successfully",
       user: {
@@ -163,8 +173,11 @@ export const verifyOTP = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("Verify OTP error:", err.message);
-    return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
+    errorLogger.error("User OTP verification error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -184,9 +197,13 @@ export const resendOtpForVerify = async (req, res) => {
     await resendOtpForVerifyEmail(normalizedEmail, otp);
     console.log("Resend OTP:", otp);
 
+    logger.info(`OTP resent to ${normalizedEmail} for verification`);
     return res.status(STATUS_CODES.SUCCESS.OK).json({ message: "OTP resent successfully" });
   } catch (err) {
-    console.error("Resend OTP failed:", err.message);
+    errorLogger.error("User resend OTP error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
 };
@@ -211,9 +228,14 @@ export const resendOTP = async (req, res) => {
     await resendOtpForVerifyEmail(email, otp);
     console.log("resend OTP:", otp);
 
+    logger.info(`OTP resent to ${normalizedEmail} for signup`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "OTP resent successfully" });
   } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: err.message });
+    errorLogger.error("User resend OTP error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -231,10 +253,14 @@ export const forgotPassword = async (req, res) => {
     await sendForgotPasswordOTP(normalizedEmail, otp);
     console.log("forgotPassword OTP:", otp);
 
+    logger.info(`Forgot password OTP sent to ${normalizedEmail}`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "OTP sent to email for password reset", email: normalizedEmail });
   } catch (err) {
-    console.error("Forgot password error:", err.message);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: err.message });
+    errorLogger.error("User forgot password error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -262,11 +288,16 @@ export const verifyForgotPasswordOTP = async (req, res) => {
       { expiresIn: "15m" }
     );
 
+    logger.info(`Forgot password OTP verified for ${normalizedEmail}`);
     return res.status(STATUS_CODES.SUCCESS.OK).json({
       message: "OTP verified, proceed to reset password",
       resetToken
     });
   } catch (err) {
+    errorLogger.error("User verify forgot password OTP error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     console.error("Verify Forgot Password OTP error:", err.message);
     return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
@@ -288,8 +319,13 @@ export const resendForgotPasswordOTP = async (req, res) => {
     await sendForgotPasswordOTP(normalizedEmail, otp);
     console.log("Resend Forgot Password OTP:", otp);
 
+    logger.info(`Forgot password OTP resent to ${normalizedEmail}`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "OTP resent for password reset" });
   } catch (err) {
+    errorLogger.error("User resend forgot password OTP error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     console.error("Resend Forgot Password OTP error:", err.message);
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error" });
   }
@@ -314,16 +350,29 @@ try {
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-
+    logger.info(`Password reset successfully for user ${normalizedEmail}`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Password has been reset successfully" });
   } catch (err) {
     if (err.name === "JsonWebTokenError") {
+      errorLogger.error("Invalid token for password reset", {
+        message: err.message,
+        stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+      });
+      console.error("Invalid token for password reset:", err.message);
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid token" });
     } else if (err.name === "TokenExpiredError") {
+      errorLogger.error("Token expired for password reset", {
+        message: err.message,
+        stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+      });
+      console.error("Token expired for password reset:", err.message);
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Token expired" });
+    }
+    errorLogger.error("Error resetting password", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "OTP expired" });
     }
-    
     return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "OTP expired or invalid" });
-  }
-
 };

@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import Cart from "../../models/Cart.js";
 import Wishlist from "../../models/Wishlist.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import { logger, errorLogger } from "../../utils/logger.js";
 
 export const createProduct = async (req, res) => {
   try {
@@ -26,8 +27,13 @@ export const createProduct = async (req, res) => {
     const product = new Product(productData);
     await product.save();
 
+    logger.info(`Product ${product.title} created successfully`);
     res.status(STATUS_CODES.SUCCESS.CREATED).json({ message: "Product created successfully", product });
   } catch (err) {
+    errorLogger.error("Error creating product", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
@@ -91,9 +97,13 @@ if (req.uploadedImages && req.uploadedImages.length >= 3) {
       return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Failed to update product" });
     }
 
+    logger.info(`Product ${updatedProduct.title} updated successfully`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Product updated successfully", product: updatedProduct });
   } catch (err) {
-    console.error("Update product error:", err);
+    errorLogger.error("Error updating product", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: "Server error while updating product", details: err.message });
   }
 };
@@ -107,12 +117,17 @@ export const toggleProductListing = async (req, res) => {
     product.isListed = !product.isListed;
     await product.save();
 
+    logger.info(`Product ${product.title} listing status updated to ${product.isListed}`);
     res.status(STATUS_CODES.SUCCESS.OK).json({
       message: `Product ${
         product.isDeleted ? "soft-deleted" : "restored"
       } successfully`,
     });
   } catch (err) {
+    errorLogger.error("Error toggling product listing", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
@@ -135,8 +150,14 @@ export const deleteProduct = async (req, res) => {
       { $pull: { items: { productId: req.params.id } } }
     );
     await Product.findByIdAndDelete(req.params.id);
+
+    logger.info(`Product ${product.title} deleted successfully`);
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Product deleted successfully" });
   } catch (error) {
+    errorLogger.error("Error deleting product", {
+      message: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: error.message });
   }
 };
@@ -170,8 +191,15 @@ export const getProducts = async (req, res) => {
       .skip(skip)
       .limit(limitNumber);
 
+    logger.info(
+      `Fetched ${products.length} products with search: "${search}", page: ${pageNumber}, limit: ${limitNumber}`
+    );
     res.status(STATUS_CODES.SUCCESS.OK).json({ products, total, totalPages });
   } catch (err) {
+    errorLogger.error("Error fetching products", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
@@ -184,8 +212,13 @@ export const getProductById = async (req, res) => {
     if (!product || product.isDeleted) {
       return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Product not available" });
     }
+    logger.info(`Fetched product details for ID: ${req.params.id}`);
     res.status(STATUS_CODES.SUCCESS.OK).json(product);
   } catch (err) {
+    errorLogger.error("Error fetching product by ID", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
