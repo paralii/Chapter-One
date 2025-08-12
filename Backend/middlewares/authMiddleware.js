@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Admin from "../models/Admin.js";
 import STATUS_CODES from "../utils/constants/statusCodes.js";
 import { logger, errorLogger } from "../utils/logger.js";
 
@@ -19,7 +20,6 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (type === "admin") {
-      const Admin = (await import("../models/Admin.js")).default;
       const admin = await Admin.findById(decoded.id);
 
       if (!admin || !admin.isAdmin) {

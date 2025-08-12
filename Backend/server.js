@@ -1,4 +1,3 @@
-// server.js
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -39,11 +38,14 @@ connectDB()
   .then(async () => {
     await redisClient.connect();
     logger.info("✅ Redis connected");
+    console.log("✅ Redis connected");
 
     app.listen(process.env.PORT, () => {
       logger.info(`🚀 Server running at http://localhost:${process.env.PORT}`);
+      console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
     });
   })
   .catch((err) => {
     errorLogger.error(`❌ Startup Error: ${err.message}`);
+    console.error(`❌ Startup Error: ${err.message}`);
   });

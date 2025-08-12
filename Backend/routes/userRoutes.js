@@ -70,10 +70,9 @@ router.get('/addresses/default', verifyToken('user'), userAddressController.getD
 // ===================== CART =====================
 router.get("/cart", verifyToken("user"), userCartController.getCart);
 router.post("/cart/add", verifyToken("user"), userCartController.addToCart);
-router.patch("/cart/update", verifyToken("user"), userCartController.updateCartItemQuantity);
 router.patch("/cart/increment", verifyToken("user"), userCartController.incrementCartItemQuantity);
 router.patch("/cart/decrement", verifyToken("user"), userCartController.decrementCartItemQuantity);
-router.delete("/cart/:id/remove", verifyToken("user"), userCartController.removeCartItem);
+router.delete("/cart/:productId/remove", verifyToken("user"), userCartController.removeCartItem);
 
 // ===================== CHECKOUT =====================
 router.post("/checkout", verifyToken("user"), userValidation.validateCheckout, checkout);

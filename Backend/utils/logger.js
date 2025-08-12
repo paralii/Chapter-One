@@ -34,7 +34,6 @@ export const logger = winston.createLogger({
     )
   ),
   transports: [
-    new winston.transports.Console(),
     dailyRotateInfo
   ]
 });
@@ -48,7 +47,6 @@ export const errorLogger = winston.createLogger({
     )
   ),
   transports: [
-    new winston.transports.Console(),
     dailyRotateError
   ]
 });

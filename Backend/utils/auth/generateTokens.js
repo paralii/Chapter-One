@@ -1,10 +1,8 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import User from "../../models/User.js";
 import Admin from "../../models/Admin.js";
 import STATUS_CODES from "../constants/statusCodes.js";
-
-dotenv.config();
+import { logger, errorLogger } from '../logger.js';
 
 export const generateTokens = (user, isAdmin = false) => {
   const accessToken = jwt.sign(
@@ -28,6 +26,7 @@ export const refreshAccessToken = async (req, res, type = "user") => {
   const refreshToken = req.cookies[refreshCookieName];
 
   if (!refreshToken) {
+    errorLogger.error("Error no refresh token provided",);
     return res.status(STATUS_CODES.CLIENT_ERROR.UNAUTHORIZED).json({ message: "No refresh token provided" });
   }
 
@@ -36,6 +35,10 @@ export const refreshAccessToken = async (req, res, type = "user") => {
     process.env.JWT_REFRESH_SECRET,
     async (err, decoded) => {
       if (err) {
+        errorLogger.error("Invalid refresh token", {
+          message:err.message,
+          stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+        })
         return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Invalid refresh token" });
       }
 
@@ -43,11 +46,13 @@ export const refreshAccessToken = async (req, res, type = "user") => {
       if (type === "admin") {
         entity = await Admin.findById(decoded.id);
         if (!entity || !entity.isAdmin) {
+          errorLogger.error("Admin not found");
           return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Admin not found" });
         }
       } else {
         entity = await User.findById(decoded.id);
         if (!entity) {
+          errorLogger.error("User not found");
           return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "User not found" });
         }
       }
@@ -71,7 +76,7 @@ export const refreshAccessToken = async (req, res, type = "user") => {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      console.log(`New ${type} access token generated`);
+      logger.info()
       res.status(STATUS_CODES.SUCCESS.OK).json({ accessToken, message: "Token refreshed" });
     }
   );
