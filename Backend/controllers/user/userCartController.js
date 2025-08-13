@@ -3,7 +3,7 @@ import Product from "../../models/Product.js";
 import Wishlist from "../../models/Wishlist.js";
 import  Offer from "../../models/Offer.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
-import { logger, errorLogger } from "../../utils/logger.js";
+import { logger } from "../../utils/logger.js";
 
 
       const MAX_LIMIT = 5;
@@ -163,87 +163,19 @@ export const addToCart = async (req, res) => {
   }
 };
 
-export const updateCartItemQuantity = async (req, res) => {
-  const { product_id, quantity } = req.body;
-  try {
-    if (!product_id || isNaN(Number(quantity))) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid data" });
-    }
-
-    const product = await Product.findById(product_id).populate("category_id");
-
-    if (!product || product.isDeleted || product.isBlocked) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Product not available" });
-    }
-
-    if (!product.category_id || !product.category_id.isListed) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND)
-        .json({ message: "Product Category is not Listed" });
-    }
-
-    let cart = await Cart.findOne({ user_id: req.user._id });
-
-    if (!cart) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Cart not found" });
-    }
-
-    const itemIndex = cart.items.findIndex(
-      (item) => item.product_id.toString() === product_id
-    );
-
-    if (itemIndex === -1) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Product not in cart" });
-    }
-
-    const newQuantity = cart.items[itemIndex].quantity + Number(quantity);
-
-    if (newQuantity < 1) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-        .json({ message: "Quantity cannot be less than 1" });
-    }
-
-
-    if (newQuantity > product.available_quantity) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Exceeds available stock" });
-    }
-
-    if (newQuantity > MAX_LIMIT) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-        .json({ message: "Cannot exceed 5 units per product" });
-    }
-
-    cart.items[itemIndex].quantity = newQuantity;
-    await cart.save();
-
-    await cart.populate(
-      "items.product_id",
-      "title price available_quantity product_imgs description"
-    );
-
-    res
-      .status(STATUS_CODES.SUCCESS.OK)
-      .json({ message: "Cart item quantity updated successfully", cart });
-  } catch (err) {
-    res
-      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
-      .json({ message: "Internal Server Error", error: err.message });
-  }
-};
-
 export const removeCartItem = async (req, res) => {
-  const { product_id } = req.params;
+  const { productId } = req.params;
+  logger.info(`Product id : ${productId}`)
   try {
     let cart = await Cart.findOne({ user_id: req.user._id });
 
     if (!cart) {
+      logger.info(`cart not found`);
       return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ message: "Cart not found" });
     }
 
     cart.items = cart.items.filter(
-      (item) => item.product_id.toString() !== product_id
+      (item) => item.product_id.toString() !== productId
     );
     await cart.save();
     res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Product removed from cart", cart });
