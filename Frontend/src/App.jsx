@@ -1,20 +1,14 @@
-import React from "react";
-
+import React, { useEffect } from "react";
+import { useSelector } from "react-redux";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { ToastContainer } from "react-toastify";
 
-import "react-toastify/dist/ReactToastify.css";
-
-
+import { registerSocket } from "./utils/socketClient";
 import { SearchProvider } from './context/SearchContext';
 
-import withUserAuth from "./hoc/withUserAuth";
-import withAdminAuth from "./hoc/withAdminAuth";
-import CustomAlert from "./components/common/CustomAlert";
-import OrderSuccess from "./components/User/OrderSuccess";
-import OrderFailure from "./components/User/OrderFailure";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
+import axios from "axios";
 axios.defaults.withCredentials = true;
 
 
@@ -53,6 +47,15 @@ import CouponManagement from "./pages/Admin/CouponManagement";
 import OfferManagement from "./pages/Admin/OfferManagement";
 import SalesReport from "./pages/Admin/SalesReport";
 
+// --- Component pages ---
+import CustomAlert from "./components/common/CustomAlert";
+import OrderSuccess from "./components/User/OrderSuccess";
+import OrderFailure from "./components/User/OrderFailure";
+
+// --- Private route HOC ---
+import withUserAuth from "./hoc/withUserAuth";
+import withAdminAuth from "./hoc/withAdminAuth";
+
 const ProtectedUserProfileDashboard = withUserAuth(UserProfileDashboard);
 const ProtectedUserEditProfile = withUserAuth(UserEditProfile);
 const ProtectedUserAddresses = withUserAuth(UserAddresses);
@@ -76,9 +79,16 @@ const ProtectedOfferManagement = withAdminAuth(OfferManagement);
 const ProtectedSalesReport = withAdminAuth(SalesReport);
 
 function App() {
+  const user = useSelector((state) => state.auth.user);
   const location = useLocation(); 
   const state = location.state;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?._id) {
+      registerSocket(user._id);
+    }
+  }, [user?._id]);
 
   return (
     <SearchProvider>
