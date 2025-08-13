@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import React,{ useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import { HomeProductCard } from "../../components/User/ProductCard";
 import { getProducts } from "../../api/user/productAPI";
+import { search, sort, limit} from "../../utils/constants";
 
 import Navbar from "../../components/common/Navbar";
 import Footer from "../../components/common/Footer";
@@ -19,7 +20,6 @@ import FallbackMessage from "../../components/common/FallbackMessage";
 function Home() {
   const navigate = useNavigate();
   const location = useLocation();
-  const closeModal = () => navigate("/");
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,9 +27,6 @@ function Home() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const search = "";
-  const sort = "desc";
-  const limit = 15;
 
   useEffect(() => {
     setLoading(true);
@@ -103,8 +100,6 @@ function Home() {
               <BookLoader fullPage />
             ) : error ? (
               <FallbackMessage type="error" message={error} />
-            ) : products.length === 0 ? (
-              <FallbackMessage message="No books found in this category." />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                 {products.map((product) => (
@@ -138,17 +133,11 @@ function Home() {
       </div>
 
       {/* Modals */}
-      {location.pathname === "/login" && <Login onClose={closeModal} />}
-      {location.pathname === "/signup" && <Signup onClose={closeModal} />}
-      {location.pathname === "/verify-otp" && (
-        <OTPVerification onClose={closeModal} />
-      )}
-      {location.pathname === "/reset-password" && (
-        <ResetPassword onClose={closeModal} />
-      )}
-      {location.pathname === "/forgot-password" && (
-        <ForgotPassword onClose={closeModal} />
-      )}
+      {location.pathname === "/login" && <Login  />}
+      {location.pathname === "/signup" && <Signup  />}
+      {location.pathname === "/verify-otp" && <OTPVerification  />}
+      {location.pathname === "/reset-password" && <ResetPassword  />}
+      {location.pathname === "/forgot-password" && <ForgotPassword  />}
     </>
   );
 }

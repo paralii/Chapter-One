@@ -15,21 +15,20 @@ import * as AdminOfferController from "../controllers/admin/adminOfferController
 const router = express.Router();
 
 // ===================== ADMIN AUTHENTICATION =====================
-router.post("/login", AdminAuthController.adminLogin);
-router.post("/logout", AdminAuthController.adminLogout);
-router.post("/refresh-token", AdminAuthController.refreshAdminToken);
+router.post("/auth/login", AdminAuthController.adminLogin);
+router.post("/auth/logout", AdminAuthController.adminLogout);
+router.post("/auth/refresh-token", AdminAuthController.refreshAdminToken);
 
 // ===================== ADMIN DASHBOARD =====================
-router.get('/dashboard/stats', adminDashboardController.getDashboardStats);
+router.get('/dashboard/overview', adminDashboardController.getDashboardStats);
 router.get('/dashboard/top-products', adminDashboardController.getTopProducts);
 router.get('/dashboard/top-categories', adminDashboardController.getTopCategories);
-router.get('/dashboard/ledger-book', adminDashboardController.generateLedgerBook);
+router.get('/dashboard/ledger', adminDashboardController.generateLedgerBook);
 
 // ===================== CUSTOMER MANAGEMENT =====================
 router.get("/customers", verifyToken("admin"), isAdmin, AdminCustomerController.getAllCustomers);
 router.get("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerController.getCustomerById);
-router.get("/customers/count", verifyToken("admin"), isAdmin, AdminCustomerController.userCount);
-router.post("/customers", verifyToken("admin"), isAdmin, AdminCustomerController.createCustomer);
+router.get("/customers/stats/count", verifyToken("admin"), isAdmin, AdminCustomerController.userCount);
 router.patch("/customers/:id/toggle-block", verifyToken("admin"), isAdmin, AdminCustomerController.toggleBlockCustomer);
 router.put("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerController.updateCustomer);
 router.delete("/customers/:id", verifyToken("admin"), isAdmin, AdminCustomerController.deleteCustomer);
@@ -39,24 +38,24 @@ router.get("/categories", verifyToken("admin"), isAdmin, AdminCategoryController
 router.post("/categories", verifyToken("admin"), isAdmin, AdminCategoryController.createCategory);
 router.put("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.updateCategory);
 router.patch("/categories/:id", verifyToken("admin"), isAdmin, AdminCategoryController.deleteCategory);
-router.get("/categories/:category", AdminCategoryController.getBooksByCategory);
+router.get("/categories/:category/books", AdminCategoryController.getBooksByCategory);
 
 // ===================== PRODUCT MANAGEMENT =====================
 router.get("/products", verifyToken("admin"), isAdmin, AdminProductController.getProducts);
 router.post("/products",verifyToken("admin"), isAdmin, uploadProductImages, processProductImages, AdminProductController.createProduct);
 router.get("/products/:id",verifyToken("admin"), isAdmin, AdminProductController.getProductById);
 router.put("/products/:id",verifyToken("admin"), isAdmin, uploadProductImages, processProductImages, AdminProductController.updateProduct);
-router.patch("/products/:id/toggle",verifyToken("admin"), isAdmin, AdminProductController.toggleProductListing);
-router.patch("/products/:id/",verifyToken("admin"), isAdmin, AdminProductController.deleteProduct);
+router.patch("/products/:id/toggle-status",verifyToken("admin"), isAdmin, AdminProductController.toggleProductListing);
+router.patch("/products/:id/delete",verifyToken("admin"), isAdmin, AdminProductController.deleteProduct);
 
 // ===================== ORDER MANAGEMENT =====================
 router.get("/orders", verifyToken("admin"), isAdmin, AdminOrderController.listAllOrders);
 router.get("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.getOrderById);
 router.put("/orders/:id/status", verifyToken("admin"), isAdmin, AdminOrderController.updateOrderStatus);
-router.patch("/orders/item/delivered", verifyToken("admin"), isAdmin, AdminOrderController.markItemDelivered);
+router.patch("/orders/items/delivered", verifyToken("admin"), isAdmin, AdminOrderController.markItemDelivered);
 router.delete("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.softDeleteOrder);
 router.get("/orders/:id/invoice", verifyToken("admin"), isAdmin, AdminOrderController.downloadAdminInvoice);
-router.post("/orders/return/verify", verifyToken("admin"), isAdmin, AdminOrderController.verifyReturnRequest);
+router.post("/orders/returns/verify", verifyToken("admin"), isAdmin, AdminOrderController.verifyReturnRequest);
 
 // ===================== INVENTORY MANAGEMENT =====================
 router.get('/inventory', verifyToken("admin"), isAdmin, AdminInventoryController.getAllInventory);

@@ -1,7 +1,8 @@
-import PDFDocument from 'pdfkit';
-import User from '../../models/User.js';
-import Order from '../../models/Order.js';
-import STATUS_CODES from '../../utils/constants/statusCodes.js';
+import PDFDocument from "pdfkit";
+import User from "../../models/User.js";
+import Order from "../../models/Order.js";
+import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import { logger, errorLogger } from "../../utils/logger.js";
 
 export const getDashboardStats = async (req, res) => {
   try {
@@ -9,7 +10,7 @@ export const getDashboardStats = async (req, res) => {
 
     const startDate = new Date(year, month ? parseInt(month) - 1 : 0, 1);
     const endDate = month
-      ? new Date(year, parseInt(month), 0) 
+      ? new Date(year, parseInt(month), 0)
       : new Date(year + 1, 0, 0);
 
     const totalUsers = await User.countDocuments({
@@ -18,32 +19,42 @@ export const getDashboardStats = async (req, res) => {
 
     const totalOrders = await Order.countDocuments({
       createdAt: { $gte: startDate, $lte: endDate },
-      status: { $in: ['Processing', 'Completed'] },
+      status: { $in: ["Processing", "Completed"] },
     });
 
     const salesData = await Order.aggregate([
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          status: 'Completed',
+          status: "Completed",
         },
       },
       {
         $group: {
           _id: null,
-          totalSales: { $sum: '$total' },
+          totalSales: { $sum: "$total" },
         },
       },
     ]);
 
     const totalSales = salesData[0]?.totalSales || 0;
-
+    logger.info(
+      `Dashboard stats for ${year}-${
+        month || "All Months"
+      }: Users: ${totalUsers}, Orders: ${totalOrders}, Sales: Rs.${totalSales}`
+    );
     res.status(STATUS_CODES.SUCCESS.OK).json({
       success: true,
       data: { totalUsers, totalOrders, totalSales },
     });
   } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
+    errorLogger.error("Error fetching dashboard stats", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: err.message });
   }
 };
 
@@ -60,55 +71,75 @@ export const getTopProducts = async (req, res) => {
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          status: 'Completed',
+          status: "Completed",
         },
       },
-      { $unwind: '$items' },
+      { $unwind: "$items" },
       {
         $group: {
-          _id: '$items.product_id',
-          totalSold: { $sum: '$items.quantity' },
+          _id: "$items.product_id",
+          totalSold: { $sum: "$items.quantity" },
         },
       },
       {
         $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'product',
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
         },
       },
-      { $unwind: '$product' },
+      { $unwind: "$product" },
       {
         $project: {
-          name: '$product.title',
+          name: "$product.title",
           totalSold: 1,
         },
       },
       { $sort: { totalSold: -1 } },
       { $limit: 10 },
     ]);
-
-    res.status(STATUS_CODES.SUCCESS.OK).json({ success: true, data: topProducts });
+    logger.info(
+      `Fetched top products for ${year}-${month || "All Months"}: ${
+        topProducts.length
+      } products`
+    );
+    res
+      .status(STATUS_CODES.SUCCESS.OK)
+      .json({ success: true, data: topProducts });
   } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: err.message });
+    errorLogger.error("Error fetching top products", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: err.message });
   }
 };
 
 export const getTopCategories = async (req, res) => {
   try {
-    const {  year = new Date().getFullYear(), month } = req.query;
+    const { year = new Date().getFullYear(), month } = req.query;
 
     const parsedYear = parseInt(year);
     const parsedMonth = month ? parseInt(month) : null;
     if (isNaN(parsedYear)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid year parameter" });
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
+        .json({ success: false, message: "Invalid year parameter" });
     }
     if (parsedMonth !== null && (parsedMonth < 1 || parsedMonth > 12)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid month parameter" });
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
+        .json({ success: false, message: "Invalid month parameter" });
     }
 
-    const startDate = new Date(parsedYear, parsedMonth ? parsedMonth - 1 : 0, 1);
+    const startDate = new Date(
+      parsedYear,
+      parsedMonth ? parsedMonth - 1 : 0,
+      1
+    );
     const endDate = parsedMonth
       ? new Date(parsedYear, parsedMonth, 0)
       : new Date(parsedYear + 1, 0, 0);
@@ -117,47 +148,47 @@ export const getTopCategories = async (req, res) => {
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          status: 'Delivered', 
+          status: "Delivered",
         },
       },
-      { $unwind: '$items' },
+      { $unwind: "$items" },
       {
         $match: {
-          'items.status': 'Delivered',
+          "items.status": "Delivered",
         },
       },
       {
         $lookup: {
-          from: 'products',
-          localField: 'items.product_id',
-          foreignField: '_id',
-          as: 'product',
+          from: "products",
+          localField: "items.product_id",
+          foreignField: "_id",
+          as: "product",
         },
       },
-      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
       {
         $match: {
-          'product.category_id': { $exists: true }, 
+          "product.category_id": { $exists: true },
         },
       },
       {
         $group: {
-          _id: '$product.category_id',
-          totalSold: { $sum: '$items.quantity' },
+          _id: "$product.category_id",
+          totalSold: { $sum: "$items.quantity" },
         },
       },
       {
         $lookup: {
-          from: 'categories',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'category',
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "category",
         },
       },
-      { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          name: { $ifNull: ['$category.name', 'Unknown Category'] },
+          name: { $ifNull: ["$category.name", "Unknown Category"] },
           totalSold: 1,
         },
       },
@@ -169,14 +200,29 @@ export const getTopCategories = async (req, res) => {
       return res.status(STATUS_CODES.SUCCESS.OK).json({
         success: true,
         data: [],
-        message: 'No categories found for the specified period',
+        message: "No categories found for the specified period",
       });
     }
 
-    res.status(STATUS_CODES.SUCCESS.OK).json({ success: true, data: topCategories });
+    logger.info(
+      `Fetched top categories for ${year}-${month || "All Months"}: ${
+        topCategories.length
+      } categories`
+    );
+    res
+      .status(STATUS_CODES.SUCCESS.OK)
+      .json({ success: true, data: topCategories });
   } catch (err) {
-    console.error('🔹 Top categories error:', err.message, err.stack);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Internal error fetching top categories' });
+    errorLogger.error("Error fetching top categories", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({
+        success: false,
+        message: "Internal error fetching top categories",
+      });
   }
 };
 
@@ -189,106 +235,152 @@ export const generateLedgerBook = async (req, res) => {
 
     const orders = await Order.find({
       createdAt: { $gte: startDate, $lte: endDate },
-      status: 'Completed',
-    }).populate('user_id', 'firstname lastname email');
+      status: "Completed",
+    }).populate("user_id", "firstname lastname email");
 
     if (!orders.length) {
-      return res.status(404).json({ success: false, message: 'No orders found for the selected year' });
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "No orders found for the selected year",
+        });
     }
 
     const doc = new PDFDocument({ margin: 50 });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=ledger-book-${year}.pdf`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=ledger-book-${year}.pdf`
+    );
     doc.pipe(res);
 
     doc
       .fontSize(24)
-      .font('Helvetica-Bold')
-      .fillColor('#696969')
-      .text('CHAPTER ONE', 50, 50)
-      .fillColor('black')
+      .font("Helvetica-Bold")
+      .fillColor("#696969")
+      .text("CHAPTER ONE", 50, 50)
+      .fillColor("black")
       .fontSize(14)
-      .text('Ledger Book', 400, 50, { align: 'right' })
-      .text(`Year: ${year}`, 400, 70, { align: 'right' })
-      .text(`Generated on: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`, 400, 90, { align: 'right' })
+      .text("Ledger Book", 400, 50, { align: "right" })
+      .text(`Year: ${year}`, 400, 70, { align: "right" })
+      .text(
+        `Generated on: ${new Date()
+          .toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .split("/")
+          .join(".")}`,
+        400,
+        90,
+        { align: "right" }
+      )
       .moveDown(2);
 
     doc
       .fontSize(10)
-      .font('Helvetica-Bold')
-      .text('Company:', 400, doc.y)
-      .font('Helvetica')
-      .text('ChapterOne', 400)
-      .text('24 D Street', 400)
-      .text('Dubai, Al Rashidiya', 400)
-      .text('Dubai, United Arab Emirates', 400)
-      .text('PAN No: ABCDE1234F', 400)
-      .text('GST Registration No: 29ABCDE1234F1Z5', 400)
+      .font("Helvetica-Bold")
+      .text("Company:", 400, doc.y)
+      .font("Helvetica")
+      .text("ChapterOne", 400)
+      .text("24 D Street", 400)
+      .text("Dubai, Al Rashidiya", 400)
+      .text("Dubai, United Arab Emirates", 400)
+      .text("PAN No: ABCDE1234F", 400)
+      .text("GST Registration No: 29ABCDE1234F1Z5", 400)
       .moveDown(2);
 
     doc
       .fontSize(12)
-      .font('Helvetica-Bold')
-      .text('Transaction Summary', 50, doc.y, { underline: true })
+      .font("Helvetica-Bold")
+      .text("Transaction Summary", 50, doc.y, { underline: true })
       .moveDown(0.5);
 
-    const headers = ['Order ID', 'Customer', 'Email', 'Date', 'Amount (Rs)'];
+    const headers = ["Order ID", "Customer", "Email", "Date", "Amount (Rs)"];
     const headerY = doc.y;
     const columnWidth = 100;
     headers.forEach((header, index) => {
-      doc.text(header, 50 + index * columnWidth, headerY, { width: columnWidth, align: index === 4 ? 'right' : 'left' });
+      doc.text(header, 50 + index * columnWidth, headerY, {
+        width: columnWidth,
+        align: index === 4 ? "right" : "left",
+      });
     });
 
     doc.moveDown(0.5);
-    doc
-      .lineWidth(0.5)
-      .moveTo(50, doc.y)
-      .lineTo(550, doc.y)
-      .stroke();
+    doc.lineWidth(0.5).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
 
     orders.forEach((order, index) => {
       const rowY = doc.y + 10;
       doc
         .fontSize(10)
-        .font('Helvetica')
+        .font("Helvetica")
         .text(order.orderID, 50, rowY, { width: columnWidth })
-        .text(`${order.user_id.firstname} ${order.user_id.lastname}`, 50 + columnWidth, rowY, { width: columnWidth })
-        .text(order.user_id.email, 50 + 2 * columnWidth, rowY, { width: columnWidth })
         .text(
-          order.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.'),
+          `${order.user_id.firstname} ${order.user_id.lastname}`,
+          50 + columnWidth,
+          rowY,
+          { width: columnWidth }
+        )
+        .text(order.user_id.email, 50 + 2 * columnWidth, rowY, {
+          width: columnWidth,
+        })
+        .text(
+          order.createdAt
+            .toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .join("."),
           50 + 3 * columnWidth,
           rowY,
           { width: columnWidth }
         )
-        .text(`Rs.${order.netAmount.toFixed(2)}`, 50 + 4 * columnWidth, rowY, { width: columnWidth, align: 'right' });
+        .text(`Rs.${order.netAmount.toFixed(2)}`, 50 + 4 * columnWidth, rowY, {
+          width: columnWidth,
+          align: "right",
+        });
       doc.moveDown(0.5);
       if (index < orders.length - 1) {
-        doc
-          .lineWidth(0.3)
-          .moveTo(50, doc.y)
-          .lineTo(550, doc.y)
-          .stroke();
+        doc.lineWidth(0.3).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
       }
     });
 
     doc.moveDown(1);
 
-    const totalNetAmount = orders.reduce((acc, order) => acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0), 0);
+    const totalNetAmount = orders.reduce(
+      (acc, order) =>
+        acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0),
+      0
+    );
     doc
       .fontSize(10)
-      .font('Helvetica-Bold')
-      .text(`Total Orders: ${orders.length}`, 400, doc.y, { align: 'right' })
-      .text(`Total Net Amount: Rs.${totalNetAmount.toFixed(2)}`, 400, doc.y, { align: 'right' })
+      .font("Helvetica-Bold")
+      .text(`Total Orders: ${orders.length}`, 400, doc.y, { align: "right" })
+      .text(`Total Net Amount: Rs.${totalNetAmount.toFixed(2)}`, 400, doc.y, {
+        align: "right",
+      })
       .moveDown(1);
 
     doc
       .fontSize(10)
-      .font('Helvetica-Oblique')
-      .text('Generated by ChapterOne', 50, doc.y, { align: 'center' });
+      .font("Helvetica-Oblique")
+      .text("Generated by ChapterOne", 50, doc.y, { align: "center" });
 
     doc.end();
+    logger.info(
+      `Ledger book generated for year ${year} with ${orders.length} orders`
+    );
   } catch (err) {
-    console.error('PDF error:', err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: 'PDF download failed' });
+    errorLogger.error("Error generating ledger book", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: "Error generating ledger book" });
   }
 };

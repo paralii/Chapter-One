@@ -1,4 +1,4 @@
-
+import React from "react";
 import Footer from "../../components/common/Footer";
 
 const emailIconSvg = `<svg id="70:2248" width="24" height="49" viewBox="0 0 24 49" fill="none" xmlns="http://www.w3.org/2000/svg" class="email-icon">
@@ -65,6 +65,17 @@ function ContactUs() {
                   <span>2814 Fisher Rd, 1st Floor, Opp. alex street,</span>
                   <br />
                   <span>Columbus, Ohio 43204</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-[20px] mb-[40px]">
+              <div dangerouslySetInnerHTML={{ __html: socialIconSvg }} />
+              <div className="flex flex-col">
+                <div className="text-[#3c2712] text-[20px] font-medium">medias</div>
+                <div className="text-[#1472b2] text-[16px]">
+                  <span>Social</span>
+                  <br />
+                  <span>Github</span>
                 </div>
               </div>
             </div>

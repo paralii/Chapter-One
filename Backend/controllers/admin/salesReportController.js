@@ -2,6 +2,7 @@ import Order from "../../models/Order.js";
 import PDFDocumentWithTables from "pdfkit-table";
 import ExcelJS from "exceljs";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import { logger, errorLogger } from "../../utils/logger.js";
 
 const getFilteredOrders = async (type, fromDate, toDate) => {
   const now = new Date();
@@ -30,7 +31,15 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
     matchStage.createdAt = { $gte: start };
   } else if (type === "monthly") {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
     matchStage.createdAt = { $gte: start, $lte: end };
   } else if (type === "yearly") {
     const start = new Date(now.getFullYear(), 0, 1);
@@ -40,6 +49,9 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
     throw new Error("Invalid report type");
   }
 
+  logger.info(
+    `Fetching orders for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
+  );
   return await Order.find(matchStage).populate("user_id", "name email");
 };
 
@@ -49,9 +61,15 @@ export const getSalesReport = async (req, res) => {
     const orders = await getFilteredOrders(type, fromDate, toDate);
 
     const totalSales = orders.reduce((acc, order) => acc + order.total, 0);
-    const totalDiscount = orders.reduce((acc, order) => acc + order.discount, 0);
+    const totalDiscount = orders.reduce(
+      (acc, order) => acc + order.discount,
+      0
+    );
     const netRevenue = orders.reduce((acc, order) => acc + order.netAmount, 0);
 
+    logger.info(
+      `Sales report generated for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
+    );
     res.json({
       success: true,
       data: {
@@ -63,8 +81,13 @@ export const getSalesReport = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Error in getSalesReport:", err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error fetching report" });
+    errorLogger.error("Error generating sales report", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: "Error fetching report" });
   }
 };
 
@@ -74,96 +97,176 @@ export const generateSalesReportPDF = async (req, res) => {
     const orders = await getFilteredOrders(type, fromDate, toDate);
 
     if (!orders.length) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "No orders found" });
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND)
+        .json({ success: false, message: "No orders found" });
     }
 
     const doc = new PDFDocumentWithTables({ margin: 50 });
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=sales-report-${type || "custom"}.pdf`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=sales-report-${type || "custom"}.pdf`
+    );
     doc.pipe(res);
 
-    const pageWidth = doc.page.width || 612; 
+    const pageWidth = doc.page.width || 612;
     const leftColumnX = 50;
     const rightColumnX = pageWidth / 2;
 
     doc
       .fontSize(24)
-      .font('Helvetica-Bold')
-      .fillColor('#696969')
-      .text('CHAPTER ONE', leftColumnX, 50)
-      .fillColor('black')
+      .font("Helvetica-Bold")
+      .fillColor("#696969")
+      .text("CHAPTER ONE", leftColumnX, 50)
+      .fillColor("black")
       .fontSize(14)
-      .font('Helvetica-Bold')
-      .text('Sales Report', pageWidth - 250, 50, { align: 'right' })
-      .text(`Generated on: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`, pageWidth - 250, doc.y, { align: 'right' })
+      .font("Helvetica-Bold")
+      .text("Sales Report", pageWidth - 250, 50, { align: "right" })
+      .text(
+        `Generated on: ${new Date()
+          .toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .split("/")
+          .join(".")}`,
+        pageWidth - 250,
+        doc.y,
+        { align: "right" }
+      )
       .moveDown(2);
 
-    const reportTypeText = type.charAt(0).toUpperCase() + type.slice(1) || "Custom";
+    const reportTypeText =
+      type.charAt(0).toUpperCase() + type.slice(1) || "Custom";
     let dateRangeText = "";
     if (type === "daily") {
-      dateRangeText = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.');
+      dateRangeText = new Date()
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .split("/")
+        .join(".");
     } else if (type === "custom" && fromDate && toDate) {
-      dateRangeText = `${new Date(fromDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')} - ${new Date(toDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`;
+      dateRangeText = `${new Date(fromDate)
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .split("/")
+        .join(".")} - ${new Date(toDate)
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .split("/")
+        .join(".")}`;
     } else {
-      const start = orders[0]?.createdAt ? new Date(orders[0].createdAt) : new Date();
-      const end = type === "weekly" ? new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000) :
-                  type === "monthly" ? new Date(start.getFullYear(), start.getMonth(), 1) :
-                  type === "yearly" ? new Date(start.getFullYear(), 0, 1) : start;
-      dateRangeText = `${end.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')} - ${start.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.')}`;
+      const start = orders[0]?.createdAt
+        ? new Date(orders[0].createdAt)
+        : new Date();
+      const end =
+        type === "weekly"
+          ? new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000)
+          : type === "monthly"
+          ? new Date(start.getFullYear(), start.getMonth(), 1)
+          : type === "yearly"
+          ? new Date(start.getFullYear(), 0, 1)
+          : start;
+      dateRangeText = `${end
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .split("/")
+        .join(".")} - ${start
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .split("/")
+        .join(".")}`;
     }
 
     doc
       .fontSize(10)
-      .font('Helvetica-Bold')
-      .text('Report Details:', leftColumnX, doc.y)
-      .font('Helvetica')
+      .font("Helvetica-Bold")
+      .text("Report Details:", leftColumnX, doc.y)
+      .font("Helvetica")
       .text(`Report Type: ${reportTypeText}`, leftColumnX)
       .text(`Date Range: ${dateRangeText}`, leftColumnX);
 
     doc
-      .font('Helvetica-Bold')
-      .text('Company:', rightColumnX, doc.y - 30)
-      .font('Helvetica')
-      .text('ChapterOne', rightColumnX)
-      .text('24 D Street', rightColumnX)
-      .text('Dubai, Al Rashidiya', rightColumnX)
-      .text('Dubai, United Arab Emirates', rightColumnX)
-      .text('PAN No: ABCDE1234F', rightColumnX)
-      .text('GST Registration No: 29ABCDE1234F1Z5', rightColumnX);
+      .font("Helvetica-Bold")
+      .text("Company:", rightColumnX, doc.y - 30)
+      .font("Helvetica")
+      .text("ChapterOne", rightColumnX)
+      .text("24 D Street", rightColumnX)
+      .text("Dubai, Al Rashidiya", rightColumnX)
+      .text("Dubai, United Arab Emirates", rightColumnX)
+      .text("PAN No: ABCDE1234F", rightColumnX)
+      .text("GST Registration No: 29ABCDE1234F1Z5", rightColumnX);
 
     doc.moveDown(2);
 
     const tableData = orders.map((order, index) => ({
       siNo: index + 1,
-      orderID: order.orderID || 'UNKNOWN',
-      user: order.user_id?.name || 'N/A',
-      date: order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).split('/').join('.') : 'N/A',
-      total: `Rs.${Number.isFinite(order.total) ? order.total.toFixed(2) : '0.00'}`,
-      discount: `Rs.${Number.isFinite(order.discount) ? order.discount.toFixed(2) : '0.00'}`,
-      netAmount: `Rs.${Number.isFinite(order.netAmount) ? order.netAmount.toFixed(2) : '0.00'}`,
-      status: order.status || 'N/A',
+      orderID: order.orderID || "UNKNOWN",
+      user: order.user_id?.name || "N/A",
+      date: order.createdAt
+        ? new Date(order.createdAt)
+            .toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .join(".")
+        : "N/A",
+      total: `Rs.${
+        Number.isFinite(order.total) ? order.total.toFixed(2) : "0.00"
+      }`,
+      discount: `Rs.${
+        Number.isFinite(order.discount) ? order.discount.toFixed(2) : "0.00"
+      }`,
+      netAmount: `Rs.${
+        Number.isFinite(order.netAmount) ? order.netAmount.toFixed(2) : "0.00"
+      }`,
+      status: order.status || "N/A",
     }));
 
     const headers = [
-      { label: 'SI No', property: 'siNo', width: 40, align: 'center' },
-      { label: 'Order ID', property: 'orderID', width: 80 },
-      { label: 'User', property: 'user', width: 100 },
-      { label: 'Date', property: 'date', width: 80, align: 'center' },
-      { label: 'Total', property: 'total', width: 80, align: 'right' },
-      { label: 'Discount', property: 'discount', width: 80, align: 'right' },
-      { label: 'Net Payable', property: 'netAmount', width: 80, align: 'right' },
-      { label: 'Status', property: 'status', width: 80, align: 'center' },
+      { label: "SI No", property: "siNo", width: 40, align: "center" },
+      { label: "Order ID", property: "orderID", width: 80 },
+      { label: "User", property: "user", width: 100 },
+      { label: "Date", property: "date", width: 80, align: "center" },
+      { label: "Total", property: "total", width: 80, align: "right" },
+      { label: "Discount", property: "discount", width: 80, align: "right" },
+      {
+        label: "Net Payable",
+        property: "netAmount",
+        width: 80,
+        align: "right",
+      },
+      { label: "Status", property: "status", width: 80, align: "center" },
     ];
 
     await doc.table(
       {
-        title: 'Sales Report - Orders',
+        title: "Sales Report - Orders",
         headers,
         datas: tableData,
       },
       {
-        prepareHeader: () => doc.font('Helvetica-Bold').fontSize(10),
-        prepareRow: () => doc.font('Helvetica').fontSize(9),
+        prepareHeader: () => doc.font("Helvetica-Bold").fontSize(10),
+        prepareRow: () => doc.font("Helvetica").fontSize(9),
         divider: {
           header: { disabled: false, width: 0.5, opacity: 0.5 },
           horizontal: { disabled: false, width: 0.5, opacity: 0.3 },
@@ -176,28 +279,49 @@ export const generateSalesReportPDF = async (req, res) => {
 
     doc.moveDown(1.5);
 
-    const totalSales = orders.reduce((acc, order) => acc + (Number.isFinite(order.total) ? order.total : 0), 0);
-    const totalDiscount = orders.reduce((acc, order) => acc + (Number.isFinite(order.discount) ? order.discount : 0), 0);
-    const netRevenue = orders.reduce((acc, order) => acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0), 0);
+    const totalSales = orders.reduce(
+      (acc, order) => acc + (Number.isFinite(order.total) ? order.total : 0),
+      0
+    );
+    const totalDiscount = orders.reduce(
+      (acc, order) =>
+        acc + (Number.isFinite(order.discount) ? order.discount : 0),
+      0
+    );
+    const netRevenue = orders.reduce(
+      (acc, order) =>
+        acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0),
+      0
+    );
 
     doc
-      .font('Helvetica-Bold')
+      .font("Helvetica-Bold")
       .fontSize(10)
-      .text(`Total Orders: ${orders.length}`, { align: 'right' })
-      .text(`Total Sales: Rs.${totalSales.toFixed(2)}`, { align: 'right' })
-      .text(`Total Discount: Rs.${totalDiscount.toFixed(2)}`, { align: 'right' })
-      .text(`Net Revenue: Rs.${netRevenue.toFixed(2)}`, { align: 'right' })
+      .text(`Total Orders: ${orders.length}`, { align: "right" })
+      .text(`Total Sales: Rs.${totalSales.toFixed(2)}`, { align: "right" })
+      .text(`Total Discount: Rs.${totalDiscount.toFixed(2)}`, {
+        align: "right",
+      })
+      .text(`Net Revenue: Rs.${netRevenue.toFixed(2)}`, { align: "right" })
       .moveDown(1);
 
     doc
       .fontSize(10)
-      .font('Helvetica-Oblique')
-      .text('Generated by ChapterOne', { align: 'center' });
+      .font("Helvetica-Oblique")
+      .text("Generated by ChapterOne", { align: "center" });
 
     doc.end();
+    logger.info(
+      `PDF report generated successfully for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
+    );
   } catch (err) {
-    console.error("PDF error:", err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "PDF download failed" });
+    errorLogger.error("Error generating sales report PDF", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: "PDF download failed" });
   }
 };
 
@@ -207,7 +331,9 @@ export const generateSalesReportExcel = async (req, res) => {
     const orders = await getFilteredOrders(type, fromDate, toDate);
 
     if (!orders.length) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "No orders found" });
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND)
+        .json({ success: false, message: "No orders found" });
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -237,13 +363,27 @@ export const generateSalesReportExcel = async (req, res) => {
       });
     });
 
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename=sales-report-${type || "custom"}.xlsx`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=sales-report-${type || "custom"}.xlsx`
+    );
 
     await workbook.xlsx.write(res);
-    res.end();
+    logger.info(
+      `Excel report generated successfully for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
+    );
+    res.status(STATUS_CODES.SUCCESS.OK).end();
   } catch (err) {
-    console.error("Excel error:", err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Excel download failed" });
+    errorLogger.error("Error generating sales report Excel", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: "Excel download failed" });
   }
 };

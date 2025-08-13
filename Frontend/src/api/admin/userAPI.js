@@ -1,29 +1,25 @@
 import adminAxios from "../adminAxios";
 
-export const getAllUsers = (params) => {
+export const getAllCustomers = (params) => {
   return adminAxios.get("/customers", { params });
 };
 
-export const createUser = (userData) => {
-  return adminAxios.post("/customers", userData);
-};
-
-export const getUserCount = () => {
-  return adminAxios.get("/customers/count");
-};
-
-export const getUserById = (id) => {
+export const getCustomerById = (id) => {
   return adminAxios.get(`/customers/${id}`);
 };
 
-export const updateUser = (id, userData) => {
-  return adminAxios.put(`/customers/${id}`, userData);
+export const userCount = () => {
+  return adminAxios.get("/customers/stats/count");
 };
 
-export const toggleBlockUser = (id) => {
+export const toggleBlockCustomer = (id) => {
   return adminAxios.patch(`/customers/${id}/toggle-block`);
 };
 
-export const deleteUser = (id) => {
-  return adminAxios.delete(`/customers/${id}`);
+export const updateCustomer = (id, userData) => {
+  return adminAxios.put(`/customers/${id}`, userData);
 };
+
+export const deleteCustomer = (id) => {
+  return adminAxios.delete(`/customers/${id}`);
+};  

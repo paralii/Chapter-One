@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React,{ useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
@@ -12,6 +12,7 @@ import { getProducts, getProductById } from "../../../api/user/productAPI";
 import { getWishlist, addToWishlist, removeFromWishlist } from "../../../api/user/wishlistAPI";
 import { addToCart } from "../../../api/user/cartAPI";
 import { showAlert } from "../../../redux/alertSlice";
+import { MAX_ALLOWED } from "../../../utils/constants";
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
 
@@ -35,13 +36,10 @@ function ProductDetail() {
   const [animationDone, setAnimationDone] = useState(false);
   const [offers, setOffers] = useState([]);
 
-  const maxQuantity = 5;
 
   const getImageUrl = (url) =>
     url
-      ? url.startsWith("http")
-        ? url
-        : `${url}`
+      ?`${url}`
       : "https://via.placeholder.com/150x200?text=No+Image";
 
   const fetchProductDetails = async () => {
@@ -120,7 +118,7 @@ function ProductDetail() {
   const smallImages = product.product_imgs?.slice(1, 3).map(getImageUrl) || [];
 
   const incrementQuantity = () => {
-    if (quantity < maxQuantity && quantity < product.available_quantity) {
+    if (quantity < MAX_ALLOWED && quantity < product.available_quantity) {
       setQuantity(quantity + 1);
     } else {
       dispatch(

@@ -1,25 +1,21 @@
 import userAxios from '../userAxios';
 
 export const getCart = () => {
-  return userAxios.get("/", { withCredentials: true });
+  return userAxios.get("/cart", { withCredentials: true });
 };
 
 export const addToCart = (cartData) => {
-  return userAxios.post("/add", cartData, { withCredentials: true });
-};
-
-export const updateCartItemQuantity = (updateData) => {
-  return userAxios.patch("/update", updateData, { withCredentials: true });
+  return userAxios.post("/cart/add", cartData, { withCredentials: true });
 };
 
 export const incrementCartItemQuantity = (productData) => {
-  return userAxios.patch("/increment", productData, { withCredentials: true });
+  return userAxios.patch("/cart/increment", productData, { withCredentials: true });
 };
 
 export const decrementCartItemQuantity = (productData) => {
-  return userAxios.patch("/decrement", productData, { withCredentials: true });
+  return userAxios.patch("/cart/decrement", productData, { withCredentials: true });
 };
 
 export const removeCartItem = (productId) => {
-  return userAxios.delete(`/remove/${productId}`, { withCredentials: true });
+  return userAxios.delete(`/cart/${productId}/remove`, { withCredentials: true });
 };

@@ -2,6 +2,8 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/User.js";
 import { generateTokens } from "../utils/auth/generateTokens.js";
+import { logger, errorLogger } from "../utils/logger.js";
+
 
 passport.use(
   new GoogleStrategy(
@@ -28,8 +30,10 @@ passport.use(
           });
         }
         const tokens = generateTokens(user, false);
+        logger.info(`User ${user.email} authenticated via Google`);
         return done(null, { user, tokens });
       } catch (error) {
+        errorLogger.error("Google authentication error", error);
         return done(error, null);
       }
     }
