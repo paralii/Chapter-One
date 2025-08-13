@@ -1,43 +1,8 @@
 import User from "../../models/User.js";
 import { validateUserInput } from "../../utils/validators/userValidator.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
-<<<<<<< HEAD
 import { forceLogoutUser } from "../../utils/socket.js";
-
-export const createCustomer = async (req, res) => {
-  const { firstname, lastname, email, password } = req.body;
-
-  const errors = validateUserInput({ firstname, lastname, email, password });
-
-  if (errors.length > 0) {
-    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ errors });
-  }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const normalizedPassword = password.trim();
-
-  try {
-
-    let user = await User.findOne({ email:normalizedEmail });
-    if (user) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "User already exists" });
-
-    const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
-    user = new User({
-      firstname,
-      lastname,
-      email,
-      password: hashedPassword,
-    });
-    await user.save();
-
-    res.status(STATUS_CODES.SUCCESS.CREATED).json({ message: "User created successfully", user });
-  } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: err.message });
-  }
-};
-=======
 import { logger, errorLogger } from "../../utils/logger.js";
->>>>>>> 8bd0e5f74c3d7bd13ad95e5416f2dd86d39e9eb6
 
 export const getAllCustomers = async (req, res) => {
   const { search = "", page = 1, limit = 10 } = req.query;
@@ -113,7 +78,7 @@ export const toggleBlockCustomer = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
     user.isBlock = !user.isBlock;
     await user.save();
-<<<<<<< HEAD
+
 
     if (user.isBlock) {
       forceLogoutUser(user._id.toString())
@@ -127,7 +92,6 @@ export const toggleBlockCustomer = async (req, res) => {
         isBlock: user.isBlock,
         message: `User ${user.isBlock ? "blocked" : "unblocked"} successfully`,
       });
-=======
     logger.info(`User ${user._id} block status updated to ${user.isBlock}`);
     res.status(STATUS_CODES.SUCCESS.OK).json({
       _id: user._id,
@@ -135,7 +99,6 @@ export const toggleBlockCustomer = async (req, res) => {
       isBlock: user.isBlock,
       message: `User ${user.isBlock ? "blocked" : "unblocked"} successfully`,
     });
->>>>>>> 8bd0e5f74c3d7bd13ad95e5416f2dd86d39e9eb6
   } catch (err) {
     errorLogger.error("Error toggling block status", {
       message: err.message,

@@ -40,22 +40,16 @@ connectDB()
   .then(async () => {
     await redisClient.connect();
     logger.info("✅ Redis connected");
-    console.log("✅ Redis connected");
 
-<<<<<<< HEAD
     const server = http.createServer(app);
     initSocket(server);
 
     server.listen(process.env.PORT, () => {
     logger.info(`Server running on http://localhost:${process.env.PORT}`);
-=======
     app.listen(process.env.PORT, () => {
       logger.info(`🚀 Server running at http://localhost:${process.env.PORT}`);
-      console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
     });
-  })
+  })})
   .catch((err) => {
     errorLogger.error(`❌ Startup Error: ${err.message}`);
-    console.error(`❌ Startup Error: ${err.message}`);
->>>>>>> 8bd0e5f74c3d7bd13ad95e5416f2dd86d39e9eb6
   });
