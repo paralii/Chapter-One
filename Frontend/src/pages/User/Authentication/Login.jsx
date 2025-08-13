@@ -5,6 +5,7 @@ import GoogleAuthHandler from "../../../components/User/GoogleAuthHandler";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
+import { registerSocket } from "../../../utils/socketClient";
 
 function Login({ onClose = () => {}}) {
   const dispatch = useDispatch();
@@ -59,6 +60,7 @@ function Login({ onClose = () => {}}) {
       if (loginUser.fulfilled.match(resultAction)) {
         toast.success("Login successful!");
         setAttempts(0);
+        registerSocket(resultAction.payload.user._id);
         onClose();
         navigate("/");
       } else {

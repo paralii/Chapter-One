@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import http from "http";
 import cookieParser from "cookie-parser";
 import passport from "./config/passport.js";
 import connectDB from './config/db.js';
@@ -8,6 +9,7 @@ import redisClient from "./utils/redisClient.js";
 import { logger, errorLogger } from "./utils/logger.js"
 import adminRoutes from "./routes/adminRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import { initSocket } from "./utils/socket.js";
 
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 
@@ -30,7 +32,10 @@ connectDB()
     await redisClient.connect(); 
     logger.info("✅ Redis connected");
 
-    app.listen(process.env.PORT, () => {
+    const server = http.createServer(app);
+    initSocket(server);
+
+    server.listen(process.env.PORT, () => {
     logger.info(`Server running on http://localhost:${process.env.PORT}`);
   });
 })
