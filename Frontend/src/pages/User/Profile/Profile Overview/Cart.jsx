@@ -1,15 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { createRoot } from "react-dom/client";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../../../components/common/Navbar";
 import Footer from "../../../../components/common/Footer";
-import {
-  getCart,
-  updateCartItemQuantity,
-  removeCartItem,
-  incrementCartItemQuantity,
-  decrementCartItemQuantity,
-} from "../../../../api/user/cartAPI";
+import {getCart,removeCartItem,incrementCartItemQuantity,decrementCartItemQuantity,} from "../../../../api/user/cartAPI";
 import BookLoader from "../../../../components/common/BookLoader";
 import showConfirmDialog from "../../../../components/common/ConformationModal";
 const MAX_ALLOWED = 5;

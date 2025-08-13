@@ -60,9 +60,7 @@ const WishlistPage = () => {
   return (
     <>
     <div className="min-h-screen flex flex-col bg-[#fff]">
-      <header className="bg-[#fff8e5] pt-4 px-4 lg:px-20">
         <Navbar />
-      </header>
       <div className="bg-[#fff8e5] pt-6 flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6">
           <h2 className="text-4xl font-semibold text-[#3c2712] text-center mb-8">My Wishlist</h2>

@@ -1,7 +1,9 @@
 // src/utils/constants.js
 
 export const API_BASE = "http://localhost:2211";
-
+export const search = "";
+export const sort = "desc";
+export const limit = 15;
 export const COUPON_MIN_AMOUNT = 50;
 export const COUPON_MAX_DISCOUNT = 500;
 export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
