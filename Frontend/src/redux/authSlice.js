@@ -7,7 +7,7 @@ export const signupUser = createAsyncThunk(
   'auth/signupUser',
   async ({ firstname, lastname, email, password, referral_code }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/signup`, { firstname, lastname, email, password, referral_code: referral_code || undefined });     
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/signup`, { firstname, lastname, email, password, referral_code: referral_code || undefined });     
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -19,7 +19,7 @@ export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
   async ({ email, otp }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/verify-otp`, { email, otp });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/verify-otp`, { email, otp });
       if (response.data.user) {
         localStorage.setItem("user", JSON.stringify(response.data.user));
       }
@@ -36,7 +36,7 @@ export const resendOtpForVerify = createAsyncThunk(
   'auth/resendOtpForVerify',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/resend-otp-verify`, { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/resend-otp-verify`, { email });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -48,7 +48,7 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/login`, credentials, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/login`, credentials, { withCredentials: true });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -60,7 +60,7 @@ export const logoutUser = createAsyncThunk(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/logout`, {}, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/logout`, {}, { withCredentials: true });
       return response;
     } catch (err) {
       return rejectWithValue(err);
@@ -72,7 +72,7 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/forgot-password`, { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/forgot-password`, { email });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
@@ -85,7 +85,7 @@ export const verifyForgotPasswordOTP = createAsyncThunk(
   'auth/verifyForgotPasswordOTP',
   async ({ email, otp }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/verify-forgot-password-otp`, { email, otp });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/verify-forgot-password-otp`, { email, otp });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -97,7 +97,7 @@ export const resendForgotPasswordOTP = createAsyncThunk(
   'auth/resendForgotPasswordOTP',
   async ({ email }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/resend-forgot-password-otp`, { email });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/resend-forgot-password-otp`, { email });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -109,7 +109,7 @@ export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async ({ token, newPassword }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/reset-password`, { token, newPassword });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/user/auth/reset-password`, { token, newPassword });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data || { message: err.message });
@@ -121,7 +121,7 @@ export const fetchCurrentUser = createAsyncThunk(
   "auth/fetchCurrentUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/user/me`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/user/auth/me`, {
         withCredentials: true,
       });
       console.log("fetchCurrentUser response:", response.data);

@@ -7,7 +7,7 @@ export const adminLogin = createAsyncThunk(
   "admin/adminLogin",
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/login`, credentials, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/auth/login`, credentials, { withCredentials: true });
       return response.data.admin; 
     } catch (err) {
       console.error("Login error:", err.response?.data);  
@@ -20,7 +20,7 @@ export const adminLogout = createAsyncThunk(
   "admin/adminLogout", 
   async (_, { rejectWithValue }) => {
   try {
-    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {}, { withCredentials: true });
+    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/auth/logout`, {}, { withCredentials: true });
       return response.data;
   } catch (error) {
     console.error("Logout error:", error);
@@ -32,7 +32,7 @@ export const refreshAdminSession = createAsyncThunk(
   "admin/refreshAdminSession",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/refresh-token`, {}, { withCredentials: true });
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/auth/refresh-token`, {}, { withCredentials: true });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || "Session refresh failed");

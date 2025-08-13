@@ -4,6 +4,8 @@ import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTok
 import setAuthCookies from "../../utils/setAuthCookies.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 import { validationMessages } from "../../utils/validationMessages/admin.js";
+import { logger, errorLogger } from "../../utils/logger.js";
+
 
 export const adminLogin = async (req, res, next) => {
   const { email, password } = req.body;
@@ -35,10 +37,15 @@ export const adminLogin = async (req, res, next) => {
     const { accessToken, refreshToken } = generateTokens(admin, true);
 
     setAuthCookies(res, accessToken, refreshToken, "admin");
+    logger.info(`Admin ${admin.email} logged in successfully`);
     res
       .status(STATUS_CODES.SUCCESS.OK)
       .json({ admin, message: validationMessages.adminAuth.loginSuccess });
   } catch (err) {
+    errorLogger.error("Admin login error", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
     next(err);
   }
 };
@@ -46,6 +53,7 @@ export const adminLogin = async (req, res, next) => {
 export const adminLogout = (req, res) => {
   res.clearCookie("accessToken_admin");
   res.clearCookie("refreshToken_admin");
+  logger.info(`Admin ${req.user.email} logged out successfully`);
   res
     .status(STATUS_CODES.SUCCESS.OK)
     .json({ message: validationMessages.adminAuth.logoutSuccess });
