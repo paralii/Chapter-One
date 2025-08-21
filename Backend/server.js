@@ -46,10 +46,8 @@ connectDB()
 
     server.listen(process.env.PORT, () => {
     logger.info(`Server running on http://localhost:${process.env.PORT}`);
-    app.listen(process.env.PORT, () => {
-      logger.info(`🚀 Server running at http://localhost:${process.env.PORT}`);
     });
-  })})
+  })
   .catch((err) => {
     errorLogger.error(`❌ Startup Error: ${err.message}`);
   });
