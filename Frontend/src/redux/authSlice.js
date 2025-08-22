@@ -154,7 +154,6 @@ const authSlice = createSlice({
     resetResetPasswordMessage(state) {
       state.resetPasswordMessage = null;
     }
-        
   },
   extraReducers: (builder) => {
     builder
