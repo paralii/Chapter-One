@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { WishlistItem } from "../../../../components/User/ProductCard";
-import { getWishlist, removeFromWishlist, moveToCart } from "../../../../api/user/wishlistAPI";
-import Navbar from "../../../../components/common/Navbar";
-import Footer from "../../../../components/common/Footer";
+import { WishlistItem } from "../../../components/User/ProductCard";
+import { getWishlist, removeFromWishlist, moveToCart } from "../../../api/user/wishlistAPI";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
 import { useDispatch } from "react-redux";
-import { showAlert } from "../../../../redux/alertSlice";
+import { showAlert } from "../../../redux/alertSlice";
 const WishlistPage = () => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,6 @@ const WishlistPage = () => {
   const handleAddToCart = async (productId) => {
     try {
       const response = await moveToCart(productId);
-      console.log("Move to cart response:", response.data);
       setWishlist(wishlist.filter((item) => item.product_id._id !== productId));
       dispatch(showAlert({ message: "Product moved to cart!", type: "success" }));
     } catch (error) {

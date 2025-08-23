@@ -1,23 +1,22 @@
-import React,{ useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-import { HomeProductCard } from "../../components/User/ProductCard";
-import { getProducts } from "../../api/user/productAPI";
-import { search, sort, limit} from "../../utils/constants";
+import { HomeProductCard } from '../../components/User/ProductCard';
+import { getProducts } from '../../api/user/productAPI';
+import { search, sort, limit } from '../../utils/constants';
 
-import Navbar from "../../components/common/Navbar";
-import Footer from "../../components/common/Footer";
+import Navbar from '../../components/common/Navbar';
+import Footer from '../../components/common/Footer';
+import Login from '../User/Authentication/Login';
+import Signup from '../User/Authentication/Signup';
+import ForgotPassword from '../User/Authentication/ForgotPassword';
+import Pagination from '../../components/common/Pagination';
+import OTPVerification from '../../pages/User/Authentication/OTPVerification';
+import ResetPassword from '../../pages/User/Authentication/ResetPassword';
+import BookLoader from '../../components/common/BookLoader';
+import FallbackMessage from '../../components/common/FallbackMessage';
 
-import Login from "../User/Authentication/Login";
-import Signup from "../User/Authentication/Signup";
-import ForgotPassword from "../User/Authentication/ForgotPassword";
-import Pagination from "../../components/common/Pagination";
-import OTPVerification from "../../pages/User/Authentication/OTPVerification";
-import ResetPassword from "../../pages/User/Authentication/ResetPassword";
-import BookLoader from "../../components/common/BookLoader";
-import FallbackMessage from "../../components/common/FallbackMessage";
-
-function Home() {
+const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,16 +26,13 @@ function Home() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-
   useEffect(() => {
     setLoading(true);
     setError(null);
 
     const fetchBooks = async () => {
       try {
-        let response;
-
-        response = await getProducts({ search, sort, page, limit });
+        const response = await getProducts({ search, sort, page, limit });
 
         const productList = Array.isArray(response.data)
           ? response.data
@@ -49,7 +45,7 @@ function Home() {
         const message =
           err.response?.data?.message ||
           err.message ||
-          "Something went wrong while fetching books. Please try again.";
+          'Something went wrong while fetching books. Please try again.';
         setError(message);
       } finally {
         setLoading(false);
@@ -60,9 +56,10 @@ function Home() {
   }, [page]);
 
   const getImageUrl = (url) => {
-    if (!url) return "https://via.placeholder.com/150x200?text=No+Image";
-    if (url.startsWith("http")) return url;
-    const uploadsIndex = url.indexOf("/uploads");
+    if (!url) return 'https://via.placeholder.com/150x200?text=No+Image';
+    if (url.startsWith('http')) return url;
+    
+    const uploadsIndex = url.indexOf('/uploads');
     return uploadsIndex !== -1
       ? `${import.meta.env.VITE_API_BASE_URL}${url.substring(uploadsIndex)}`
       : `${import.meta.env.VITE_API_BASE_URL}${url}`;
@@ -83,7 +80,7 @@ function Home() {
               Explore thousands of books across all genres.
             </p>
             <button
-              onClick={() => navigate("/products")}
+              onClick={() => navigate('/products')}
               className="bg-[#3c2712] text-white px-6 py-2 rounded-full text-sm md:text-base cursor-pointer"
             >
               Shop Now
@@ -114,9 +111,9 @@ function Home() {
           </section>
         </main>
 
-        <div className="flex justify-center ">
+        <div className="flex justify-center">
           <button
-            onClick={() => navigate("/products")}
+            onClick={() => navigate('/products')}
             className="bg-[#3c2712] hover:bg-[#2a1b0c] text-white px-6 py-2 rounded-full text-sm md:text-base cursor-pointer transition-all"
           >
             View All Products
@@ -133,13 +130,13 @@ function Home() {
       </div>
 
       {/* Modals */}
-      {location.pathname === "/login" && <Login  />}
-      {location.pathname === "/signup" && <Signup  />}
-      {location.pathname === "/verify-otp" && <OTPVerification  />}
-      {location.pathname === "/reset-password" && <ResetPassword  />}
-      {location.pathname === "/forgot-password" && <ForgotPassword  />}
+      {location.pathname === '/login' && <Login />}
+      {location.pathname === '/signup' && <Signup />}
+      {location.pathname === '/verify-otp' && <OTPVerification />}
+      {location.pathname === '/reset-password' && <ResetPassword />}
+      {location.pathname === '/forgot-password' && <ForgotPassword />}
     </>
   );
-}
+};
 
 export default Home;

@@ -18,15 +18,11 @@ async function deactivateExpiredCoupons(coupons) {
         isDeleted: false,
       });
       if (activeOrders > 0) {
-        console.log(
-          `Coupon ${coupon.code} is applied to ${activeOrders} pending order(s). Skipping deactivation.`
-        );
         continue;
       }
       coupon.isActive = false;
       await coupon.save();
       deactivatedCount++;
-      console.log(`Coupon ${coupon.code} deactivated due to expiration.`);
     }
   }
   return deactivatedCount;
@@ -90,11 +86,6 @@ export const getCouponById = async (req, res) => {
       if (activeOrders === 0) {
         coupon.isActive = false;
         await coupon.save();
-        console.log(`Coupon ${coupon.code} deactivated due to expiration.`);
-      } else {
-        console.log(
-          `Coupon ${coupon.code} is applied to ${activeOrders} pending order(s). Skipping deactivation.`
-        );
       }
     }
 

@@ -124,7 +124,6 @@ export const fetchCurrentUser = createAsyncThunk(
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/user/auth/me`, {
         withCredentials: true,
       });
-      console.log("fetchCurrentUser response:", response.data);
       return response.data;
     } catch (err) {
       console.error("fetchCurrentUser error:", err.response?.data || err.message);
@@ -154,7 +153,6 @@ const authSlice = createSlice({
     resetResetPasswordMessage(state) {
       state.resetPasswordMessage = null;
     }
-        
   },
   extraReducers: (builder) => {
     builder

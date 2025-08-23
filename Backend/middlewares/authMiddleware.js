@@ -58,7 +58,6 @@ export const verifyToken = (type = "user") => async (req, res, next) => {
   }
 };
 
-// Middleware to ensure the user is an admin.
 export const isAdmin = (req, res, next) => {
   if (!req.user || !req.user.isAdmin) {
     logger.warn("Admin access required");

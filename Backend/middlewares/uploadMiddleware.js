@@ -1,4 +1,3 @@
-// uploadMiddleware.js
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloundinaryService from "../utils/services/cloudinaryService.js";
@@ -6,7 +5,6 @@ import STATUS_CODES from "../utils/constants/statusCodes.js";
 import { errorLogger } from "../utils/logger.js";
 
 
-// Configure Cloudinary storage for product images
 const storage = new CloudinaryStorage({
   cloudinary: cloundinaryService.cloudinaryRaw,
   params: {

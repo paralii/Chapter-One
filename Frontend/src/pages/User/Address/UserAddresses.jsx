@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux'; // Import dispatch
-import userAxios from "../../../../api/userAxios";
-import { showAlert } from "../../../../redux/alertSlice"; // Import your showAlert action
+import userAxios from "../../../api/userAxios";
+import { showAlert } from "../../../redux/alertSlice"; // Import your showAlert action
 
 const UserAddresses = () => {
   const [addresses, setAddresses] = useState([]);

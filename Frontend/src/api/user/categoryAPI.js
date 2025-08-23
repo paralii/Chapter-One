@@ -1,6 +1,6 @@
 import userAxios from "../userAxios";
 
-export const getCategories = (params) => {
+export const getCategoriesUser = (params) => {
   return userAxios.get("/categories", { params });
 };
 

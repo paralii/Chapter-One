@@ -103,4 +103,4 @@ export const verifyPayment = async (req, res) => {
     }
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Internal server error" });
   }
-  }}
+  }};

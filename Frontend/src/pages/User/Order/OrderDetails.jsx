@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { showAlert } from "../../../../redux/alertSlice";
+import { showAlert } from "../../../redux/alertSlice";
 import dayjs from "dayjs";
-import showConfirmDialog from "../../../../components/common/ConformationModal";
-import Navbar from "../../../../components/common/Navbar";
-import Footer from "../../../../components/common/Footer";
-import { getOrderDetails, cancelOrder, returnOrder, downloadInvoice } from "../../../../api/user/orderAPI";
-import BookLoader from "../../../../components/common/BookLoader";
-import { createRazorpayOrder, verifyPaymentSignature } from "../../../../api/user/paymentAPI";
-import { createOrder } from "../../../../api/user/orderAPI";
+import showConfirmDialog from "../../../components/common/ConformationModal";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
+import { getOrderDetails, cancelOrder, returnOrder, downloadInvoice } from "../../../api/user/orderAPI";
+import BookLoader from "../../../components/common/BookLoader";
+import { createRazorpayOrder, verifyPaymentSignature } from "../../../api/user/paymentAPI";
+import { createOrder } from "../../../api/user/orderAPI";
 
 const OrderDetails = () => {
   const { id } = useParams();

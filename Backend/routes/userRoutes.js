@@ -17,7 +17,6 @@ import * as userValidation from "../middlewares/validators.js";
 import { uploadProfileImage } from "../middlewares/profileImageMiddleware.js";
 import * as userWishlistController from "../controllers/user/userWishlistController.js";
 import * as userWalletController from "../controllers/user/userWalletController.js";
-import * as userOfferController from "../controllers/user/userOfferController.js";
 
 const router = express.Router();
 
@@ -59,13 +58,13 @@ router.post("/profile/email/resend-otp", userAuthController.resendOTP);
 router.post("/profile/email/confirm", verifyToken("user"), userValidation.validateConfirmEmailChange, userProfileController.confirmEmailChange);
 
 // ===================== ADDRESS =====================
+router.get("/addresses", verifyToken("user"), userAddressController.getAllUserAddresses);
+router.get("/addresses/:id", verifyToken("user"), userAddressController.getAddressById);
 router.post("/addresses", verifyToken("user"), userValidation.validateAddress, userAddressController.addAddress);
 router.put("/addresses/:id", verifyToken("user"), userValidation.validateUpdateAddress, userAddressController.updateAddress);
 router.delete("/addresses/:id", verifyToken("user"), userAddressController.deleteAddress);
-router.get("/addresses", verifyToken("user"), userAddressController.getAllUserAddresses);
-router.put("/addresses/:id/default", verifyToken("user"), userAddressController.setDefaultAddress);
-router.get("/addresses/:id", verifyToken("user"), userAddressController.getAddressById);
 router.get('/addresses/default', verifyToken('user'), userAddressController.getDefaultAddress);
+router.put("/addresses/:id/default", verifyToken("user"), userAddressController.setDefaultAddress);
 
 // ===================== CART =====================
 router.get("/cart", verifyToken("user"), userCartController.getCart);
@@ -101,13 +100,6 @@ router.get("/wishlist", verifyToken("user"), userWishlistController.getWishlist)
 router.post("/wishlist/add/:productId", verifyToken("user"), userWishlistController.addToWishlist);
 router.post("/wishlist/remove/:productId", verifyToken("user"), userWishlistController.removeFromWishlist);
 router.post("/wishlist/move-to-cart/:productId", verifyToken("user"), userWishlistController.moveToCart);
-
-// ===================== OFFERS =====================
-router.get("/offers", userOfferController.getActiveOffers);
-router.post("/offers/referral/apply", userOfferController.applyReferralOffer);
-router.get("/offers/referral", verifyToken("user"), userOfferController.getReferralOffer);
-router.get("/offers/referral/coupons", verifyToken("user"), userOfferController.getReferralCoupons);
-router.get("/offers/referral/stats", verifyToken("user"), userOfferController.getReferralStats);
 
 // ===================== WALLET =====================
 router.get("/wallet/details", verifyToken("user"), userWalletController.getWalletDetails);

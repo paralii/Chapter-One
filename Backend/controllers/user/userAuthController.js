@@ -1,17 +1,17 @@
-import User from "../../models/User.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { generateTokens, refreshAccessToken } from "../../utils/auth/generateTokens.js";
-import setAuthCookies from "../../utils/setAuthCookies.js";
-import { sendOTPEmail, resendOtpForVerifyEmail, sendForgotPasswordOTP } from "../../utils/services/emailService.js";
-import Wallet from "../../models/Wallet.js";
-import Cart from "../../models/Cart.js";
-import Wishlist from "../../models/Wishlist.js";
-import STATUS_CODES from "../../utils/constants/statusCodes.js";
-import { generateOTP, storeOtpInRedis, getOtpFromRedis, deleteOtpFromRedis } from "../../utils/services/otpService.js";
-import { creditWallet } from "./userWalletController.js";
-import { logger, errorLogger } from "../../utils/logger.js";
+import User from '../../models/User.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
+import { generateTokens, refreshAccessToken } from '../../utils/auth/generateTokens.js';
+import setAuthCookies from '../../utils/setAuthCookies.js';
+import { sendOTPEmail, resendOtpForVerifyEmail, sendForgotPasswordOTP } from '../../utils/services/emailService.js';
+import Wallet from '../../models/Wallet.js';
+import Cart from '../../models/Cart.js';
+import Wishlist from '../../models/Wishlist.js';
+import STATUS_CODES from '../../utils/constants/statusCodes.js';
+import { generateOTP, storeOtpInRedis, getOtpFromRedis, deleteOtpFromRedis } from '../../utils/services/otpService.js';
+import { creditWallet } from './userWalletController.js';
+import { logger, errorLogger } from '../../utils/logger.js';
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -19,57 +19,76 @@ export const login = async (req, res) => {
   const normalizedPassword = password.trim();
 
   if (!email || !password) {
-    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Email and password are required" });
+    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ 
+      message: 'Email and password are required' 
+    });
   }
 
   try {
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       logger.warn(`Login attempt failed: User with email ${normalizedEmail} does not exist`);
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "User with this email does not exist" });
-}
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ 
+        message: 'User with this email does not exist' 
+      });
+    }
+    
     if (!user.isVerified) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Please verify your email first" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ 
+        message: 'Please verify your email first' 
+      });
     }
 
     if (user.isBlock) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ message: "Your account is blocked" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.FORBIDDEN).json({ 
+        message: 'Your account is blocked' 
+      });
     }
 
     const isMatch = await bcrypt.compare(normalizedPassword, user.password);
     if (!isMatch) {
       logger.warn(`Login attempt failed: Incorrect password for user ${normalizedEmail}`);
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Incorrect password, please try again" });
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ 
+        message: 'Incorrect password, please try again' 
+      });
     }
 
     const { accessToken, refreshToken } = generateTokens(user, false);
-    setAuthCookies(res, accessToken, refreshToken, "user");
+    setAuthCookies(res, accessToken, refreshToken, 'user');
     logger.info(`User ${user.email} logged in successfully`);
-    res.status(STATUS_CODES.SUCCESS.OK).json({ user, message: "Login successful" });
+    res.status(STATUS_CODES.SUCCESS.OK).json({ user, message: 'Login successful' });
   } catch (err) {
-    errorLogger.error("User login error", {
+    errorLogger.error('User login error', {
       message: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     });
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Server error", error: err.message });  }
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ 
+      message: 'Server error', 
+      error: err.message 
+    });
+  }
 };
 
 export const logout = (req, res) => {
   logger.info(`User ${req.user.email} logged out successfully`);
-  res.clearCookie("accessToken_user");
-  res.clearCookie("refreshToken_user");
-  res.status(STATUS_CODES.SUCCESS.OK).json({ message: "Logged out successfully" });
+  res.clearCookie('accessToken_user');
+  res.clearCookie('refreshToken_user');
+  res.status(STATUS_CODES.SUCCESS.OK).json({ message: 'Logged out successfully' });
 };
 
-export const refreshUserToken = (req, res) => refreshAccessToken(req, res, "user");
+export const refreshUserToken = (req, res) => refreshAccessToken(req, res, 'user');
 
 export const userSignup = async (req, res) => {
   const { firstname, lastname, email, password, referral_code } = req.body;
-    const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    let user = await User.findOne({ email : normalizedEmail });
-    if (user) return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "User already exists" });
+    let user = await User.findOne({ email: normalizedEmail });
+    if (user) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ 
+        message: 'User already exists' 
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -77,7 +96,9 @@ export const userSignup = async (req, res) => {
     if (referral_code && referral_code.trim()) {
       const referrer = await User.findOne({ referral_code: referral_code.trim().toUpperCase() });
       if (!referrer) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid referral code" });
+        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ 
+          message: 'Invalid referral code' 
+        });
       }
       referred_by = referrer._id;
     }
@@ -92,12 +113,15 @@ export const userSignup = async (req, res) => {
     }));
 
     await sendOTPEmail(normalizedEmail, otp);
-    console.log("SignUp OTP:", otp);
+    console.log('SignUp OTP:', otp);
 
     logger.info(`OTP sent to ${normalizedEmail} for signup`);
-    res.status(STATUS_CODES.SUCCESS.CREATED).json({ message: "OTP sent to email", email: normalizedEmail });
+    res.status(STATUS_CODES.SUCCESS.CREATED).json({ 
+      message: 'OTP sent to email', 
+      email: normalizedEmail 
+    });
   } catch (err) {
-    errorLogger.error("User signup error", {
+    errorLogger.error('User signup error', {
       message: err.message,
       stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux'; // Import dispatch
-import userAxios from "../../../../api/userAxios";
-import { showAlert } from "../../../../redux/alertSlice"; // Import your showAlert action
+import userAxios from "../../../api/userAxios";
+import { showAlert } from "../../../redux/alertSlice"; // Import your showAlert action
 
 const AddEditAddress = () => {
   const [address, setAddress] = useState({
