@@ -38,7 +38,7 @@ export const updateOrderStatus = async (orderId, status) => {
 
 export const markItemDelivered = async (orderId, productId) => {
   try {
-    const response = await adminAxios.patch('/orders/item/delivered', { orderId, productId });
+    const response = await adminAxios.patch('/orders/items/delivered', { orderId, productId });
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to mark item as delivered');
     }

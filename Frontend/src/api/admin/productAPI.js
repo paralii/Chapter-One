@@ -43,9 +43,9 @@ export const updateProduct = (id, productData) => {
 };
 
 export const toggleProductListing = (id) => {
-  return adminAxios.patch(`/products/${id}/toggle`);
+  return adminAxios.patch(`/products/${id}/toggle-status`);
 };
 
 export const deleteProduct = (id) => {
-  return adminAxios.delete(`/products/${id}`);
+  return adminAxios.patch(`/products/${id}/delete`);
 };

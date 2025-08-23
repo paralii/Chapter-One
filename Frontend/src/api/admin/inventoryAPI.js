@@ -1,17 +1,17 @@
 import adminAxios from "../adminAxios";
 
-export const getInventory = () => {
+export const getAllInventory = () => {
   return adminAxios.get("/inventory");
 };
 
-export const updateStock = (stockData) => {
+export const updateProductStock = (stockData) => {
   return adminAxios.post(`/inventory/update`, stockData);
 };
 
-export const lowStock = (data) => {
+export const getLowStockProducts = (data) => {
   return adminAxios.get(`/inventory/low-stock`, data);
 };
 
-export const inventoryReport = () => {
+export const getInventoryReport = () => {
   return adminAxios.get("/inventory/report");
 };

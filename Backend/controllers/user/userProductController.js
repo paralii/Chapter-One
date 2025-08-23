@@ -2,15 +2,7 @@ import Product from "../../models/Product.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const getProducts = async (req, res) => {
-  const {
-    search = "",
-    sort = "new_arrivals",
-    category,
-    minPrice,
-    maxPrice,
-    page = 1,
-    limit = 10,
-  } = req.query;
+  const { search = "", sort = "new_arrivals", category, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
 
   try {
     const query = { isDeleted: false };

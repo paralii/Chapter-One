@@ -4,4 +4,6 @@ export const googleAuth = () => {
   return userAxios.get("/auth/google");
 };
 
-export default { googleAuth };
+export const googleAuthCallback = () => {
+  return userAxios.get("/auth/google/callback")
+}

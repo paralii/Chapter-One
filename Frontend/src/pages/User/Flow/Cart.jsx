@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../../../../components/common/Navbar";
-import Footer from "../../../../components/common/Footer";
-import {getCart,removeCartItem,incrementCartItemQuantity,decrementCartItemQuantity,} from "../../../../api/user/cartAPI";
-import BookLoader from "../../../../components/common/BookLoader";
-import showConfirmDialog from "../../../../components/common/ConformationModal";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
+import {getCart,removeCartItem,incrementCartItemQuantity,decrementCartItemQuantity,} from "../../../api/user/cartAPI";
+import BookLoader from "../../../components/common/BookLoader";
+import showConfirmDialog from "../../../components/common/ConformationModal";
 const MAX_ALLOWED = 5;
 
 const CartPage = () => {

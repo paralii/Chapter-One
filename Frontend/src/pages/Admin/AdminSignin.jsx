@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { adminLogin, clearAdminError } from "../../redux/adminSlice"; // Make sure to add clearAdminError action
+import { adminLogin, clearAdminError } from "../../redux/adminSlice";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react"; 
 
@@ -12,7 +12,6 @@ function AdminLogin() {
   const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.admin);
 
-  // Clear error when component mounts or when page reloads
   useEffect(() => {
     dispatch(clearAdminError());
   }, [dispatch]);

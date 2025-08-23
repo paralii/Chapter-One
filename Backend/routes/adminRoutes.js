@@ -52,10 +52,10 @@ router.patch("/products/:id/delete",verifyToken("admin"), isAdmin, AdminProductC
 router.get("/orders", verifyToken("admin"), isAdmin, AdminOrderController.listAllOrders);
 router.get("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.getOrderById);
 router.put("/orders/:id/status", verifyToken("admin"), isAdmin, AdminOrderController.updateOrderStatus);
-router.patch("/orders/items/delivered", verifyToken("admin"), isAdmin, AdminOrderController.markItemDelivered);
 router.delete("/orders/:id", verifyToken("admin"), isAdmin, AdminOrderController.softDeleteOrder);
 router.get("/orders/:id/invoice", verifyToken("admin"), isAdmin, AdminOrderController.downloadAdminInvoice);
 router.post("/orders/returns/verify", verifyToken("admin"), isAdmin, AdminOrderController.verifyReturnRequest);
+router.patch("/orders/items/delivered", verifyToken("admin"), isAdmin, AdminOrderController.markItemDelivered);
 
 // ===================== INVENTORY MANAGEMENT =====================
 router.get('/inventory', verifyToken("admin"), isAdmin, AdminInventoryController.getAllInventory);
@@ -64,25 +64,21 @@ router.get('/inventory/low-stock', verifyToken("admin"), isAdmin, AdminInventory
 router.get('/inventory/report', verifyToken("admin"), isAdmin, AdminInventoryController.getInventoryReport);
 
 // ===================== COUPON MANAGEMENT =====================
-router.post("/coupons/create", verifyToken("admin"), isAdmin, AdminCouponController.createCoupon);
 router.get("/coupons", verifyToken("admin"), isAdmin, AdminCouponController.getCoupons);
 router.get("/coupons/:couponId", verifyToken("admin"), isAdmin, AdminCouponController.getCouponById);
+router.post("/coupons/create", verifyToken("admin"), isAdmin, AdminCouponController.createCoupon);
 router.put("/coupons/:couponId/update", verifyToken("admin"), isAdmin, AdminCouponController.updateCoupon);
 router.delete("/coupons/:couponId/delete", verifyToken("admin"), isAdmin, AdminCouponController.deleteCoupon);
 
 // ===================== OFFER MANAGEMENT =====================
-router.post("/offers/create", verifyToken("admin"), isAdmin, AdminOfferController.createOffer);
 router.get("/offers", verifyToken("admin"), isAdmin, AdminOfferController.getOffers);
 router.get("/offers/:offerId", verifyToken("admin"), isAdmin, AdminOfferController.getOfferById);
+router.post("/offers/create", verifyToken("admin"), isAdmin, AdminOfferController.createOffer);
 router.put("/offers/:offerId/update", verifyToken("admin"), isAdmin, AdminOfferController.updateOffer);
-router.put("/offers/:offerId/toggle-referral", verifyToken("admin"), isAdmin, AdminOfferController.toggleReferralOffer);
-router.post("/offers/referrals", verifyToken("admin"), isAdmin, AdminOfferController.getReferralOffers);
 
 // ===================== SALES REPORT =====================
 router.get("/sales-report", verifyToken("admin"), isAdmin, salesReportController.getSalesReport);
 router.get("/sales-report/pdf", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportPDF);
 router.get("/sales-report/excel", verifyToken("admin"), isAdmin, salesReportController.generateSalesReportExcel);
-
-
 
 export default router;

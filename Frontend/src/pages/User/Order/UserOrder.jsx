@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import userAxios from "../../../../api/userAxios";
+import userAxios from "../../../api/userAxios";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
-import Navbar from "../../../../components/common/Navbar";
-import Footer from "../../../../components/common/Footer";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
 const UserOrders = () => {
   const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState(""); 

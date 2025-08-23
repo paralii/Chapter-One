@@ -320,9 +320,7 @@ function CouponEdit({ couponId, onCancel, onSave, onLogout }) {
     if (coupon.isActive !== originalCoupon.isActive) updateData.isActive = coupon.isActive;
 
     try {
-      console.log("Sending update data:", updateData); // Debug log
       const response = await updateCoupon(couponId, updateData);
-      console.log("Update response:", response.data); // Debug log
       await onSave(coupon.isActive);
     } catch (error) {
       console.error("Error updating coupon:", error);

@@ -59,5 +59,4 @@ export const adminLogout = (req, res) => {
     .json({ message: validationMessages.adminAuth.logoutSuccess });
 };
 
-export const refreshAdminToken = (req, res) =>
-  refreshAccessToken(req, res, "admin");
+export const refreshAdminToken = (req, res) => refreshAccessToken(req, res, "admin");
