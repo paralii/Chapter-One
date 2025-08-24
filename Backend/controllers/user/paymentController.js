@@ -3,7 +3,6 @@ import razorpay from "../../utils/razorpay.js";
 import Order from "../../models/Order.js";
 import mongoose from "mongoose";
 import Product from "../../models/Product.js";
-import Wallet from "../../models/Wallet.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const createRazorpayOrder = async (req, res) => {

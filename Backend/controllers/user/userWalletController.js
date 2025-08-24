@@ -37,6 +37,7 @@ export const creditWallet = async (userId, amount, description) => {
       type: "credit",
       amount,
       description,
+      date:new Date()
     });
 
     await wallet.save();
@@ -63,6 +64,7 @@ export const debitWallet = async (userId, amount, description) => {
       type: "debit",
       amount,
       description,
+      date:new Date()
     });
 
     await wallet.save();
@@ -91,16 +93,18 @@ export const ensureWalletIntegrity = async (userId) => {
     if (!wallet) throw new Error("Wallet not found");
 
     if (wallet.balance < 0) {
+      const correction = Math.abs(wallet.balance);
       wallet.balance = 0;
       wallet.transactions.push({
         type: "correction",
-        amount: Math.abs(wallet.balance),
+        amount: correction,
         description: "Corrected negative balance",
+        date: new Date(),
       });
-      await wallet.save();
     }
 
-    return { success: true };
+    await wallet.save(); 
+    return { success: true, balance: wallet.balance };
   } catch (err) {
     console.error("Wallet integrity check failed:", err);
     return { success: false, message: err.message };

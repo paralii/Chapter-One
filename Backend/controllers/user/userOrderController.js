@@ -520,7 +520,7 @@ export const returnOrderItem = async (req, res) => {
 };
 
 
-const refundToWallet = async (userId, amount, description = "Refund") => {
+export const refundToWallet = async (userId, amount, description = "Refund") => {
   const wallet = await Wallet.findOneAndUpdate(
     { user_id: userId },
     {
