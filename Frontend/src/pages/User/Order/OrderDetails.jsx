@@ -6,10 +6,9 @@ import dayjs from "dayjs";
 import showConfirmDialog from "../../../components/common/ConformationModal";
 import Navbar from "../../../components/common/Navbar";
 import Footer from "../../../components/common/Footer";
-import { getOrderDetails, cancelOrder, returnOrder, downloadInvoice } from "../../../api/user/orderAPI";
+import { getOrderDetails, placeOrder, cancelOrderOrItem, returnOrderItem, downloadInvoice } from "../../../api/user/orderAPI";
 import BookLoader from "../../../components/common/BookLoader";
-import { createRazorpayOrder, verifyPaymentSignature } from "../../../api/user/paymentAPI";
-import { createOrder } from "../../../api/user/orderAPI";
+import { createRazorpayOrder, verifyPayment } from "../../../api/user/paymentAPI";
 
 const OrderDetails = () => {
   const { id } = useParams();
@@ -42,7 +41,7 @@ const OrderDetails = () => {
       onConfirm: async (reason) => {
         setActionLoading(true);
         try {
-          await cancelOrder({
+          await cancelOrderOrItem({
           orderId: order._id,
           productId: item.product_id._id,
           reason,
@@ -70,7 +69,7 @@ const OrderDetails = () => {
                 setActionLoading(true);
 
         try {
-          await returnOrder({
+          await returnOrderItem({
           orderId: order._id,
 itemId: item._id, // this is the order item's ID, not the product
           reason,
@@ -89,7 +88,7 @@ itemId: item._id, // this is the order item's ID, not the product
     });
   };
 
-  const handleCancelOrder = async () => {
+  const handlecancelOrderOrItem = async () => {
     showConfirmDialog({
       message: "Are you sure you want to cancel the entire order?",
       requireReason: true,
@@ -98,7 +97,7 @@ itemId: item._id, // this is the order item's ID, not the product
                 setActionLoading(true);
 
         try {
-          await cancelOrder({
+          await cancelOrderOrItem({
           orderId: order._id,
           reason,
         });
@@ -163,7 +162,7 @@ const handleRetryPayment = async () => {
             if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
               throw new Error("Missing payment details");
             }
-            await verifyPaymentSignature({
+            await verifyPayment({
               razorpay_order_id,
               razorpay_payment_id,
               razorpay_signature,
@@ -186,7 +185,7 @@ const handleRetryPayment = async () => {
               paymentMethod: order.paymentMethod,
               razorpay_order_id,
             };
-            const response = await createOrder(orderData);
+            const response = await placeOrder(orderData);
             dispatch(showAlert({ message: "Payment Successful!", type: "success" }));
             navigate("/order-success", { state: { orderId: response.data.order._id } });
           } catch (err) {
@@ -405,7 +404,7 @@ const handleRetryPayment = async () => {
         {order.status !== "Cancelled" &&
           order.items.every((item) => item.status === "Pending") && (
             <button
-              onClick={handleCancelOrder}
+              onClick={handlecancelOrderOrItem}
               className="px-4 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 disabled:opacity-50"
               disabled={actionLoading}
             >

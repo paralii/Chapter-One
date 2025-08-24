@@ -17,6 +17,7 @@ import * as userValidation from "../middlewares/validators.js";
 import { uploadProfileImage } from "../middlewares/profileImageMiddleware.js";
 import * as userWishlistController from "../controllers/user/userWishlistController.js";
 import * as userWalletController from "../controllers/user/userWalletController.js";
+import * as userOfferController from "../controllers/user/userOfferController.js";
 
 const router = express.Router();
 
@@ -108,5 +109,7 @@ router.post("/wallet/debit", verifyToken("user"), userWalletController.debitWall
 router.get("/wallet/balance", verifyToken("user"), userWalletController.checkWalletBalance);
 router.post("/wallet/integrity-check", verifyToken("user"), userWalletController.ensureWalletIntegrity);
 
+// ===================== OFFERS =====================
+router.get("/offers", userOfferController.getActiveOffers);
 
 export default router;

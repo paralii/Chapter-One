@@ -6,11 +6,11 @@ import Navbar from "../../../components/common/Navbar";
 import Footer from "../../../components/common/Footer";
 import BookLoader from "../../../components/common/BookLoader";
 import { getWallet } from "../../../api/user/walletAPI";
-import { getAddresses, addAddress, updateAddress } from "../../../api/user/addressAPI";
+import { getAllUserAddresses, addAddress, updateAddress } from "../../../api/user/addressAPI";
 import { getCart } from "../../../api/user/cartAPI";
-import { createOrder, createTempOrder, getPendingOrder } from "../../../api/user/orderAPI";
-import { createRazorpayOrder, verifyPaymentSignature } from "../../../api/user/paymentAPI";
-import { getAllCoupons, applyCoupon, removeCoupon } from "../../../api/user/couponAPi";
+import { placeOrder, createTempOrder, getPendingOrder } from "../../../api/user/orderAPI";
+import { createRazorpayOrder, verifyPayment } from "../../../api/user/paymentAPI";
+import { getAvailableCoupons, applyCoupon, removeCoupon } from "../../../api/user/couponAPi";
 import { showAlert } from "../../../redux/alertSlice";
 import userAxios from "../../../api/userAxios";
 
@@ -89,8 +89,8 @@ function Checkout() {
         const [walletRes, cartRes, couponsRes, addressesRes, pendingOrderRes] = await Promise.all([
           getWallet(),
           getCart(),
-          getAllCoupons(),
-          getAddresses(),
+          getAvailableCoupons(),
+          getAllUserAddresses(),
           getPendingOrder().catch(err => {
             console.warn("Failed to fetch pending order:", err);
             return { data: { order: null } };
@@ -247,7 +247,7 @@ function Checkout() {
 
   const fetchAddressesData = async () => {
     try {
-      const res = await getAddresses();
+      const res = await getAllUserAddresses();
       const all = res.data.addresses;
       setAddresses(all);
       const def = all.find((a) => a.isDefault);
@@ -420,7 +420,7 @@ function Checkout() {
     try {
       setIsLoading(true);
       if (paymentMethod === "COD") {
-        const response = await createOrder(orderData);
+        const response = await placeOrder(orderData);
         setTempOrderId(null);
         dispatch(showAlert({ message: "Order placed!", type: "success" }));
         return navigate("/order-success", {
@@ -456,13 +456,13 @@ function Checkout() {
                   state: { orderId: tempOrderId, errorMessage: "Missing payment details" },
                 });
               }
-              await verifyPaymentSignature({
+              await verifyPayment({
                 razorpay_order_id,
                 razorpay_payment_id,
                 razorpay_signature,
                 order_id: tempOrderId,
               });
-              const response = await createOrder({
+              const response = await placeOrder({
                 ...orderData,
                 razorpay_order_id,
                 payment_id: razorpay_payment_id,
@@ -517,7 +517,7 @@ function Checkout() {
         });
         razorpayInstance.open();
       } else if (paymentMethod === "Wallet") {
-        const response = await createOrder({
+        const response = await placeOrder({
           ...orderData,
           payment_id: `WALLET_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         });

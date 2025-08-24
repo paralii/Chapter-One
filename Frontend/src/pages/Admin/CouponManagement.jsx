@@ -5,7 +5,7 @@ import { showAlert } from "../../redux/alertSlice";
 import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import BookLoader from "../../components/common/BookLoader";
-import { getAllCoupons, createCoupon, deleteCoupon, getCouponById, updateCoupon } from "../../api/admin/couponAPI";
+import { getCoupons, createCoupon, deleteCoupon, getCouponById, updateCoupon } from "../../api/admin/couponAPI";
 import showConfirmDialog from "../../components/common/ConformationModal";
 import { adminLogout } from "../../redux/adminSlice";
 
@@ -25,7 +25,7 @@ function CouponManagement() {
   const fetchCoupons = async () => {
     setLoading(true);
     try {
-      const response = await getAllCoupons({ includeInactive: true });
+      const response = await getCoupons({ includeInactive: true });
       setCoupons(response.data.coupons || []);
     } catch (error) {
       console.error("Error fetching coupons:", error);
