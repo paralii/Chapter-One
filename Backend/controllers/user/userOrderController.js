@@ -195,7 +195,6 @@ export const placeOrder = async (req, res) => {
       coupon,
     } = req.body;
 
-    console.log("placeOrder request payload:", req.body);
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "No items to order" });
@@ -474,7 +473,6 @@ for (const item of order.items) {
 export const returnOrderItem = async (req, res) => {
   try {
     const { orderId, itemId, reason } = req.body;
-    console.log("🔹 Step 1: Payload", req.body);
 
     if (!mongoose.isValidObjectId(orderId) || !mongoose.isValidObjectId(itemId)) {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order or item ID format" });
@@ -485,7 +483,6 @@ export const returnOrderItem = async (req, res) => {
     }
 
     const order = await Order.findById(orderId).populate("items.product_id");
-    console.log("🔹 Step 2: Fetched order", order);
 
     if (!order || order.user_id.toString() !== req.user._id.toString()) {
       return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found or unauthorized" });
@@ -496,7 +493,6 @@ export const returnOrderItem = async (req, res) => {
     }
 
     const item = order.items.find(i => i._id.toString() === itemId);
-    console.log("🔹 Step 3: Matched item", item);
 
     if (!item) {
       return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Item not found in order" });
@@ -509,12 +505,10 @@ export const returnOrderItem = async (req, res) => {
     item.status = "Returned";
     item.returnReason = reason;
 
-    console.log("🔹 Step 4: Updating product quantity...");
     await Product.findByIdAndUpdate(item.product_id._id, {
       $inc: { available_quantity: item.quantity },
     });
 
-    console.log("🔹 Step 5: Saving order...");
     await order.save();
 
     res.json({ success: true, message: "Return request submitted" });

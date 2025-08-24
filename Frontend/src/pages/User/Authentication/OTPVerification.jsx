@@ -51,7 +51,6 @@ const OTPVerification = () => {
   };
 
   const handleResend = async () => {
-    console.log("Resending OTP");
     if (!isResendActive) return;
 
     setIsResendActive(false);
@@ -78,7 +77,6 @@ const OTPVerification = () => {
 
       if (isSuccess) {
         if (newToken) {
-          console.log("New OTP token received:", newToken);
         } else {
           throw new Error("New OTP token not received");
         }

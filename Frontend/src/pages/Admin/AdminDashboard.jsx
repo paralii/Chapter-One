@@ -134,7 +134,7 @@ function AdminDashboard() {
     fetchChartData();
     fetchTopProducts();
     fetchTopCategories();
-    // fetchRecentOrders();
+    fetchRecentOrders();
   }, [filter, year, month]);
 
   return (
@@ -195,14 +195,14 @@ function AdminDashboard() {
           </div>
         </section>
 
-        {/* Stats Section
-        // <section className="mt-[40px] lg:mt-[56px]">
-        //   <div className="flex flex-col lg:flex-row gap-[20px]">
-        //     <TotalUsersCard filter={filter} year={year} month={month} />
-        //     <TotalOrdersCard filter={filter} year={year} month={month} />
-        //     <TotalSalesCard filter={filter} year={year} month={month} />
-        //   </div>
-        // </section> */}
+        {/* Stats Section*/}
+        <section className="mt-[40px] lg:mt-[56px]">
+          <div className="flex flex-col lg:flex-row gap-[20px]">
+            <TotalUsersCard filter={filter} year={year} month={month} />
+            <TotalOrdersCard filter={filter} year={year} month={month} />
+            <TotalSalesCard filter={filter} year={year} month={month} />
+          </div>
+        </section> 
 
         {/* Performance Chart */}
         <section className="mt-[24px] bg-white p-4 rounded-[14px] border border-[#b9b9b9]">
@@ -302,7 +302,7 @@ function AdminDashboard() {
         </section>
 
         {/* Orders Section */}
-        {/* <section className="mt-[44px]">
+        <section className="mt-[44px]">
           <div className="bg-white border border-[#b9b9b9] rounded-[14px] pb-[22px] font-sans">
             <div className="bg-[#fcfdfd] border border-[#d5d5d5] rounded-t-[14px] flex justify-between pt-[17px] pb-[17px] pl-[25px] pr-[25px] mt-[-24px] text-[14px] font-extrabold text-[#202224]">
               <div>ID</div>
@@ -340,7 +340,7 @@ function AdminDashboard() {
               <div className="text-center text-[#202224] text-[14px] mt-[21px]">No recent orders found</div>
             )}
           </div>
-        </section> */}
+        </section>
       </main>
     </div>
   );

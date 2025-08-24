@@ -170,7 +170,6 @@ export const updateOffer = async (req, res) => {
       start_date,
       end_date,
       is_active,
-      referral_code,
     } = req.body;
     if (!mongoose.isValidObjectId(offerId)) {
       return res
@@ -227,22 +226,12 @@ export const updateOffer = async (req, res) => {
           message: "Percentage discount must be <= 100",
         });
     }
-    if (
-      offer.type === "REFERRAL" &&
-      referral_code &&
-      !/^[A-Z0-9-]+$/.test(referral_code)
-    ) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-        .json({ success: false, message: "Invalid referral code format" });
-    }
     Object.assign(offer, {
       discount_type,
       discount_value,
       start_date,
       end_date,
       is_active,
-      referral_code,
     });
     await offer.save();
 
@@ -250,89 +239,6 @@ export const updateOffer = async (req, res) => {
     res.json({ success: true, message: "Offer updated successfully", offer });
   } catch (err) {
     errorLogger.error("Error updating offer", {
-      message: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    });
-    res
-      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
-      .json({ success: false, message: "Server error", error: err.message });
-  }
-};
-
-export const toggleReferralOffer = async (req, res) => {
-  try {
-    const { offerId } = req.params;
-    const { is_active, block_message } = req.body;
-    if (!mongoose.isValidObjectId(offerId)) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-        .json({ success: false, message: "Invalid offer ID" });
-    }
-    const offer = await Offer.findById(offerId);
-    if (!offer || offer.type !== "REFERRAL") {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND)
-        .json({ success: false, message: "Referral offer not found" });
-    }
-    offer.is_active = is_active;
-    offer.block_message = is_active
-      ? null
-      : block_message || "Referral code is currently disabled";
-    await offer.save();
-
-    logger.info(
-      `Referral offer ${offer._id} status updated to ${
-        is_active ? "active" : "inactive"
-      }`
-    );
-    res.json({
-      success: true,
-      message: `Referral offer ${is_active ? "activated" : "deactivated"}`,
-      offer,
-    });
-  } catch (err) {
-    errorLogger.error("Error toggling referral offer", {
-      message: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    });
-    res
-      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
-      .json({ success: false, message: "Server error", error: err.message });
-  }
-};
-
-export const getReferralOffers = async (req, res) => {
-  try {
-    const { offerId, search = "", page = 1, limit = 10 } = req.body;
-    const query = { type: "REFERRAL" };
-
-    if (offerId) {
-      if (!mongoose.isValidObjectId(offerId)) {
-        return res
-          .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-          .json({ success: false, message: "Invalid offer ID" });
-      }
-      query._id = offerId;
-    }
-
-    if (search) {
-      query.$or = [{ referral_code: { $regex: search, $options: "i" } }];
-    }
-
-    const offers = await Offer.find(query)
-      .populate("user_id", "firstname email")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-
-    const total = await Offer.countDocuments(query);
-
-    logger.info(
-      `Fetched ${offers.length} referral offers with search: "${search}", page: ${page}, limit: ${limit}`
-    );
-    res.json({ success: true, offers, total });
-  } catch (err) {
-    errorLogger.error("Error fetching referral offers", {
       message: err.message,
       stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });

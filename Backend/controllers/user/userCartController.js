@@ -5,8 +5,7 @@ import  Offer from "../../models/Offer.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 import { errorLogger } from "../../utils/logger.js";
 
-
-      const MAX_LIMIT = 5;
+const MAX_LIMIT = 5;
 
 async function calculateCartItems(items) {
   const currentDate = new Date();

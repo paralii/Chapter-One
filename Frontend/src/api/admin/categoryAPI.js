@@ -18,7 +18,7 @@ export const deleteCategory = (id,{params}) => {
 
 export const getBooksByCategory = async (category) => {
     try {
-        const response = await adminAxios.get(`/categories/${category}/bokks`);
+        const response = await adminAxios.get(`/categories/${category}/books`);
         return response.data;
     } catch (error) {
         console.error("Error fetching books by category:", error);

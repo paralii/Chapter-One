@@ -2,17 +2,17 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaMapMarkerAlt, FaPhone, FaHome, FaEdit, FaCheckCircle, FaMoneyBillWave, FaCreditCard, FaWallet, FaTimes, FaTag, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import Navbar from "../../../../components/common/Navbar";
-import Footer from "../../../../components/common/Footer";
-import BookLoader from "../../../../components/common/BookLoader";
-import { getWallet } from "../../../../api/user/walletAPI";
-import { getAddresses, addAddress, updateAddress } from "../../../../api/user/addressAPI";
-import { getCart } from "../../../../api/user/cartAPI";
-import { createOrder, createTempOrder, getPendingOrder } from "../../../../api/user/orderAPI";
-import { createRazorpayOrder, verifyPaymentSignature } from "../../../../api/user/paymentAPI";
-import { getAllCoupons, applyCoupon, removeCoupon } from "../../../../api/user/couponAPi";
-import { showAlert } from "../../../../redux/alertSlice";
-import userAxios from "../../../../api/userAxios";
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
+import BookLoader from "../../../components/common/BookLoader";
+import { getWallet } from "../../../api/user/walletAPI";
+import { getAddresses, addAddress, updateAddress } from "../../../api/user/addressAPI";
+import { getCart } from "../../../api/user/cartAPI";
+import { createOrder, createTempOrder, getPendingOrder } from "../../../api/user/orderAPI";
+import { createRazorpayOrder, verifyPaymentSignature } from "../../../api/user/paymentAPI";
+import { getAllCoupons, applyCoupon, removeCoupon } from "../../../api/user/couponAPi";
+import { showAlert } from "../../../redux/alertSlice";
+import userAxios from "../../../api/userAxios";
 
 function Checkout() {
   const navigate = useNavigate();
@@ -420,7 +420,6 @@ function Checkout() {
     try {
       setIsLoading(true);
       if (paymentMethod === "COD") {
-        console.log("Placing COD order:", orderData);
         const response = await createOrder(orderData);
         setTempOrderId(null);
         dispatch(showAlert({ message: "Order placed!", type: "success" }));
@@ -435,7 +434,6 @@ function Checkout() {
           amount: finalPrice,
           order_id: tempOrderId,
         };
-        console.log("Creating Razorpay order:", razorpayData);
         const response = await createRazorpayOrder(razorpayData);
         const { data } = response;
         const razorpayOrder = data.order;
@@ -458,14 +456,12 @@ function Checkout() {
                   state: { orderId: tempOrderId, errorMessage: "Missing payment details" },
                 });
               }
-              console.log("Verifying payment signature:", { razorpay_order_id, razorpay_payment_id, razorpay_signature });
               await verifyPaymentSignature({
                 razorpay_order_id,
                 razorpay_payment_id,
                 razorpay_signature,
                 order_id: tempOrderId,
               });
-              console.log("Placing ONLINE order:", { ...orderData, razorpay_order_id, payment_id: razorpay_payment_id });
               const response = await createOrder({
                 ...orderData,
                 razorpay_order_id,
@@ -521,7 +517,6 @@ function Checkout() {
         });
         razorpayInstance.open();
       } else if (paymentMethod === "Wallet") {
-        console.log("Placing Wallet order:", orderData);
         const response = await createOrder({
           ...orderData,
           payment_id: `WALLET_${Date.now()}_${Math.floor(Math.random() * 1000)}`,

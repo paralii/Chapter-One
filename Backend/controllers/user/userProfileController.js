@@ -74,7 +74,6 @@ export const requestEmailChange = async (req, res) => {
     const normalizedNewEmail = newEmail.toLowerCase().trim();
 
     const otp = generateOTP();
-    console.log("Generated Email Change OTP:", otp);
 
     await storeOtpInRedis(`emailChange:${normalizedNewEmail}`, JSON.stringify({
       otp,
@@ -92,7 +91,6 @@ export const requestEmailChange = async (req, res) => {
 
 export const confirmEmailChange = async (req, res) => {
   const { otp, newEmail } = req.body;
-  console.log("Verifying OTP:", otp, "for", newEmail);
 
   try {
     const normalizedEmail = newEmail.toLowerCase().trim();
@@ -103,7 +101,6 @@ export const confirmEmailChange = async (req, res) => {
     }
 
     const parsedData = JSON.parse(storedData);
-    console.log("Stored Data:", parsedData);
 
     if (parsedData.otp !== otp) {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid OTP" });

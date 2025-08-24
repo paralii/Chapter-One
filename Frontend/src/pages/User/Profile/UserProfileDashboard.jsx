@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Footer from "../../../components/common/Footer";
 import { useDispatch } from "react-redux";
+
+import { toast } from "react-toastify";
+
 import { getUserProfile } from "../../../api/user/UserAPI";
 import { getAddresses } from "../../../api/user/addressAPI";
 import { getWallet } from "../../../api/user/walletAPI";
 import { getOrderDetails } from "../../../api/user/orderAPI";
 import { logoutUser } from "../../../redux/authSlice";
+
 import BookLoader from "../../../components/common/BookLoader";
-import { toast } from "react-toastify";
+import Footer from "../../../components/common/Footer";
+import Navbar from "../../../components/common/Navbar";
+
 const UserProfileDashboard = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [user, setUser] = useState(null);
   const [defaultAddress, setDefaultAddress] = useState(null);
   const [latestOrder, setLatestOrder] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
 
   useEffect(() => {
     getUserProfile()
@@ -55,15 +61,14 @@ const UserProfileDashboard = () => {
   }, []);
 
   const copyToClipboard = (text) => {
-  navigator.clipboard.writeText(text).then(() => toast.success("Copied to clipboard!"));
-};
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied to clipboard!"));
+  };
 
-const shareToWhatsApp = () => {
-  const referralLink = `${window.location.origin}/signup?ref=${user.referral_code}`;
-  const text = `Join now and get 10% off with my referral link: ${referralLink}`;
-  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
-};
-
+  const shareToWhatsApp = () => {
+    const referralLink = `${window.location.origin}/signup?ref=${user.referral_code}`;
+    const text = `Join now and get 10% off with my referral link: ${referralLink}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
+  };
 
   const handleLogout = () => {
     dispatch(logoutUser())
@@ -75,21 +80,13 @@ const shareToWhatsApp = () => {
         console.error("Logout failed", error);
       });
   };
-
   
   if (!user) return <BookLoader />;
 
   return (
     <>
+      <Navbar/>
       <div className="min-h-screen bg-[#fff8e5] py-6 px-6">
-          <div
-            className="logo font-[Outfit] text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#696969] cursor-pointer flex justify-center"
-            onClick={() => navigate("/")}
-          >
-            CHAPTER ONE
-          </div>
-        <div className="w-full">
-        </div>
         <div className="bg-white shadow-xl rounded-xl w-full max-w-5xl p-8 mt-8 mx-auto">
           <div className="flex flex-col lg:flex-row items-center justify-between mb-8">
             <div className="flex flex-col lg:flex-row items-center">
@@ -240,7 +237,7 @@ const shareToWhatsApp = () => {
           </div>
         </div>
       </div>
-      <Footer />
+      <Footer/>
     </>
   );
   

@@ -19,11 +19,3 @@ export const debitWallet = (data) => {
 export const checkIntegrity = () => {
   return userAxios.post("/wallet/integrity-check"); 
 };
-
-export default {
-  getWallet,
-  getWalletBalance,
-  creditWallet,
-  debitWallet,
-  checkIntegrity,
-};

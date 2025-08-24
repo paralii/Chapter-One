@@ -4,8 +4,6 @@ export const createRazorpayOrder = (data) => {
   return userAxios.post("/payment/create-order", data);
 };
 
-export const verifyPaymentSignature = (data) => {
+export const verifyPayment = (data) => {
   return userAxios.post("/payment/verify", data);
 };
-
-export default { createRazorpayOrder, verifyPaymentSignature };
