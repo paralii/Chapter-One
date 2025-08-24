@@ -4,7 +4,7 @@ import PageHeader from '../../components/Admin/AdminPageHeader';
 import { useDispatch } from 'react-redux';
 import { showAlert } from '../../redux/alertSlice';
 import BookLoader from '../../components/common/BookLoader';
-import { getInventory, inventoryReport, updateStock } from '../../api/admin/inventoryAPI';
+import { getAllInventory, getInventoryReport, updateProductStock } from '../../api/admin/inventoryAPI';
 import showConfirmDialog from '../../components/common/ConformationModal';
 import useDebounce from '../../hooks/useDebounce';
 
@@ -31,7 +31,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const response = await getInventory({ params: { search, page, limit } });
+      const response = await getAllInventory({ params: { search, page, limit } });
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch inventory');
       }
@@ -48,7 +48,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
 
   const fetchReport = async () => {
     try {
-      const response = await inventoryReport();
+      const response = await getInventoryReport();
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch report');
       }
@@ -62,7 +62,7 @@ export default function InventoryDashboard({ onEdit, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const response = await updateStock({ productId, quantity, reason });
+      const response = await updateProductStock({ productId, quantity, reason });
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to update stock');
       }

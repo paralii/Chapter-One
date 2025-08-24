@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 
 import { getUserProfile } from "../../../api/user/UserAPI";
-import { getAddresses } from "../../../api/user/addressAPI";
+import { getAllUserAddresses } from "../../../api/user/addressAPI";
 import { getWallet } from "../../../api/user/walletAPI";
 import { getOrderDetails } from "../../../api/user/orderAPI";
 import { logoutUser } from "../../../redux/authSlice";
@@ -32,7 +32,7 @@ const UserProfileDashboard = () => {
         console.error("Failed to fetch user profile", error);
       });
 
-    getAddresses()
+    getAllUserAddresses()
       .then((response) => {
         const addresses = response.data.addresses;
         const defaultAddr = addresses.find((address) => address.isDefault);

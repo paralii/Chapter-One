@@ -12,7 +12,7 @@ import { getProducts, getProductById } from "../../../api/user/productAPI";
 import { getWishlist, addToWishlist, removeFromWishlist } from "../../../api/user/wishlistAPI";
 import { addToCart } from "../../../api/user/cartAPI";
 import { showAlert } from "../../../redux/alertSlice";
-import { MAX_ALLOWED } from "../../../utils/constants";
+import { MAX_ALLOWED_QUANTITY } from "../../../utils/constants";
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
 
@@ -118,7 +118,7 @@ function ProductDetail() {
   const smallImages = product.product_imgs?.slice(1, 3).map(getImageUrl) || [];
 
   const incrementQuantity = () => {
-    if (quantity < MAX_ALLOWED && quantity < product.available_quantity) {
+    if (quantity < MAX_ALLOWED_QUANTITY && quantity < product.available_quantity) {
       setQuantity(quantity + 1);
     } else {
       dispatch(

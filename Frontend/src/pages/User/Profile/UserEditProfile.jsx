@@ -6,11 +6,10 @@ import {
   requestEmailChange,
   confirmEmailChange,
   changeUserPassword,
-} from "../../../../api/user/UserAPI";
+} from "../../../api/user/UserAPI";
 import { useNavigate } from "react-router-dom";
-import OTPVerification from "../../Authentication/OTPVerification";
 import { useDispatch } from "react-redux";
-import { showAlert } from "../../../../redux/alertSlice.js";
+import { showAlert } from "../../../redux/alertSlice.js";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "react-toastify";
 
