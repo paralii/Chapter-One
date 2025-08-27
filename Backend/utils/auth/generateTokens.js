@@ -65,14 +65,14 @@ export const refreshAccessToken = async (req, res, type = "user") => {
       res.cookie(accessCookieName, accessToken, {
         httpOnly: true,
         secure: false,
-        sameSite: "lax",
+        sameSite: "None",
         maxAge: 60 * 60 * 1000,
       });
 
       res.cookie(refreshCookieName, newRefreshToken, {
         httpOnly: true,
         secure: false,
-        sameSite: "lax",
+        sameSite: "None",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
