@@ -10,7 +10,6 @@ const offerSchema = new mongoose.Schema(
     start_date: { type: Date, required: true },
     end_date: { type: Date, required: true },
     is_active: { type: Boolean, default: true },
-    block_message: { type: String, default: null }
   },
   { timestamps: true }
 );

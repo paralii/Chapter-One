@@ -397,7 +397,7 @@ export const softDeleteOrder = async (req, res) => {
 
 export const verifyReturnRequest = async (req, res) => {
   try {
-    const { orderId, productId, approve } = req.body;
+    const { orderId, productId, returnApproved } = req.body;
 
     const order = await Order.findOne({ _id: orderId, isDeleted: false });
     if (!order) return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found" });
@@ -408,24 +408,27 @@ export const verifyReturnRequest = async (req, res) => {
     if (!item.returnReason || item.status !== "Returned") {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Item not marked for return" });
     }
+
     if (item.status !== "Delivered" && item.status !== "Returned") {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Return can only be approved for delivered items" });
     }
-    if (approve) {
+
+    if (returnApproved) {
       item.returnVerified = true;
-      item.returnDecision = "Approved";
+      item.returnDecision = "approved";
 
       if (
-        order.paymentMethod === "ONLINE" &&
+        order.status === "Delivered" &&
         order.paymentStatus === "Completed" &&
         !item.refundProcessed
-      ) {
+      )
+      {
+
         const creditResult = await creditWallet(
           order.user_id,
           item.total,
           `Refund for returned product in Order ${order.orderID}`
         );
-
         if (!creditResult.success) {
           return res.status(STATUS_CODES.SERVER_ERROR.SERVICE_UNAVAILABLE).json({ success: false, message: "Wallet refund failed" });
         }
@@ -434,13 +437,13 @@ export const verifyReturnRequest = async (req, res) => {
       }
     } else {
       item.returnVerified = true;
-      item.returnDecision = "Rejected";
+      item.returnDecision = "rejected";
     }
 
     await order.save();
 
-    logger.info(`Return request for item ${productId} in order ${orderId} ${approve ? "approved" : "rejected"}`);
-    return res.json({ success: true, message: `Return ${approve ? "approved" : "rejected"}` });
+    logger.info(`Return request for item ${productId} in order ${orderId} ${returnApproved ? "approved" : "rejected"}`);
+    return res.json({ success: true, message: `Return ${returnApproved ? "approved" : "rejected"}` });
   } catch (err) {
     errorLogger.error("Error verifying return request", {
       message: err.message,

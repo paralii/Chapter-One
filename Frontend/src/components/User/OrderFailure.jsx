@@ -22,13 +22,21 @@ const handleRetryPayment = () => {
     navigate("/profile/orders");
     return;
   }
-  navigate("/checkout", { state: { tempOrderId: orderId } });
+  
+  // Navigate back to checkout with the order ID and retry flag
+  navigate("/checkout", { 
+    state: { 
+      tempOrderId: orderId,
+      isRetry: true
+    } 
+  });
 };
 
   const handleViewOrderDetails = () => {
     if (orderId) {
-      navigate(`/orders/${orderId}`);
+      navigate(`/profile/orders/${orderId}`);
     } else {
+      toast.error("Order details not found");
       navigate("/profile/orders");
     }
   };

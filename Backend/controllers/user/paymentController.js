@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import razorpay from "../../utils/razorpay.js";
 import Order from "../../models/Order.js";
+import Cart from "../../models/Cart.js";
 import mongoose from "mongoose";
 import Product from "../../models/Product.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
@@ -40,6 +41,7 @@ export const createRazorpayOrder = async (req, res) => {
 };
 
 export const verifyPayment = async (req, res) => {
+  const userId = req.user._id;
   try {
     let {
       razorpay_order_id,
@@ -80,9 +82,10 @@ export const verifyPayment = async (req, res) => {
     order.paymentStatus = "Completed";
     order.payment_id = razorpay_payment_id;
     order.razorpay_order_id = razorpay_order_id;
-
+    order.status = "Processing"
     await order.save();
 
+    await Cart.findOneAndUpdate({ user_id: userId }, { items: [] });
     res
       .status(STATUS_CODES.SUCCESS.CREATED)
       .json({ success: true, message: "Payment verified and order updated" });

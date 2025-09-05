@@ -1,611 +1,344 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
 import { FaMapMarkerAlt, FaPhone, FaHome, FaEdit, FaCheckCircle, FaMoneyBillWave, FaCreditCard, FaWallet, FaTimes, FaTag, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import Navbar from "../../../components/common/Navbar";
-import Footer from "../../../components/common/Footer";
-import BookLoader from "../../../components/common/BookLoader";
-import { getWallet } from "../../../api/user/walletAPI";
-import { getAllUserAddresses, addAddress, updateAddress } from "../../../api/user/addressAPI";
+import { addAddress, updateAddress, getAllUserAddresses } from "../../../api/user/addressAPI";
+import { getWallet, debitWallet } from "../../../api/user/walletAPI";
 import { getCart } from "../../../api/user/cartAPI";
-import { placeOrder, createTempOrder, getPendingOrder } from "../../../api/user/orderAPI";
-import { createRazorpayOrder, verifyPayment } from "../../../api/user/paymentAPI";
-import { getAvailableCoupons, applyCoupon, removeCoupon } from "../../../api/user/couponAPi";
+import { getAvailableCoupons, applyCoupon, removeCoupon} from "../../../api/user/couponAPi";
+import { checkout } from "../../../api/user/checkOutAPI";
+import { placeOrder } from "../../../api/user/orderAPI";
 import { showAlert } from "../../../redux/alertSlice";
 import userAxios from "../../../api/userAxios";
 
+import Navbar from "../../../components/common/Navbar";
+import Footer from "../../../components/common/Footer";
+import BookLoader from "../../../components/common/BookLoader";
+
 function Checkout() {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
   const location = useLocation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [cart, setCart] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
+
   const [addresses, setAddresses] = useState([]);
-  const [defaultAddress, setDefaultAddress] = useState(null);
-  const [checkoutDetails, setCheckoutDetails] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("ONLINE");
-  const [isLoading, setIsLoading] = useState(false);
-  const [cartLoading, setCartLoading] = useState(true);
-  const [couponLoading, setCouponLoading] = useState(true);
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
-  const [showCoupons, setShowCoupons] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [referralCode, setReferralCode] = useState("");
-  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
-  const [availableCoupons, setAvailableCoupons] = useState([]);
-  const [lastAppliedCoupon, setLastAppliedCoupon] = useState(null);
-  const [couponError, setCouponError] = useState("");
-  const [referralError, setReferralError] = useState("");
-  const [tempOrderId, setTempOrderId] = useState(null);
-  const [pendingOrder, setPendingOrder] = useState(null);
-  const [showPendingOrderDialog, setShowPendingOrderDialog] = useState(false);
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    name: "", phone: "", place: "", city: "",
+    district: "", state: "", country: "", pin: "",
+    type: "Home", isDefault: false,
+  });
+
+  const [paymentMethod, setPaymentMethod] = useState("ONLINE");
   const [isCODAllowed, setIsCODAllowed] = useState(true);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const fromBuyNow = location.state?.fromBuyNow;
-  const buyNowItem = fromBuyNow ? JSON.parse(localStorage.getItem("buyNowItem")) : null;
 
-  const defaultAddressForm = {
-    name: "",
-    phone: "",
-    place: "",
-    city: "",
-    district: "",
-    state: "",
-    country: "",
-    pin: "",
-    type: "Home",
-    isDefault: false,
-  };
-  const [addressForm, setAddressForm] = useState(defaultAddressForm);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState(null);
+  const [checkoutDetails, setCheckoutDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCoupons, setShowCoupons] = useState(false);
 
-  const totalOriginalPrice = cart.reduce(
-    (acc, item) => acc + (item.product_id?.price || 0) * item.quantity,
-    0
-  );
+  const [errors, setErrors] = useState({ order: "", pendingOrder: "" });
 
-  const totalFinalPrice = cart.reduce(
-    (acc, item) => acc + (item.final_price || (item.product_id?.price * (1 - (item.product_id?.discount || 0) / 100)) || 0) * item.quantity,
-    0
-  );
+  const totalFinalPrice = useMemo(() => {
+    if (!cart.length) return 0;
+    return cart.reduce((acc, item) => {
+      const unit = item.final_price ??
+        (item.product_id?.price * (1 - (item.product_id?.discount || 0) / 100));
+      return acc + unit * item.quantity;
+    }, 0);
+  }, [cart]);
 
-  const totalOfferDiscount = totalOriginalPrice - totalFinalPrice;
-
-  const calculateShippingCost = (city) => {
-    const shippingCosts = {
-      "New York": 10,
-      "Los Angeles": 15,
-      "Chicago": 12,
+  // Calculate totals from checkout details or cart
+  const totals = useMemo(() => {
+    if (checkoutDetails) {
+      console.log(`checkout details:`, checkoutDetails);
+      return {
+        subtotal: checkoutDetails.total ?? 0,    // backend: total = subtotal
+        discount: checkoutDetails.discount ?? 0,
+        shipping: checkoutDetails.shipping_chrg ?? 0,
+        taxes: checkoutDetails.taxes ?? 0,
+        final: checkoutDetails.netAmount ?? 0,
+      };
+    }
+    // fallback (rarely used; mainly until /checkout returns the first time)
+    const original = cart.reduce((a, i) => a + (i.product_id?.price || 0) * i.quantity, 0);
+    const final = totalFinalPrice;
+    const taxes = final * 0.1;
+    const shipping = 20;
+    return {
+      subtotal: final,
+      discount: original - final,
+      shipping,
+      taxes,
+      final: final + taxes + shipping,
     };
-    return shippingCosts[city] || 20;
-  };
+  }, [cart, checkoutDetails, totalFinalPrice]);
+
+  const bestCoupon = useMemo(() => {
+    if (!totalFinalPrice || !availableCoupons.length) return null;
+    const now = new Date();
+    return availableCoupons.reduce((best, c) => {
+      if (!c.isActive || new Date(c.expirationDate) < now || c.usedCount >= c.usageLimit) return best;
+      if (totalFinalPrice < (c.minOrderValue || 0)) return best;
+      const discount = Math.min((totalFinalPrice * c.discountPercentage) / 100, c.maxDiscountAmount || Infinity);
+      return !best || discount > best.discount ? { ...c, discount } : best;
+    }, null);
+  }, [availableCoupons, totalFinalPrice]);
+
+  const fetchCheckout = useCallback(
+    async () => {
+      if (!selectedAddress?._id || !cart.length) return;
+      const payload = {
+        address_id: selectedAddress._id,
+        paymentMethod,
+      };
+      try {
+        setIsLoading(true);
+        const { data } = await userAxios.post("/checkout", payload);
+        const ord = data.order || data.checkoutDetails || null;
+        if (!ord) throw new Error("Invalid /checkout response");
+        setCheckoutDetails(ord);
+        setIsCODAllowed((ord.netAmount || 0) <= 1000);
+      } catch (err) {
+        console.error("Checkout fetch failed:", err);
+        dispatch(showAlert({ message: err.response?.data?.message || "Failed to load checkout details", type: "error" }));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [selectedAddress?._id, cart.length, paymentMethod, appliedCoupon, dispatch]
+  );
 
   useEffect(() => {
     (async () => {
       try {
         setCouponLoading(true);
         setCartLoading(true);
-        const [walletRes, cartRes, couponsRes, addressesRes, pendingOrderRes] = await Promise.all([
-          getWallet(),
-          getCart(),
-          getAvailableCoupons(),
-          getAllUserAddresses(),
-          getPendingOrder().catch(err => {
-            console.warn("Failed to fetch pending order:", err);
-            return { data: { order: null } };
+        
+        const [walletRes, cartRes, couponsRes, addressesRes] = await Promise.all([
+          getWallet().catch(err => {
+            console.error("Failed to fetch wallet:", err);
+            dispatch(showAlert({ message: "Failed to fetch wallet balance", type: "error" }));
+            return { data: { balance: 0 } };
+          }),
+          getCart().catch(err => {
+            console.error("Failed to fetch cart:", err);
+            dispatch(showAlert({ message: "Failed to fetch cart items", type: "error" }));
+            return { data: { cart: { items: [] } } };
+          }),
+          getAvailableCoupons().catch(err => {
+            console.error("Failed to fetch coupons:", err);
+            dispatch(showAlert({ message: "Failed to fetch available coupons", type: "error" }));
+            return { data: { coupons: [] } };
+          }),
+          getAllUserAddresses().catch(err => {
+            console.error("Failed to fetch addresses:", err);
+            dispatch(showAlert({ message: "Failed to fetch addresses", type: "error" }));
+            return { data: { addresses: [] } };
           }),
         ]);
-        setWalletBalance(walletRes.data.wallet?.balance || 0);
+
+        // Set state with fallback values
+        setWalletBalance(walletRes.data.balance || 0);
         setCart(cartRes.data.cart?.items || []);
         setAvailableCoupons(couponsRes.data.coupons || []);
         setAddresses(addressesRes.data.addresses || []);
-        const def = addressesRes.data.addresses.find((a) => a.isDefault);
-        if (def) setDefaultAddress(def._id);
-        if (pendingOrderRes.data.order) {
-          setTempOrderId(pendingOrderRes.data.order._id);
-          setPendingOrder(pendingOrderRes.data.order);
-          if (pendingOrderRes.data.order.paymentStatus === "Completed") {
-            dispatch(showAlert({ message: "Order already completed.", type: "info" }));
-            navigate("/order-success", {
-              state: { orderId: pendingOrderRes.data.order._id },
-            });
-            return;
-          }
-          const orderItems = pendingOrderRes.data.order.items.map(i => ({
-            product_id: i.product_id.toString(),
-            quantity: i.quantity,
-          }));
-          const cartItems = cartRes.data.cart?.items.map(i => ({
-            product_id: i.product_id._id.toString(),
-            quantity: i.quantity,
-          })) || [];
-          const itemsMatch = orderItems.length === cartItems.length &&
-            orderItems.every(oi => cartItems.some(ci => ci.product_id === oi.product_id && ci.quantity === oi.quantity));
-          if (!itemsMatch) {
-            try {
-              await userAxios.post("/orders/cancel", { orderId: pendingOrderRes.data.order._id });
-              setTempOrderId(null);
-              setPendingOrder(null);
-              dispatch(showAlert({ message: "Mismatched pending order cancelled.", type: "info" }));
-            } catch (err) {
-              console.error("Failed to cancel mismatched order:", err);
-              setShowPendingOrderDialog(true);
-            }
-          }
-        }
+        
+        // Handle default address
+        const def = addressesRes.data.addresses?.find((a) => a.isDefault);
+        if (def) setSelectedAddress(def);
+        else if (addressesRes.data.addresses?.length) setSelectedAddress(addressesRes.data.addresses[0]);
+
       } catch (err) {
         console.error("Error fetching initial data:", err);
-        dispatch(showAlert({ message: "Failed to load checkout data.", type: "error" }));
       } finally {
         setCartLoading(false);
         setCouponLoading(false);
       }
     })();
-  }, [dispatch, navigate]);
-
-  const fetchCheckoutDetails = useCallback(async () => {
-    if (!defaultAddress || !cart.length || !tempOrderId) return;
-    try {
-      const checkoutRes = await userAxios.post("/checkout", {
-        address_id: defaultAddress,
-        paymentMethod,
-        orderId: tempOrderId,
-        referralCode,
-      });
-      setCheckoutDetails(checkoutRes.data.checkoutDetails);
-    } catch (err) {
-      console.error("Checkout summary fetch failed:", err);
-      dispatch(showAlert({ message: "Failed to load checkout details.", type: "error" }));
-    }
-  }, [defaultAddress, cart.length, paymentMethod, tempOrderId, referralCode]);
+  }, []);
 
   useEffect(() => {
-    if (!defaultAddress || !cart.length || totalFinalPrice <= 0 || tempOrderId || isCreatingOrder) {
-      if (tempOrderId) {
-        fetchCheckoutDetails();
-      }
-      return;
-    }
-    (async () => {
-      setIsCreatingOrder(true);
-      try {
-        const invalidItem = cart.find(
-          item => !item.product_id?._id || !item.quantity || item.quantity < 1 || !item.product_id.price || item.product_id.price <= 0
-        );
-        if (invalidItem) {
-          throw new Error("Invalid cart item detected");
-        }
-        const items = cart.map((i) => ({
-          product_id: i.product_id._id,
-          quantity: i.quantity,
-          price: i.final_price || (i.product_id.price * (1 - (i.product_id?.discount || 0) / 100)),
-          total: (i.final_price || (i.product_id.price * (1 - (i.product_id?.discount || 0) / 100))) * i.quantity,
-        }));
-        const selectedAddress = addresses.find(a => a._id === defaultAddress);
-        const shippingCost = selectedAddress ? calculateShippingCost(selectedAddress.city) : 20;
-        const taxes = totalFinalPrice * 0.1;
-        const netAmount = totalFinalPrice + taxes + shippingCost - totalOfferDiscount;
-        setIsCODAllowed(netAmount <= 1000);
-        const orderData = {
-          address_id: defaultAddress,
-          shipping_chrg: shippingCost,
-          discount: totalOfferDiscount,
-          items,
-          amount: totalFinalPrice,
-          taxes,
-          total: totalFinalPrice + taxes + shippingCost - totalOfferDiscount,
-          currency: "INR",
-          paymentMethod,
-          coupon: lastAppliedCoupon || undefined,
-        };
-        const tempOrderRes = await createTempOrder(orderData);
-        const orderId = tempOrderRes.data.order?._id;
-        if (!orderId) {
-          throw new Error("No order ID returned from temp order creation");
-        }
-        setTempOrderId(orderId);
-        setPendingOrder(tempOrderRes.data.order);
-        await fetchCheckoutDetails();
-      } catch (err) {
-        console.error("Temp order creation failed:", err);
-        if (err.response?.status === 409) {
-          try {
-            const pendingOrderRes = await getPendingOrder();
-            if (pendingOrderRes.data.order) {
-              if (pendingOrderRes.data.order.paymentStatus === "Completed") {
-                dispatch(showAlert({ message: "Order already completed.", type: "info" }));
-                navigate("/order-success", {
-                  state: { orderId: pendingOrderRes.data.order._id },
-                });
-              } else {
-                setTempOrderId(pendingOrderRes.data.order._id);
-                setPendingOrder(pendingOrderRes.data.order);
-                setShowPendingOrderDialog(true);
-              }
-            }
-          } catch (pendingErr) {
-            dispatch(showAlert({ message: "Failed to fetch existing order.", type: "error" }));
-          }
-        } else if (err.response?.data?.message?.includes("Cash on Delivery is not allowed")) {
-            dispatch(showAlert({
-              message: "Cash on Delivery is not allowed for orders above Rs 1000. Please choose another payment method.",
-              type: "error",
-            }));
-            setPaymentMethod("ONLINE");
-        } else {
-          dispatch(showAlert({
-            message: err.response?.data?.message || "Failed to initialize checkout.",
-            type: "error",
-          }));
-        }
-      } finally {
-        setIsCreatingOrder(false);
-      }
-    })();
-  }, [defaultAddress, cart.length, totalFinalPrice, paymentMethod, tempOrderId, fetchCheckoutDetails, dispatch, totalOfferDiscount, addresses]);
+    fetchCheckout();
+  }, [fetchCheckout]);
 
-  const fetchAddressesData = async () => {
-    try {
-      const res = await getAllUserAddresses();
-      const all = res.data.addresses;
-      setAddresses(all);
-      const def = all.find((a) => a.isDefault);
-      if (def) setDefaultAddress(def._id);
-    } catch (err) {
-      console.error("Address fetch failed:", err);
-    }
+  const validateAddress = (a) => {
+    const errs = {};
+    if (!a.name?.trim()) errs.name = "Name required";
+    if (!/^\d{10,}$/.test(a.phone || "")) errs.phone = "Valid phone required";
+    if (!a.place?.trim()) errs.place = "Place required";
+    if (!a.city?.trim()) errs.city = "City required";
+    if (!a.state?.trim()) errs.state = "State required";
+    if (!a.country?.trim()) errs.country = "Country required";
+    if (!/^\d{4,}$/.test(a.pin || "")) errs.pin = "Valid PIN required";
+    return errs;
   };
 
   const handleAddressSubmit = async () => {
     try {
-      if (editingAddress) {
-        await updateAddress(editingAddress._id, addressForm);
-        dispatch(showAlert({ message: "Address updated!", type: "success" }));
-      } else {
-        await addAddress(addressForm);
-        dispatch(showAlert({ message: "Address added!", type: "success" }));
+      const errs = validateAddress(addressForm);
+      if (Object.keys(errs).length) {
+        dispatch(showAlert({ message: Object.values(errs).join(", "), type: "error" }));
+        return;
       }
-      fetchAddressesData();
+      setIsSavingAddress(true);
+      if (editingAddress?._id) {
+        await userAxios.put(`/addresses/${editingAddress._id}`, addressForm);
+        dispatch(showAlert({ message: "Address updated", type: "success" }));
+      } else {
+        await userAxios.post(`/addresses`, addressForm);
+        dispatch(showAlert({ message: "Address added", type: "success" }));
+      }
+      await getAllUserAddresses();
       setShowAddressForm(false);
-      setAddressForm(defaultAddressForm);
       setEditingAddress(null);
+      setAddressForm({
+        name: "", phone: "", place: "", city: "",
+        district: "", state: "", country: "", pin: "",
+        type: "Home", isDefault: false,
+      });
+      // recalc with (possibly) new default address
+      setTimeout(() => fetchCheckout(), 0);
     } catch (err) {
-      dispatch(showAlert({ message: "Failed to save address.", type: "error" }));
+      console.error("Address save failed:", err);
+      dispatch(showAlert({ message: err.response?.data?.message || "Failed to save address", type: "error" }));
+    } finally {
+      setIsSavingAddress(false);
     }
   };
 
-  const handleApplyCoupon = async () => {
-    const trimmedCode = couponCode.trim().toUpperCase();
-    if (!trimmedCode) {
-      setCouponError("Please enter a valid coupon code.");
-      dispatch(showAlert({ message: "Please enter a valid coupon code.", type: "error" }));
-      return;
-    }
-    if (lastAppliedCoupon && trimmedCode === lastAppliedCoupon.toUpperCase()) {
-      setCouponError("This coupon is already applied.");
-      dispatch(showAlert({ message: "This coupon is already applied.", type: "info" }));
-      return;
-    }
-    if (!tempOrderId) {
-      setCouponError("Please select an address and add items to cart.");
-      dispatch(showAlert({ message: "Please select an address and add items to cart.", type: "error" }));
-      return;
-    }
-    setCouponError("");
-    setIsApplyingCoupon(true);
-    try {
-      const res = await applyCoupon({ couponCode: trimmedCode, orderId: tempOrderId });
-      setCheckoutDetails(res.data.checkoutDetails);
-      setLastAppliedCoupon(trimmedCode);
-      setCouponCode("");
-      await fetchCheckoutDetails();
-      dispatch(showAlert({ message: "Coupon applied successfully!", type: "success" }));
-    } catch (err) {
-      const message = err.response?.data?.message || "Invalid or expired coupon code.";
-      setCouponError(message);
-      dispatch(showAlert({ message, type: "error" }));
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
+  const handleApplyCoupon = async (code = couponCode) => {
+  const normalized = (code || "").trim();
+  if (!normalized || !checkoutDetails?._id) return;
+  setIsApplyingCoupon(true);
+  try {
+    const { data } = await applyCoupon({ couponCode: normalized, orderId: checkoutDetails._id });
+    setAppliedCoupon(normalized);
+    setCheckoutDetails(data.checkoutDetails || data.order);
+    dispatch(showAlert({ message: `Coupon ${normalized} applied`, type: "success" }));
+  } catch (err) {
+    dispatch(showAlert({ message: err.response?.data?.message || "Failed to apply coupon", type: "error" }));
+  } finally {
+    setIsApplyingCoupon(false);
+  }
+};
 
   const handleRemoveCoupon = async () => {
-    if (!tempOrderId) {
-      setCouponError("No order to remove coupon from.");
-      dispatch(showAlert({ message: "No order to remove coupon from.", type: "error" }));
-      return;
-    }
-    setIsApplyingCoupon(true);
-    try {
-      const res = await removeCoupon({ orderId: tempOrderId });
-      setCheckoutDetails(res.data.checkoutDetails);
-      setCouponCode("");
-      setLastAppliedCoupon(null);
-      setCouponError("");
-      await fetchCheckoutDetails();
-      dispatch(showAlert({ message: "Coupon removed successfully.", type: "info" }));
-    } catch (err) {
-      const message = err.response?.data?.message || "Failed to remove coupon.";
-      setCouponError(message);
-      dispatch(showAlert({ message, type: "error" }));
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
+  if (!checkoutDetails?._id) return;
+  setIsApplyingCoupon(true);
+  try {
+    const { data } = await removeCoupon({ orderId: checkoutDetails._id });
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCheckoutDetails(data.checkoutDetails || data.order);
+    dispatch(showAlert({ message: "Coupon removed", type: "info" }));
+  } catch (err) {
+    dispatch(showAlert({ message: err.response?.data?.message || "Failed to remove coupon", type: "error" }));
+  } finally {
+    setIsApplyingCoupon(false);
+  }
+};
 
-  const handleApplyReferral = async () => {
-    const trimmedCode = referralCode.trim().toUpperCase();
-    if (!trimmedCode) {
-      setReferralError("Please enter a valid referral code.");
-      dispatch(showAlert({ message: "Please enter a valid referral code.", type: "error" }));
-      return;
-    }
-    if (!tempOrderId) {
-      setReferralError("Please select an address and add items to cart.");
-      dispatch(showAlert({ message: "Please select an address and add items to cart.", type: "error" }));
-      return;
-    }
-    setReferralError("");
-    setIsApplyingCoupon(true);
-    try {
-      await userAxios.post("/offers/validate-referral", { referral_code: trimmedCode });
-      setReferralCode(trimmedCode);
-      await fetchCheckoutDetails();
-      dispatch(showAlert({ message: "Referral code applied successfully!", type: "success" }));
-    } catch (err) {
-      const message = err.response?.data?.message || "Invalid or expired referral code.";
-      setReferralError(message);
-      dispatch(showAlert({ message, type: "error" }));
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
-
-  const suggestBestCoupon = () => {
-    if (!totalFinalPrice || !availableCoupons.length) return null;
-    return availableCoupons.reduce((best, coupon) => {
-      if (!coupon.isActive || new Date(coupon.expirationDate) < new Date() || coupon.usedCount >= coupon.usageLimit) return best;
-      if (totalFinalPrice < (coupon.minOrderValue || 0)) return best;
-      const discount = Math.min(
-        (totalFinalPrice * coupon.discountPercentage) / 100,
-        coupon.maxDiscountAmount || Infinity
-      );
-      if (!best || discount > best.discount) {
-        return { ...coupon, discount };
-      }
-      return best;
-    }, null);
-  };
-
-  const bestCoupon = suggestBestCoupon();
 
   const handlePlaceOrder = async () => {
-    if (!cart.length || !defaultAddress || !checkoutDetails || !tempOrderId) {
-      dispatch(showAlert({
-        message: "Please complete cart, address, and wait for price calculation.",
-        type: "info",
-      }));
-      return;
-    }
-    if (cart.some(item => !item.product_id?._id || !item.quantity)) {
-      dispatch(showAlert({ message: "Invalid cart items.", type: "error" }));
-      return;
-    }
-    const { subtotal, taxes, shippingCost, discount, finalPrice } = checkoutDetails;
-    if (!subtotal || isNaN(subtotal) || subtotal <= 0) {
-      dispatch(showAlert({ message: "Invalid subtotal amount.", type: "error" }));
-      return;
-    }
-    if (finalPrice !== subtotal + (taxes || 0) + (shippingCost || 0) - (discount || 0)) {
-      dispatch(showAlert({ message: "Price calculation mismatch.", type: "error" }));
-      return;
-    }
-    const orderData = {
-      address_id: defaultAddress,
-      shipping_chrg: shippingCost || 0,
-      discount: discount || totalOfferDiscount,
-      items: cart.map((i) => ({
-        product_id: i.product_id._id,
-        quantity: i.quantity,
-        price: i.final_price || (i.product_id.price * (1 - (i.product_id?.discount || 0) / 100)),
-      })),
-      amount: subtotal,
-      taxes: taxes || 0,
-      total: finalPrice,
-      currency: "INR",
-      paymentMethod,
-      coupon: lastAppliedCoupon || undefined,
-    };
     try {
-      setIsLoading(true);
-      if (paymentMethod === "COD") {
-        const response = await placeOrder(orderData);
-        setTempOrderId(null);
-        dispatch(showAlert({ message: "Order placed!", type: "success" }));
-        return navigate("/order-success", {
-          state: { orderId: response.data.order._id },
-        });
-      } else if (paymentMethod === "ONLINE") {
-        if (!window.Razorpay) {
-          throw new Error("Razorpay script not loaded");
-        }
-        const razorpayData = {
-          amount: finalPrice,
-          order_id: tempOrderId,
-        };
-        const response = await createRazorpayOrder(razorpayData);
-        const { data } = response;
-        const razorpayOrder = data.order;
-        if (!razorpayOrder || !razorpayOrder.id) {
-          throw new Error("Invalid order response from Razorpay");
-        }
-        const razorpayInstance = new window.Razorpay({
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          order_id: razorpayOrder.id,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
-          name: "CHAPTER ONE",
-          description: "Order Payment",
-          handler: async (res) => {
-            try {
-              const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = res;
-              if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-                dispatch(showAlert({ message: "Missing payment details", type: "error" }));
-                return navigate("/order-failure", {
-                  state: { orderId: tempOrderId, errorMessage: "Missing payment details" },
-                });
-              }
-              await verifyPayment({
-                razorpay_order_id,
-                razorpay_payment_id,
-                razorpay_signature,
-                order_id: tempOrderId,
-              });
-              const response = await placeOrder({
-                ...orderData,
-                razorpay_order_id,
-                payment_id: razorpay_payment_id,
-              });
-              setTempOrderId(null);
-              dispatch(showAlert({ message: "Payment successful!", type: "success" }));
-              navigate("/order-success", {
-                state: { orderId: response.data.order._id },
-              });
-            } catch (err) {
-              console.error("Payment verification or order creation failed:", err);
-              if (err.response?.data?.message?.includes("Duplicate order detected")) {
-                const pendingOrderRes = await getPendingOrder();
-                if (pendingOrderRes.data.order?.paymentStatus === "Completed") {
-                  setTempOrderId(null);
-                  dispatch(showAlert({ message: "Order already completed.", type: "success" }));
-                  navigate("/order-success", {
-                    state: { orderId: pendingOrderRes.data.order._id },
-                  });
-                } else {
-                  dispatch(showAlert({
-                    message: "Duplicate order detected. Please try again.",
-                    type: "error",
-                  }));
-                  navigate("/order-failure", {
-                    state: {
-                      orderId: tempOrderId,
-                      errorMessage: err.response?.data?.message || err.message,
-                    },
-                  });
-                }
-              } else {
-                dispatch(showAlert({
-                  message: "Payment failed: " + (err.response?.data?.message || err.message),
-                  type: "error",
-                }));
-                navigate("/order-failure", {
-                  state: {
-                    orderId: tempOrderId,
-                    errorMessage: err.response?.data?.message || err.message,
-                  },
-                });
-              }
-            }
-          },
-          prefill: {
-            name: "Customer",
-            email: "test@example.com",
-            contact: "9876543210",
-          },
-          theme: { color: "#F37254" },
-        });
-        razorpayInstance.open();
-      } else if (paymentMethod === "Wallet") {
-        const response = await placeOrder({
-          ...orderData,
-          payment_id: `WALLET_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        });
-        setTempOrderId(null);
-        dispatch(showAlert({ message: "Order placed using wallet!", type: "success" }));
-        navigate("/order-success", {
-          state: { orderId: response.data.order._id },
-        });
+      if (!checkoutDetails || !selectedAddress?._id) {
+        return dispatch(showAlert({ message: "Select address and wait for summary", type: "error" }));
       }
-    } catch (err) {
-      console.error("Order placement error:", err);
-      if (err.response?.data?.message?.includes("Cash on Delivery is not allowed")) {
-        dispatch(showAlert({
-          message: "Cash on Delivery is not allowed for orders above Rs 1000. Please choose another payment method.",
-          type: "error",
-        }));
-        setPaymentMethod("ONLINE");
-      } else {
-      dispatch(showAlert({
-        message: "Order failed: " + (err.response?.data?.message || err.message),
-        type: "error",
-      }));
-      
-      navigate("/order-failure", {
-        state: {
-          orderId: tempOrderId,
-          errorMessage: err.response?.data?.message || err.message,
-        },
+      if (paymentMethod === "COD" && (checkoutDetails.netAmount || 0) > 1000) {
+        return dispatch(showAlert({ message: "COD not allowed for orders above ₹1000", type: "error" }));
+      }
+
+      setIsLoading(true);
+
+      const { data } = await userAxios.post("/orders", {
+      orderId: checkoutDetails._id,
+      address_id: selectedAddress._id,
+      paymentMethod,
+    });
+
+    const order = data.order;
+
+    if (paymentMethod === "ONLINE") {
+      // Step 2: create Razorpay order
+      const { data: razor } = await userAxios.post("/payment/create-order", {
+        amount: order.netAmount,
+        order_id: order._id,
       });
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razor.order.amount,
+        currency: razor.order.currency,
+        name: "My Shop",
+        description: `Order ${order.orderID}`,
+        order_id: razor.order.id,
+        handler: async function (response) {
+          await userAxios.post("/payment/verify", {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            order_id: order._id,
+          });
+          navigate("/order-success", { state: { orderId: order._id } });
+        },
+        prefill: {
+          name: "Customer",
+          email: "customer@example.com",
+          contact: "9999999999",
+        },
+        theme: { color: "#3399cc" },
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      dispatch(showAlert({ message: "Order placed successfully", type: "success" }));
+      navigate("/order-success", { state: { orderId: order._id } });
     }
+    } catch (err) {
+      console.error("Place order failed:", err);
+      setErrors(e => ({ ...e, order: err.response?.data?.message || "Order failed" }));
+      dispatch(showAlert({ message: err.response?.data?.message || "Order failed", type: "error" }));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleContinueWithOrder = () => {
-    setShowPendingOrderDialog(false);
-  };
-
-  const handleCancelPendingOrder = async () => {
-    try {
-      await userAxios.post("/orders/cancel", { orderId: tempOrderId });
-      setTempOrderId(null);
-      setPendingOrder(null);
-      setShowPendingOrderDialog(false);
-      dispatch(showAlert({ message: "Pending order cancelled.", type: "success" }));
-    } catch (err) {
-      dispatch(showAlert({ message: "Failed to cancel pending order.", type: "error" }));
-    }
-  };
-
-  if (cartLoading) return <BookLoader />;
+  if (isLoading) return <BookLoader />;
 
   return (
     <div className="min-h-screen bg-yellow-50">
       <Navbar />
       <div className="flex gap-10 px-5 mx-auto my-10 max-w-[1200px] max-md:flex-col">
-        {showPendingOrderDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-              <h3 className="text-lg font-semibold mb-4">Pending Order Detected</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                You have a pending order (ID: {pendingOrder?.orderID || tempOrderId}). Your cart may not match this order. What would you like to do?
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={handleContinueWithOrder}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Continue with Existing Order
-                </button>
-                <button
-                  onClick={handleCancelPendingOrder}
-                  className="px-4 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200"
-                >
-                  Cancel Order
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         <div className="flex-1">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-2xl font-semibold text-neutral-900">Delivery Address</h2>
             <button
               onClick={() => {
                 setEditingAddress(null);
-                setAddressForm(defaultAddressForm);
+                setAddressForm({
+                  name: "",
+                  phone: "",
+                  place: "",
+                  city: "",
+                  district: "",
+                  state: "",
+                  country: "",
+                  pin: "",
+                  type: "Home",
+                  isDefault: false,
+                });
                 setShowAddressForm(true);
               }}
               className="text-sm px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md"
@@ -618,9 +351,9 @@ function Checkout() {
               {addresses.map((a) => (
                 <div
                   key={a._id}
-                  onClick={() => setDefaultAddress(a._id)}
+                  onClick={() => setSelectedAddress(a)}
                   className={`p-3 rounded-md shadow-sm border transition-colors cursor-pointer ${
-                    defaultAddress === a._id ? "border-l-4 border-green-600 bg-green-50" : "border-gray-200 bg-white"
+                    selectedAddress?._id === a._id ? "border-l-4 border-green-600 bg-green-50" : "border-gray-200 bg-white"
                   }`}
                 >
                   <div className="flex justify-between items-start">
@@ -648,8 +381,8 @@ function Checkout() {
                       >
                         <FaEdit /> Edit
                       </button>
-                      {defaultAddress === a._id && (
-                        <span className="text-green-600 flex items-center gap-1">
+                      {selectedAddress._id === a._id && (
+                        <span className="text-green-600 flex items-end gap-1">
                           <FaCheckCircle /> Selected
                         </span>
                       )}
@@ -727,7 +460,7 @@ function Checkout() {
               {[
                 { value: "ONLINE", label: "Debit/Credit Card (Razorpay)", icon: <FaCreditCard className="text-yellow-600" /> },
                 { value: "COD", label: "Cash on Delivery", icon: <FaMoneyBillWave className="text-yellow-600" />,disabled: !isCODAllowed, disabledText: " not available for orders above ₹1000" },
-                { value: "Wallet", label: "Wallet ", icon: <FaWallet className="text-yellow-600" />, disabled: walletBalance <= 0, disabledText: "Balance Insufficient " },
+                { value: "Wallet", label: `Wallet (₹${walletBalance.toFixed(2)})`, icon: <FaWallet className="text-yellow-600" />, disabled: walletBalance <= 0, disabledText: "Balance Insufficient ", walletBalance },
               ].map(({ value, label, icon, disabled, disabledText }) => (
                 <label
                   key={value}
@@ -788,14 +521,14 @@ function Checkout() {
             </div>
           ))}
           <div className="bg-white p-4 rounded shadow mb-5">
-            {lastAppliedCoupon && checkoutDetails?.discount > 0 ? (
+            {appliedCoupon && checkoutDetails?.discount > 0 ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between bg-green-100 text-green-700 px-3 py-2 rounded text-sm">
-                  <span>Coupon <strong>{lastAppliedCoupon}</strong> applied (-₹{checkoutDetails.discount.toFixed(2)})!</span>
+                  <span>Coupon <strong>{appliedCoupon}</strong> applied (-₹{checkoutDetails.discount.toFixed(2)})!</span>
                   <button
                     onClick={handleRemoveCoupon}
                     className="text-red-600 hover:underline flex items-center text-sm"
-                    disabled={isApplyingCoupon}
+                    disabled={isLoading}
                   >
                     <FaTimes className="mr-1" /> Remove
                   </button>
@@ -825,34 +558,14 @@ function Checkout() {
                     disabled={isApplyingCoupon}
                   />
                   <button
-                    onClick={handleApplyCoupon}
-                    disabled={isApplyingCoupon || !couponCode.trim() || !tempOrderId}
+                    onClick={() => handleApplyCoupon(couponCode)}
+                    disabled={isLoading || !couponCode.trim()}
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    {isApplyingCoupon ? "Applying..." : "Apply"}
+                    {isLoading ? "Applying..." : "Apply"}
                   </button>
                 </div>
-                {/* <label className="block mb-1 font-medium text-yellow-600">Apply Referral Code</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={referralCode}
-                    onChange={(e) => {
-                      setReferralCode(e.target.value.trim());
-                      setReferralError("");
-                    }}
-                    className="flex-1 px-4 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter referral code (e.g., REF-USER-1234)"
-                    disabled={isApplyingCoupon}
-                  />
-                  <button
-                    onClick={handleApplyReferral}
-                    disabled={isApplyingCoupon || !referralCode.trim() || !tempOrderId}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {isApplyingCoupon ? "Applying..." : "Apply"}
-                  </button>
-                </div> */}
+
                 {bestCoupon && (
                   <p className="text-sm text-green-600">
                     Suggested: Use <strong>{bestCoupon.code}</strong> for ₹{bestCoupon.discount.toFixed(2)} off!
@@ -929,7 +642,6 @@ function Checkout() {
               </div>
             )}
             {couponError && <p className="mt-2 text-sm text-red-600">{couponError}</p>}
-            {referralError && <p className="mt-2 text-sm text-red-600">{referralError}</p>}
             {isApplyingCoupon && <p className="mt-2 text-sm text-gray-600">Processing coupon...</p>}
           </div>
           <div className="p-4 border bg-white rounded-lg mt-4 shadow-sm">
@@ -937,44 +649,38 @@ function Checkout() {
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal ({cart.length} item{cart.length !== 1 ? "s" : ""})</span>
-                <span>₹{(checkoutDetails?.subtotal || totalFinalPrice).toFixed(2)}</span>
+                <span>₹{totals.subtotal.toFixed(2)}</span>
               </div>
-              {(checkoutDetails?.taxes || totalOfferDiscount > 0) && (
-                <>
-                  {totalOfferDiscount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>Offer Discount</span>
-                      <span>-₹{totalOfferDiscount.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {checkoutDetails?.taxes > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span>Tax</span>
-                      <span>₹{(checkoutDetails.taxes).toFixed(2)}</span>
-                    </div>
-                  )}
-                </>
-              )}
+              {/* {totals.discount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Discount</span>
+                  <span>-₹{totals.discount.toFixed(2)}</span>
+                </div>
+              )} */}
+              <div className="flex justify-between text-sm">
+                <span>Tax(18%)</span>
+                <span>₹{totals.taxes.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>₹{(checkoutDetails?.shippingCost || calculateShippingCost(addresses.find(a => a._id === defaultAddress)?.city || '')).toFixed(2)}</span>
+                <span>₹{totals.shipping.toFixed(2)}</span>
               </div>
               {checkoutDetails?.discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>{lastAppliedCoupon ? "Coupon" : "Referral"} Discount</span>
+                  <span>{appliedCoupon ? "Coupon" : "Total "} Discount</span>
                   <span>-₹{(checkoutDetails.discount).toFixed(2)}</span>
                 </div>
               )}
               <hr className="my-2 border-gray-200" />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
-                <span>₹{(checkoutDetails?.finalPrice || (totalFinalPrice + (totalFinalPrice * 0.1) + calculateShippingCost(addresses.find(a => a._id === defaultAddress)?.city || '') - totalOfferDiscount)).toFixed(2)}</span>
+                <span>₹{totals.final.toFixed(2)}</span>
               </div>
             </div>
             <button
               onClick={handlePlaceOrder}
               className="p-3 mt-4 w-full text-sm font-semibold bg-blue-600 rounded text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled={isLoading || !checkoutDetails || !defaultAddress || !cart.length}
+              disabled={isLoading || !checkoutDetails || !selectedAddress || !cart.length}
             >
               {isLoading ? <BookLoader /> : "Place Order"}
             </button>

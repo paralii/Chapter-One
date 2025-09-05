@@ -143,7 +143,7 @@ export const validateUpdateAddress = [
   body("state").optional().notEmpty().withMessage("State cannot be empty"),
   body("country").optional().notEmpty().withMessage("Country cannot be empty"),
   body("pin").optional().isNumeric().withMessage("PIN must be numeric"),
-  body("type").optional().isIn(["Home", "Office"]).withMessage("Invalid address type"),
+  body("type").optional().isIn(["Home", "Work"]).withMessage("Invalid address type"),
   body("isDefault").optional().isBoolean().withMessage("isDefault must be true or false"),
   (req, res, next) => {
     const errors = validationResult(req);

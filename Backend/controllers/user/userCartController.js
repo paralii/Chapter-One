@@ -35,28 +35,30 @@ async function calculateCartItems(items) {
       })
     ]);
 
-    const productDiscount = productOffer
-      ? (productOffer.discount_type === "PERCENTAGE"
-          ? product.price * (productOffer.discount_value / 100)
-          : productOffer.discount_value)
+    const productDiscount = productOffer && (
+      productOffer.discount_type === "PERCENTAGE" ? 
+      product.price * (productOffer.discount_value / 100) : productOffer.discount_value);
+
+    const categoryDiscount = categoryOffer && (
+      categoryOffer.discount_type === "PERCENTAGE" ?
+      product.price * (categoryOffer.discount_value / 100) : categoryOffer.discount_value);
+
+    const baseDiscount = product.discount 
+      ? (product.price * (product.discount / 100)) 
       : 0;
 
-    const categoryDiscount = categoryOffer
-      ? (categoryOffer.discount_type === "PERCENTAGE"
-          ? product.price * (categoryOffer.discount_value / 100)
-          : categoryOffer.discount_value)
-      : 0;
+    const basePrice = product.price - baseDiscount;
+    const productPrice = productDiscount ? product.price - productDiscount : product.price;
+    const categoryPrice = categoryDiscount ? product.price - categoryDiscount : product.price;
 
-    let finalPrice = product.price;
+    let finalPrice = Math.min(basePrice, productPrice, categoryPrice);
     let appliedOffer = null;
     let offerId = null;
     
-    if (productDiscount > categoryDiscount) {
-      finalPrice -= productDiscount;
+    if (finalPrice === productPrice && productOffer) {
       appliedOffer = "PRODUCT";
       offerId = productOffer._id;
-    } else if (categoryDiscount > 0) {
-      finalPrice -= categoryDiscount;
+    } else if (finalPrice === categoryPrice && categoryOffer) {
       appliedOffer = "CATEGORY";
       offerId = categoryOffer._id;
     }
