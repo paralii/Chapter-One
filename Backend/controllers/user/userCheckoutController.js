@@ -120,10 +120,10 @@ export const checkout = async (req, res) => {
     const shipping_chrg = subtotal > 500 ? 0 : 50;
     const taxes = +(subtotal * 0.18);  
 
-    const existingCouponDiscount = order && order.coupon 
+    const existingCouponDiscount = order && (order.coupon 
     ? (order.discount - productDiscountTotal) 
-    : 0;      
-    const netAmount = +(subtotal + taxes + shipping_chrg) -(productDiscountTotal + existingCouponDiscount);
+    : 0) + productDiscountTotal;      
+    const netAmount = +(subtotal + taxes + shipping_chrg) -(existingCouponDiscount);
     console.log(`net amount`, netAmount);
     if (paymentMethod === "COD" && netAmount > 1000) {
       return res.status(400).json({ success: false, message: "Cash on Delivery is not allowed for orders above Rs 1000" });

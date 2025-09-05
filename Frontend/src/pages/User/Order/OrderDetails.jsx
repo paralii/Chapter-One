@@ -351,6 +351,9 @@ const handleRetryPayment = async () => {
             <strong>Shipping:</strong> ₹{order.shipping_chrg.toFixed(2)}
           </p>
           <p>
+            <strong>Taxes</strong> ₹{order.taxes.toFixed(2)}
+          </p>
+          <p>
             <strong>Discount:</strong> ₹{order.discount.toFixed(2)}
           </p>
           <p>
