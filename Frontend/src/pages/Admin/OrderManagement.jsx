@@ -343,7 +343,7 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
   }, [orderId]);
 
   const statusColors = {
-    Pending: 'bg-yellow-400 text-yellow-900',
+    Processing: 'bg-yellow-400 text-yellow-900',
     Delivered: 'bg-green-400 text-green-900',
     Shipped: 'bg-blue-400 text-blue-900',
     OutForDelivery: 'bg-orange-400 text-orange-900',
@@ -415,7 +415,7 @@ function OrderEdit({ orderId, onCancel, onLogout }) {
             className="px-4 py-2 rounded bg-white border"
             disabled={loading}
           >
-            <option value="Pending">Pending</option>
+            <option value="Processing">Processing</option>
             <option value="Shipped">Shipped</option>
             <option value="OutForDelivery">Out for Delivery</option>
             <option value="Delivered">Delivered</option>
@@ -509,11 +509,23 @@ function OrderDetailsView({ orderId, onBack, onLogout }) {
       <PageHeader title="Order Details" handleLogout={onLogout} />
       <div className="bg-[#eee9dc] p-6 rounded-[15px]">
         <div className="mb-4">
-          <h2 className="text-xl font-bold mb-2">Order #{order.orderID}</h2>
-          <p>User: {order.user_id.firstname} {order.user_id.lastname}</p>
-          <p>Date: {new Date(order.order_date).toLocaleString()}</p>
-          <p>Status: <span className="font-semibold">{order.status}</span></p>
-        </div>
+  <h2 className="text-xl font-bold mb-2">Order #{order.orderID}</h2>
+  <p>User: {order.user_id.firstname} {order.user_id.lastname}</p>
+  <p>Date: {new Date(order.order_date).toLocaleString()}</p>
+  <p>Status: <span className="font-semibold">{order.status}</span></p>
+
+  {order.address_id && (
+    <div className="mt-2">
+      <h3 className="font-semibold">Shipping Address:</h3>
+      <p>{order.address_id.name}</p>
+      <p>{order.address_id.place}, {order.address_id.city}, {order.address_id.district}</p>
+      <p>{order.address_id.state}, {order.address_id.country} - {order.address_id.pin}</p>
+      <p>Phone: {order.address_id.phone}</p>
+      <p>Type: {order.address_id.type}</p>
+    </div>
+  )}
+</div>
+
         <h3 className="font-semibold text-lg mt-4 mb-2">Items:</h3>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] border border-[#d4cfc5] rounded">

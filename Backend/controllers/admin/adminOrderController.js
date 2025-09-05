@@ -164,12 +164,13 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     const validTransitions = {
-      Pending: ['Shipped', 'Cancelled'],
-      Shipped: ['OutForDelivery', 'Cancelled'],
-      OutForDelivery: ['Delivered', 'Cancelled'],
-      Delivered: ['Cancelled'],
-      Cancelled: [],
-    };
+    Pending: ['Processing', 'Cancelled'],       
+    Processing: ['Shipped', 'Cancelled'],      
+    Shipped: ['OutForDelivery', 'Cancelled'],
+    OutForDelivery: ['Delivered', 'Cancelled'],
+    Delivered: ['Cancelled'],
+    Cancelled: [],
+  };
     if (!validTransitions[order.status].includes(status)) {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: `Cannot transition from ${order.status} to ${status}` });
     }

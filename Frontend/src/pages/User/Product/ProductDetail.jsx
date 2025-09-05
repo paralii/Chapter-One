@@ -36,7 +36,6 @@ function ProductDetail() {
   const [animationDone, setAnimationDone] = useState(false);
   const [offers, setOffers] = useState([]);
 
-
   const getImageUrl = (url) =>
     url
       ?`${url}`
@@ -67,18 +66,6 @@ function ProductDetail() {
     }
   };
 
-  const fetchRelatedProducts = async () => {
-    try {
-      setRelatedLoading(true);
-      const res = await getProducts({ page: 1, limit: 8 });
-      setRelatedProducts(res.data.products || []);
-    } catch (err) {
-      console.error("Error fetching related products", err);
-    } finally {
-      setRelatedLoading(false);
-    }
-  };
-
   const fetchWishlistStatus = async () => {
     try {
       const res = await getWishlist();
@@ -95,8 +82,19 @@ function ProductDetail() {
   }, [id]);
 
   useEffect(() => {
-    fetchRelatedProducts();
-  }, []);
+    const fetchRelated = async () => {
+      try {
+        const { data } = await userAxios.get(`/products/${id}/related`);
+        setRelatedProducts(data.data);
+        setRelatedLoading(false);
+        setError(null);
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to fetch related products");
+      }
+    };
+
+    fetchRelated();
+  }, [id]);
 
   if (!animationDone || !initialDataLoaded) {
     return <BookLoader onFinish={() => setAnimationDone(true)} />;
@@ -374,44 +372,40 @@ function ProductDetail() {
             >
               Add to Cart
             </button>
-            <button
+            {/* <button
               onClick={handleBuyNow}
               className="px-5 py-2 bg-[#41b200] text-white font-semibold rounded-md hover:bg-[#369400] transition"
             >
               Buy Now
-            </button>
+            </button> */}
           </div>
         </div>
       </main>
 
       {/* Related Products */}
       <section className="max-w-7xl mx-auto px-4 py-8 mt-12">
-        <h2 className="text-2xl font-bold text-[#3c2712] mb-2">
-          Related Products
-        </h2>
-        <p className="text-sm text-gray-600 mb-6">You may also like</p>
+  <h2 className="text-2xl font-bold text-[#3c2712] mb-2">
+    Related Products
+  </h2>
+  <p className="text-sm text-gray-600 mb-6">You may also like</p>
 
-        {relatedLoading ? (
-          <div className="flex justify-center items-center text-lg text-[#fca120]">
-            Loading related products...
-          </div>
-        ) : relatedProducts.length > 0 ? (
-          <div className="flex gap-6 overflow-x-auto pb-2 hide-scrollbar">
-            {relatedProducts.map((prod, i) => (
-              <div
-                key={i}
-                className="min-w-[220px] max-w-[220px] flex-shrink-0 bg-white border border-[#ffe5b8] rounded-xl shadow-sm hover:shadow-md transition-shadow"
-              >
-                <RelatedProductCard product={prod} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center text-[#fca120]">
-            No related products found.
-          </div>
-        )}
-      </section>
+  {relatedLoading ? (
+    <div className="flex justify-center items-center text-lg text-[#fca120]">
+      Loading related products...
+    </div>
+  ) : relatedProducts.length > 0 ? (
+    <div className="flex gap-6 overflow-x-auto pb-2 hide-scrollbar">
+      {relatedProducts.map((prod) => (
+        <RelatedProductCard key={prod._id} product={prod} />
+      ))}
+    </div>
+  ) : (
+    <div className="text-center text-[#fca120]">
+      No related products found.
+    </div>
+  )}
+</section>
+
 
       <Footer />
     </div>

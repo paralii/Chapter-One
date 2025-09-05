@@ -9,6 +9,7 @@ import Footer from "../../../components/common/Footer";
 import { getOrderDetails, placeOrder, cancelOrderOrItem, returnOrderItem, downloadInvoice } from "../../../api/user/orderAPI";
 import BookLoader from "../../../components/common/BookLoader";
 import { createRazorpayOrder, verifyPayment } from "../../../api/user/paymentAPI";
+import userAxios from "../../../api/userAxios";
 
 const OrderDetails = () => {
   const { id } = useParams();
@@ -143,59 +144,36 @@ const handleRetryPayment = async () => {
     }
     setActionLoading(true);
     try {
-      const razorpayData = { amount: order.netAmount, order_id: order._id };
-      const response = await createRazorpayOrder(razorpayData);
-      const razorpayOrder = response.data.order;
-      if (!razorpayOrder || !razorpayOrder.id) {
-        throw new Error("Invalid Razorpay order response");
-      }
-      const razorpayInstance = new window.Razorpay({
-        key:import.meta.env.VITE_RAZORPAY_KEY_ID,
-        order_id: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        name: "CHAPTER ONE",
-        description: `Retry Payment for Order ${order.orderID}`,
-        handler: async (res) => {
-          try {
-            const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = res;
-            if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-              throw new Error("Missing payment details");
-            }
-            await verifyPayment({
-              razorpay_order_id,
-              razorpay_payment_id,
-              razorpay_signature,
-              order_id: order._id,
-            });
-            const orderData = {
-              _id: order._id,
-              address_id: order.address_id._id,
-              shipping_chrg: order.shipping_chrg,
-              discount: order.discount,
-              items: order.items.map((item) => ({
-                product_id: item.product_id._id,
-                quantity: item.quantity,
-                price: item.price,
-              })),
-              amount: order.total,
-              taxes: order.taxes,
-              total: order.netAmount,
-              currency: order.currency,
-              paymentMethod: order.paymentMethod,
-              razorpay_order_id,
-            };
-            const response = await placeOrder(orderData);
-            dispatch(showAlert({ message: "Payment Successful!", type: "success" }));
-            navigate("/order-success", { state: { orderId: response.data.order._id } });
-          } catch (err) {
-            dispatch(showAlert({ message: `Payment failed: ${err.response?.data?.message || err.message}`, type: "error" }));
-          }
-        },
-        prefill: { name: "Customer", email: "test@example.com", contact: "9876543210" },
-        theme: { color: "#F37254" },
+      const { data: razor } = await userAxios.post("/payment/create-order", {
+        amount: order.netAmount,
+        order_id: order._id,
       });
-      razorpayInstance.open();
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razor.order.amount,
+        currency: razor.order.currency,
+        name: "My Shop",
+        description: `Order ${order.orderID}`,
+        order_id: razor.order.id,
+        handler: async function (response) {
+          await userAxios.post("/payment/verify", {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            order_id: order._id,
+          });
+          navigate("/order-success", { state: { orderId: order._id } });
+        },
+        prefill: {
+          name: "Customer",
+          email: "customer@example.com",
+          contact: "9876543210",
+        },
+        theme: { color: "#F37254" },
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err) {
       dispatch(showAlert({ message: `Retry payment failed: ${err.response?.data?.message || err.message}`, type: "error" }));
     } finally {

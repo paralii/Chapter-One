@@ -31,8 +31,15 @@ function AdminLogin() {
 
   return (
     <>
+        
       <main className="flex justify-center items-center min-h-screen p-4 bg-white">
         <section className="bg-white shadow-lg rounded-lg w-full px-6 py-8 sm:w-[90%] sm:max-w-[500px]">
+          <div
+              className="text-center logo font-[Outfit] text-base sm:text-lg font-bold text-[#696969] cursor-pointer hover:text-[#3c2712] transition-colors whitespace-nowrap"
+              onClick={() => navigate('/')}
+            >
+              CHAPTER ONE
+            </div>
           <h1 className="text-black text-center mb-6 text-[28px] font-bold sm:mb-8 sm:text-[32px]">
             Admin Sign In
           </h1>

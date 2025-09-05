@@ -52,6 +52,28 @@ export const checkout = async (req, res) => {
     let baseAmount = 0;
     let productDiscountTotal = 0;
 
+    const productIds = cart.items.map((item) => item.product_id._id);
+    const categoryIds = cart.items.map((item) => item.product_id.category_id);
+    const now = new Date();
+
+    // Fetch active PRODUCT offers
+    const productOffers = await Offer.find({
+      type: "PRODUCT",
+      product_id: { $in: productIds },
+      is_active: true,
+      start_date: { $lte: now },
+      end_date: { $gte: now },
+    });
+
+    // Fetch active CATEGORY offers
+    const categoryOffers = await Offer.find({
+      type: "CATEGORY",
+      category_id: { $in: categoryIds },
+      is_active: true,
+      start_date: { $lte: now },
+      end_date: { $gte: now },
+    });
+
     const validatedItems = cart.items.map((item) => {
       const product = item.product_id;
       if (!product) return null;
@@ -60,8 +82,23 @@ export const checkout = async (req, res) => {
 
       const productDiscount = product.discount || 0;
 
-      const productOffer = product.offer || 0;
-      const categoryOffer = product.category?.offer || 0;
+      const prodOffer = productOffers.find(
+        (o) => o.product_id.toString() === product._id.toString()
+      );
+      const productOffer =
+        prodOffer?.discount_type === "PERCENTAGE"
+          ? prodOffer.discount_value
+          : (prodOffer?.discount_value / product.price) * 100 || 0;
+
+      // CATEGORY offer
+      const catOffer = categoryOffers.find(
+        (o) => o.category_id.toString() === product.category_id.toString()
+      );
+      const categoryOffer =
+        catOffer?.discount_type === "PERCENTAGE"
+          ? catOffer.discount_value
+          : (catOffer?.discount_value / product.price) * 100 || 0;
+
       const bestOffer = Math.max(productOffer, categoryOffer, productDiscount);
       const discountAmount = (basePrice * bestOffer) / 100;
 

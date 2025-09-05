@@ -296,9 +296,9 @@ function Checkout() {
         prefill: {
           name: "Customer",
           email: "customer@example.com",
-          contact: "9999999999",
+          contact: "9876543210",
         },
-        theme: { color: "#3399cc" },
+        theme: { color: "#F37254" },
       };
       const rzp = new window.Razorpay(options);
       rzp.open();

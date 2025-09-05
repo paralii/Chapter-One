@@ -5,7 +5,7 @@ import Footer from "../../../components/common/Footer";
 import Pagination from "../../../components/common/Pagination";
 import { ListProductCard } from "../../../components/User/ProductCard";
 import { getProducts } from "../../../api/user/productAPI";
-import { getCategories } from "../../../api/admin/categoryAPI";
+import { getCategoriesUser } from "../../../api/user/categoryAPI";
 import { useSearch } from "../../../context/SearchContext";
 import useDebounce from "../../../hooks/useDebounce";
 
@@ -97,7 +97,7 @@ const ProductList = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const { data } = await getCategories();
+        const { data } = await getCategoriesUser();
         setCategories(data.categories || []);
       } catch (err) {
         console.error("Error fetching categories", err);

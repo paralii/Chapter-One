@@ -19,25 +19,27 @@ export const getDashboardStats = async (req, res) => {
 
     const totalOrders = await Order.countDocuments({
       createdAt: { $gte: startDate, $lte: endDate },
-      status: { $in: ["Processing", "Completed"] },
+      status: { $in: ["Pending", "Processing", "Shipped", "OutForDelivery", "Delivered"] },
     });
 
     const salesData = await Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startDate, $lte: endDate },
-          status: "Completed",
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: "$total" },
-        },
-      },
-    ]);
+  {
+    $match: {
+      createdAt: { $gte: startDate, $lte: endDate },
+      paymentStatus: "Completed",
+      isDeleted: false,
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      totalSales: { $sum: "$netAmount" },
+    },
+  },
+]);
 
-    const totalSales = salesData[0]?.totalSales || 0;
+const totalSales = salesData[0]?.totalSales || 0;
+
     logger.info(
       `Dashboard stats for ${year}-${
         month || "All Months"
@@ -71,7 +73,7 @@ export const getTopProducts = async (req, res) => {
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          status: "Completed",
+          status: "Delivered",
         },
       },
       { $unwind: "$items" },
@@ -122,41 +124,37 @@ export const getTopCategories = async (req, res) => {
   try {
     const { year = new Date().getFullYear(), month } = req.query;
 
+    // Parse year/month safely
     const parsedYear = parseInt(year);
     const parsedMonth = month ? parseInt(month) : null;
+
     if (isNaN(parsedYear)) {
       return res
         .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
         .json({ success: false, message: "Invalid year parameter" });
     }
+
     if (parsedMonth !== null && (parsedMonth < 1 || parsedMonth > 12)) {
       return res
         .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
         .json({ success: false, message: "Invalid month parameter" });
     }
 
-    const startDate = new Date(
-      parsedYear,
-      parsedMonth ? parsedMonth - 1 : 0,
-      1
-    );
+    // Set start and end dates
+    const startDate = new Date(parsedYear, parsedMonth ? parsedMonth - 1 : 0, 1);
     const endDate = parsedMonth
-      ? new Date(parsedYear, parsedMonth, 0)
-      : new Date(parsedYear + 1, 0, 0);
+      ? new Date(parsedYear, parsedMonth, 0, 23, 59, 59, 999)
+      : new Date(parsedYear + 1, 0, 0, 23, 59, 59, 999);
 
+    // Aggregate top categories
     const topCategories = await Order.aggregate([
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          status: "Delivered",
         },
       },
       { $unwind: "$items" },
-      {
-        $match: {
-          "items.status": "Delivered",
-        },
-      },
+      { $match: { "items.status": "Delivered" } }, // only delivered items
       {
         $lookup: {
           from: "products",
@@ -166,11 +164,6 @@ export const getTopCategories = async (req, res) => {
         },
       },
       { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
-      {
-        $match: {
-          "product.category_id": { $exists: true },
-        },
-      },
       {
         $group: {
           _id: "$product.category_id",
@@ -196,22 +189,13 @@ export const getTopCategories = async (req, res) => {
       { $limit: 10 },
     ]);
 
-    if (topCategories.length === 0) {
-      return res.status(STATUS_CODES.SUCCESS.OK).json({
-        success: true,
-        data: [],
-        message: "No categories found for the specified period",
-      });
-    }
-
-    logger.info(
-      `Fetched top categories for ${year}-${month || "All Months"}: ${
-        topCategories.length
-      } categories`
-    );
-    res
-      .status(STATUS_CODES.SUCCESS.OK)
-      .json({ success: true, data: topCategories });
+    res.status(STATUS_CODES.SUCCESS.OK).json({
+      success: true,
+      data: topCategories.length ? topCategories : [],
+      message: topCategories.length
+        ? undefined
+        : "No categories found for the specified period",
+    });
   } catch (err) {
     errorLogger.error("Error fetching top categories", {
       message: err.message,
@@ -226,6 +210,34 @@ export const getTopCategories = async (req, res) => {
   }
 };
 
+
+export const getRecentOrders = async (req, res) => {
+  try {
+    // Fetch recent orders, sorted by order_date descending, limit to 10
+    const recentOrders = await Order.find({ isDeleted: false })
+      .sort({ order_date: -1 })
+      .limit(10)
+      .populate("user_id", "firstname lastname email")
+      .populate("address_id", "name phone place city district state country pin type");
+
+    res.status(STATUS_CODES.SUCCESS.OK).json({
+      success: true,
+      data: recentOrders,
+    });
+
+    logger.info(`Fetched ${recentOrders.length} recent orders`);
+  } catch (err) {
+    errorLogger.error("Error fetching recent orders", {
+      message: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Internal error fetching recent orders",
+    });
+  }
+};
+
 export const generateLedgerBook = async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
@@ -235,7 +247,7 @@ export const generateLedgerBook = async (req, res) => {
 
     const orders = await Order.find({
       createdAt: { $gte: startDate, $lte: endDate },
-      status: "Completed",
+      status: "Delivered",
     }).populate("user_id", "firstname lastname email");
 
     if (!orders.length) {

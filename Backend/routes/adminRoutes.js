@@ -20,10 +20,11 @@ router.post("/auth/logout", AdminAuthController.adminLogout);
 router.post("/auth/refresh-token", AdminAuthController.refreshAdminToken);
 
 // ===================== ADMIN DASHBOARD =====================
-router.get('/dashboard/overview', adminDashboardController.getDashboardStats);
 router.get('/dashboard/top-products', adminDashboardController.getTopProducts);
 router.get('/dashboard/top-categories', adminDashboardController.getTopCategories);
-router.get('/dashboard/ledger', adminDashboardController.generateLedgerBook);
+router.get('/dashboard/ledger-book', adminDashboardController.generateLedgerBook);
+router.get('/dashboard/stats', adminDashboardController.getDashboardStats);
+router.get('/dashboard/recent-orders', adminDashboardController.getRecentOrders);
 
 // ===================== CUSTOMER MANAGEMENT =====================
 router.get("/customers", verifyToken("admin"), isAdmin, AdminCustomerController.getAllCustomers);

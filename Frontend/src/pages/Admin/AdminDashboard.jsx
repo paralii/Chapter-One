@@ -137,6 +137,27 @@ function AdminDashboard() {
     fetchRecentOrders();
   }, [filter, year, month]);
 
+  const getStatusColor = status => {
+    switch(status) {
+      case "Processing": return "bg-yellow-200 text-yellow-800";
+      case "Shipped": return "bg-blue-200 text-blue-800";
+      case "OutForDelivery": return "bg-orange-200 text-orange-800";
+      case "Delivered": return "bg-green-200 text-green-800";
+      case "Cancelled": return "bg-red-200 text-red-800";
+      default: return "bg-gray-200 text-gray-800";
+    }
+  };
+
+  const mappedRecentOrders = recentOrders.map(order => ({
+  id: order.orderID,
+  name: `${order.user_id.firstname} ${order.user_id.lastname}`,
+  address: `${order.address_id.name}, ${order.address_id.place}, ${order.address_id.city}, ${order.address_id.state} - ${order.address_id.pin}`,
+  date: new Date(order.order_date).toLocaleDateString("en-GB"),
+  status: order.status,
+  statusColor: getStatusColor(order.status), 
+}));
+
+
   return (
     <div className="flex min-h-screen bg-[#fffbf0]">
       <AdminSidebar />
@@ -193,6 +214,15 @@ function AdminDashboard() {
               </select>
             )}
           </div>
+        </section>
+          {/* Ledger Book Section */}
+        <section className="mt-[44px]">
+          <button
+            className="w-full sm:w-[200px] h-[46px] text-[#1d0500] bg-[#ff8266] border border-[#b5b5b5] rounded-[19px] text-[16px] font-semibold cursor-pointer"
+            onClick={handleDownloadLedger}
+          >
+            Download Ledger Book
+          </button>
         </section>
 
         {/* Stats Section*/}
@@ -260,7 +290,7 @@ function AdminDashboard() {
         </section>
 
         {/* Top Categories Section */}
-        <section className="mt-[44px]">
+        {/* <section className="mt-[44px]">
           <div className="bg-white border border-[#b9b9b9] rounded-[14px] pb-[22px]">
             <div className="bg-[#fcfdfd] border border-[#d5d5d5] rounded-t-[14px] pt-[17px] pb-[17px] pl-[25px] pr-[25px] mt-[-24px] text-[14px] font-extrabold text-[#202224]">
               Top 10 Best-Selling Categories
@@ -289,17 +319,7 @@ function AdminDashboard() {
               <div className="text-center text-[#202224] text-[14px] mt-[21px]">No categories found</div>
             )}
           </div>
-        </section>
-
-        {/* Ledger Book Section */}
-        <section className="mt-[44px]">
-          <button
-            className="w-full sm:w-[200px] h-[46px] text-[#1d0500] bg-[#ff8266] border border-[#b5b5b5] rounded-[19px] text-[16px] font-semibold cursor-pointer"
-            onClick={handleDownloadLedger}
-          >
-            Download Ledger Book
-          </button>
-        </section>
+        </section> */}
 
         {/* Orders Section */}
         <section className="mt-[44px]">
@@ -312,7 +332,7 @@ function AdminDashboard() {
               <div>STATUS</div>
             </div>
             {recentOrders.length ? (
-              recentOrders.map((order, index) => (
+              mappedRecentOrders.map((order, index) => (
                 <div key={order.id}>
                   <div className="flex justify-between mt-[21px] mx-[26px]">
                     <div className="flex gap-x-[54px] text-[#202224] text-[14px] font-semibold">

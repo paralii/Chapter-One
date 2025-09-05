@@ -75,3 +75,39 @@ export const getProductById = async (req, res) => {
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ error: err.message });
   }
 };
+
+export const getRelatedProducts = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const limit = Number(req.query.limit) || 10;
+
+    // Fetch the original product
+    const product = await Product.findById(productId);
+    if (!product || product.isDeleted) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Find related products in the same category, excluding the current product
+    const relatedProducts = await Product.find({
+      category_id: product.category_id,
+      _id: { $ne: product._id },
+      isDeleted: false,
+    })
+      .limit(limit)
+      .sort({ createdAt: -1 }); // newest first
+
+    res.status(STATUS_CODES.SUCCESS.OK).json({
+      success: true,
+      data: relatedProducts,
+    });
+  } catch (err) {
+    console.error("Error fetching related products:", err);
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
