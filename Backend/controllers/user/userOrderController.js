@@ -1,370 +1,162 @@
 import Order from "../../models/Order.js";
+import User from "../../models/User.js"
 import Product from "../../models/Product.js";
 import Address from "../../models/Address.js";
+import Cart from "../../models/Cart.js";
+import Offer from "../../models/Offer.js";
 import Wallet from "../../models/Wallet.js";
 import { generateInvoicePDF } from "../../utils/generateInvoicePDF.js";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
-import Cart from "../../models/Cart.js";
 import mongoose from "mongoose";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 const INVOICE_DIR = path.join(process.cwd(), 'invoices');
 
-const generateOrderID = () => {
-  return "CHAP" + Date.now() + Math.floor(Math.random() * 1000);
-};
-
 export const getPendingOrder = async (req, res) => {
   try {
+    // Get any pending order
     const order = await Order.findOne({
       user_id: req.user._id,
-      status: "Pending",
+      status: { $in: ["Pending", "Processing"] },
       isDeleted: false,
     }).lean();
+
+    if (!order) {
+      return res.json({ success: true, order: null });
+    }
+
+    // Check if the order is expired (30 minutes old)
+    const orderDate = new Date(order.createdAt);
+    const now = new Date();
+    const timeDiff = (now - orderDate) / (1000 * 60); // difference in minutes
+
+    if (timeDiff > 30) {
+      // Mark the order as expired
+      await Order.findByIdAndUpdate(order._id, {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          status: "Expired",
+          cancellation_reason: "Order expired due to inactivity"
+        }
+      });
+
+      // Return no pending order
+      return res.json({ success: true, order: null });
+    }
+
     res.json({ success: true, order });
   } catch (err) {
     console.error("Error fetching pending order:", err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to fetch pending order", error: err.message });
-  }
-};
-
-export const createTempOrder = async (req, res) => {
-  try {
-    const {
-      address_id,
-      items,
-      shipping_chrg = 0,
-      discount = 0,
-      paymentMethod,
-      amount,
-      taxes = 0,
-      total,
-      currency = "INR",
-      coupon,
-    } = req.body;
-
-    if (!address_id) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Address ID is required" });
-    }
-    if (!mongoose.isValidObjectId(address_id)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid address ID format" });
-    }
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Items array is required and cannot be empty" });
-    }
-    if (!paymentMethod || !["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Payment method must be COD, ONLINE, or Wallet" });
-    }
-    if (amount == null || isNaN(amount) || amount <= 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Amount must be a positive number" });
-    }
-    if (total == null || isNaN(total) || total <= 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Total must be a positive number" });
-    }
-
-    const validatedItems = items.map((item) => {
-      if (!mongoose.isValidObjectId(item.product_id)) {
-        throw new Error(`Invalid product ID: ${item.product_id}`);
-      }
-      if (!item.quantity || item.quantity < 1 || !Number.isInteger(item.quantity)) {
-        throw new Error(`Invalid quantity for product ${item.product_id}`);
-      }
-      if (item.price == null || isNaN(item.price) || item.price <= 0) {
-        throw new Error(`Invalid price for product ${item.product_id}`);
-      }
-      return {
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.price,
-        total: item.quantity * item.price,
-        status: "Pending",
-        refundProcessed: false,
-        cancelReason: null,
-        returnReason: null,
-        returnVerified: false,
-        returnDecision: null,
-      };
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ 
+      success: false, 
+      message: "Failed to fetch pending order", 
+      error: err.message 
     });
-
-    if (isNaN(shipping_chrg) || shipping_chrg < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Shipping charge must be a non-negative number" });
-    }
-    if (isNaN(discount) || discount < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Discount must be a non-negative number" });
-    }
-    if (isNaN(taxes) || taxes < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Taxes must be a non-negative number" });
-    }
-
-    const netAmount = total - discount + taxes + shipping_chrg;
-    if (isNaN(netAmount) || netAmount <= 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Calculated net amount must be a positive number" });
-    }
-
-    if (paymentMethod === "COD" && netAmount > 1000) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Cash on Delivery is not allowed for orders above Rs 1000" });
-    }
-
-    const existingOrder = await Order.findOne({
-      user_id: req.user._id,
-      status: "Pending",
-      isDeleted: false,
-      paymentStatus: { $ne: "Completed" },
-    });
-
-    if (existingOrder) {
-      const existingItems = existingOrder.items.map(i => ({
-        product_id: i.product_id.toString(),
-        quantity: i.quantity,
-      }));
-      const newItems = validatedItems.map(i => ({
-        product_id: i.product_id.toString(),
-        quantity: i.quantity,
-      }));
-      const itemsMatch = existingItems.length === newItems.length &&
-        existingItems.every(ei => newItems.some(ni => ni.product_id === ei.product_id && ni.quantity === ni.quantity));
-
-      if (!itemsMatch) {
-        await Order.findByIdAndUpdate(existingOrder._id, {
-          $set: {
-            isDeleted: true,
-            deletedAt: new Date(),
-            cancellation_reason: "Mismatched items with new cart",
-          },
-        });
-      } else {
-        return res.json({ success: true, message: "Existing temporary order found", order: existingOrder });
-      }
-    }
-
-    const staleDate = new Date(Date.now() - 1 * 60 * 60 * 1000);
-    await Order.updateMany(
-      {
-        user_id: req.user._id,
-        status: "Pending",
-        isDeleted: false,
-        createdAt: { $lt: staleDate },
-        paymentStatus: { $ne: "Completed" },
-      },
-      { $set: { isDeleted: true, deletedAt: new Date() } }
-    );
-
-    const order = new Order({
-      orderID: generateOrderID(),
-      user_id: req.user._id,
-      address_id,
-      items: validatedItems,
-      shipping_chrg,
-      discount,
-      paymentMethod,
-      amount,
-      taxes,
-      total,
-      netAmount,
-      currency,
-      coupon: coupon || null,
-      status: "Pending",
-      isDeleted: false,
-    });
-
-    await order.save();
-    res.json({ success: true, message: "Temporary order created successfully", order });
-  } catch (err) {
-    console.error("Error creating temporary order:", err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to create temporary order", error: err.message });
   }
 };
 
 export const placeOrder = async (req, res) => {
+  const { orderId, paymentMethod } = req.body;
+  const userId = req.user._id;
+
   try {
-    const userId = req.user._id;
-    const {
-      address_id,
-      items,
-      shipping_chrg = 0,
-      discount = 0,
-      paymentMethod,
-      razorpay_order_id,
-      payment_id,
-      amount,
-      taxes = 0,
-      total,
-      currency = "INR",
-      coupon,
-    } = req.body;
+    const pendingOrder = await Order.findOne({
+      _id: orderId,
+      user_id: userId,
+      paymentStatus: "Pending",
+      isDeleted: false,
+    }).populate("items.product_id");
 
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "No items to order" });
-    }
-    if (!mongoose.isValidObjectId(address_id)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid address ID" });
-    }
-    if (!["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Invalid payment method: ${paymentMethod}. Allowed values: COD, ONLINE, Wallet` });
-    }
-    if (paymentMethod === "ONLINE" && (!razorpay_order_id || !payment_id)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Razorpay order ID and payment ID are required for ONLINE payment" });
-    }
-    if (paymentMethod === "Wallet" && !payment_id) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Payment ID is required for Wallet payment" });
-    }
-    if (amount == null || isNaN(amount) || amount <= 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Amount must be a positive number" });
-    }
-    if (total == null || isNaN(total) || total <= 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Total must be a positive number" });
+    if (!pendingOrder) {
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
+        .json({ success: false, message: "No pending checkout order found" });
     }
 
-    const address = await Address.findOne({ _id: address_id, user_id: userId });
-    if (!address) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid or unauthorized address" });
+    if (!paymentMethod || !["COD", "ONLINE", "Wallet"].includes(paymentMethod)) {
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
+        .json({
+          success: false,
+          message: "Payment method must be COD, ONLINE, or Wallet",
+        });
     }
 
-    let subtotal = 0;
-    const orderItems = [];
-    const stockUpdates = [];
-
-    for (const item of items) {
-      if (!mongoose.isValidObjectId(item.product_id)) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Invalid product ID: ${item.product_id}` });
-      }
-      const product = await Product.findById(item.product_id);
-      if (!product || product.isDeleted) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Product not available: ${item.product_id}` });
-      }
-      if (product.available_quantity < item.quantity) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: `Insufficient stock for: ${product.title}` });
-      }
-
-      const price = product.price * (1 - (product.discount || 0) / 100);
-      const itemTotal = price * item.quantity;
-      subtotal += itemTotal;
-
-      stockUpdates.push({ product, quantity: item.quantity });
-
-      orderItems.push({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price,
-        total: itemTotal,
-        status: "Pending",
-        refundProcessed: false,
-        cancelReason: null,
-        returnReason: null,
-        returnVerified: false,
-        returnDecision: null,
-      });
+    if (paymentMethod === "COD" && pendingOrder.netAmount > 1000) {
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
+        .json({
+          success: false,
+          message: "Cash on Delivery is not allowed for orders above Rs 1000",
+        });
     }
 
-    if (isNaN(shipping_chrg) || shipping_chrg < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Shipping charge must be a non-negative number" });
-    }
-    if (isNaN(discount) || discount < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Discount must be a non-negative number" });
-    }
-    if (isNaN(taxes) || taxes < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Taxes must be a non-negative number" });
-    }
-
-    const netAmount = subtotal + shipping_chrg + taxes - discount;
-    if (isNaN(netAmount) || netAmount <= 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Invalid order amount" });
-    }
-
-    if (paymentMethod === "COD" && netAmount > 1000) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Cash on Delivery is not allowed for orders above Rs 1000" });
-    }
-
-    if (paymentMethod === "Wallet") {
-      const wallet = await Wallet.findOne({ user_id: userId });
-      if (!wallet || wallet.balance < netAmount) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "Insufficient wallet balance" });
-      }
-      await Wallet.findOneAndUpdate(
-        { user_id: userId },
-        {
-          $inc: { balance: -netAmount },
-          $push: {
-            transactions: {
-              type: "debit",
-              amount: netAmount,
-              description: `Order ${generateOrderID()}`,
-              date: new Date(),
-            },
-          },
-        }
-      );
-    }
-
-    if (paymentMethod === "ONLINE") {
-      const existingOrder = await Order.findOne({
-        $or: [
-          { razorpay_order_id, isDeleted: false },
-          { payment_id, isDeleted: false },
-        ],
-      });
-      if (existingOrder) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({
-          message: `Duplicate order detected: ${existingOrder.razorpay_order_id ? `razorpay_order_id ${razorpay_order_id}` : `payment_id ${payment_id}`}`,
+    for (const item of pendingOrder.items) {
+      if (item.product_id.stock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Product ${item.product_id.name} is out of stock`,
         });
       }
     }
 
-    const order = new Order({
-      orderID: generateOrderID(),
-      user_id: userId,
-      address_id,
-      paymentMethod,
-      paymentStatus: paymentMethod === "ONLINE" || paymentMethod === "Wallet" ? "Completed" : "Pending",
-      status: "Pending",
-      razorpay_order_id: paymentMethod === "ONLINE" ? razorpay_order_id : undefined,
-      payment_id: paymentMethod === "ONLINE" || paymentMethod === "Wallet" ? payment_id : undefined,
-      shipping_chrg,
-      discount,
-      total: subtotal,
-      taxes,
-      netAmount,
-      items: orderItems,
-      currency,
-      coupon: coupon || null,
-      applied_offers: [],
-      order_date: new Date(),
-      isDeleted: false,
+    if (paymentMethod === "Wallet") {
+      const wallet = await Wallet.findOne({user_id:userId});
+      console.log(`wallet`,wallet);
+      if (wallet.balance < pendingOrder.netAmount) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Insufficient wallet balance" });
+      }
+      wallet.balance -= pendingOrder.netAmount;
+      wallet.transactions.push({
+        type: "debit",
+        amount: pendingOrder.netAmount,
+        description: `Order payment - ${pendingOrder.orderID}`,
+      });
+      await wallet.save();
+      pendingOrder.paymentStatus = "Completed";
+    }
+
+    if (paymentMethod === "COD") {
+      pendingOrder.paymentStatus = "Completed";
+    }
+
+    if (paymentMethod === "ONLINE") {
+      pendingOrder.paymentStatus = "Pending"; // will update after verify
+    }
+
+    pendingOrder.status = "Processing";
+    pendingOrder.paymentMethod = paymentMethod;
+    pendingOrder.status = paymentMethod === "ONLINE" ? "Pending" : "Processing";
+    pendingOrder.order_date = new Date();
+
+    await pendingOrder.save();
+
+    if (paymentMethod !== "ONLINE") {
+      for (const item of pendingOrder.items) {
+        item.product_id.stock -= item.quantity;
+        await item.product_id.save();
+      }
+      await Cart.findOneAndUpdate({ user_id: userId }, { items: [] });
+    }
+    res.json({
+      success: true,
+      message: paymentMethod === "ONLINE"
+        ? "Razorpay order initialized. Proceed with payment."
+        : "Order placed successfully",
+      order: pendingOrder,
     });
-
-    try {
-      await order.save();
-    } catch (err) {
-      console.error("Failed to save order:", err);
-      for (const { product, quantity } of stockUpdates) {
-        product.available_quantity += quantity;
-        await product.save();
-      }
-      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to save order", error: err.message });
-    }
-
-    try {
-      await Cart.findOneAndUpdate({ user_id: userId }, { $set: { items: [] } });
-    } catch (err) {
-      console.error("Failed to clear cart:", err);
-      await Order.findByIdAndDelete(order._id);
-      for (const { product, quantity } of stockUpdates) {
-        product.available_quantity += quantity;
-        await product.save();
-      }
-      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Failed to clear cart", error: err.message });
-    }
-
-    res.status(201).json({ message: "Order placed successfully", order });
   } catch (err) {
-    console.error("Order placement failed:", err);
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Internal server error", error: err.message });
+    console.error("Error placing order:", err);
+    res
+      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: "Failed to place order" });
   }
 };
-
 
 export const getUserOrders = async (req, res) => {
   try {

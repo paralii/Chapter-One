@@ -62,52 +62,78 @@ export const applyCoupon = async (req, res) => {
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "You have already used this coupon" });
     }
 
-    let discount = (order.total * coupon.discountPercentage) / 100;
-    if (coupon.maxDiscountAmount) {
-      discount = Math.min(discount, coupon.maxDiscountAmount);
-    }
-    const netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0) - discount;
-    if (netAmount < 0) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Discount cannot exceed order total" });
-    }
+    const productDiscount = order.discount || 0;
 
-    order.discount = discount;
-    order.netAmount = netAmount;
+let couponBase = order.amount - productDiscount;
+let couponDiscount = (couponBase * coupon.discountPercentage) / 100;
+
+if (coupon.maxDiscountAmount) {
+  couponDiscount = Math.min(couponDiscount, coupon.maxDiscountAmount);
+}
+
+const totalDiscount = productDiscount + couponDiscount;
+
+order.discount = totalDiscount;
+const netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0) - totalDiscount;
+
+if (netAmount < 0) {
+  return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({
+    success: false,
+    message: "Discount cannot exceed order total"
+  });
+}
+
+order.netAmount = netAmount;
+
+
+    const checkoutDetails = {
+  address: order.address_id,
+  paymentMethod: order.paymentMethod,
+  items: order.items.map(item => ({
+    product_id: item.product_id._id,
+    title: item.product_id.title,
+    quantity: item.quantity,
+    itemTotal: item.product_id.price * item.quantity,
+    taxes:
+      ((item.product_id.price * item.quantity) -
+        ((item.product_id.price * item.quantity) *
+          item.product_id.discount) / 100) * 0.18,
+    finalItemTotal:
+      (item.product_id.price * item.quantity) *
+      (1 - (item.product_id.discount || 0) / 100),
+    applied_offer: item.applied_offer || null,
+    refundProcessed: false,
+  })),
+  amount: order.amount,
+  subtotal: order.amount - productDiscount, 
+  taxes: order.taxes || 0,
+  shippingCost: order.shipping_chrg || 0,
+  discount: order.discount || 0, 
+  finalPrice: order.netAmount,
+};
+
+
+    const expectedFinal =
+  checkoutDetails.subtotal +
+  checkoutDetails.taxes +
+  checkoutDetails.shippingCost -
+  checkoutDetails.discount;
+
+if (Math.abs(checkoutDetails.finalPrice - expectedFinal) > 0.01) {
+  console.warn("Price calculation mismatch:", checkoutDetails, { expectedFinal });
+  return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({
+    success: false,
+    message: "Price calculation error"
+  });
+}
+
     order.coupon = couponCode.toUpperCase();
     await Coupon.findByIdAndUpdate(coupon._id, {
       $inc: { usedCount: 1 },
       $addToSet: { usedBy: order.user_id },
     });
+    console.log(`order coupon :`,order)
     await order.save();
-
-    const checkoutDetails = {
-      address: order.address_id,
-      paymentMethod: order.paymentMethod,
-      items: order.items.map(item => ({
-        product_id: item.product_id._id,
-        title: item.product_id.title,
-        quantity: item.quantity,
-        itemTotal: item.product_id.price * item.quantity,
-        taxes: (item.product_id.price * item.quantity) * 0.1,
-        discount: 0,
-        finalItemTotal: (item.product_id.price * item.quantity) * 1.1,
-        applied_offer: item.applied_offer || null,
-        refundProcessed: false,
-      })),
-      subtotal: order.total,
-      taxes: order.taxes || 0,
-      shippingCost: order.shipping_chrg || 0,
-      discount: order.discount || 0,
-      finalPrice: order.netAmount || order.total,
-    };
-
-    if (
-      checkoutDetails.finalPrice !==
-      checkoutDetails.subtotal + checkoutDetails.taxes + checkoutDetails.shippingCost - checkoutDetails.discount
-    ) {
-      console.warn("Price calculation mismatch:", checkoutDetails);
-      return res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Price calculation error" });
-    }
 
     res.json({ success: true, message: "Coupon applied successfully", checkoutDetails });
   } catch (err) {

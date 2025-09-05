@@ -9,15 +9,18 @@ const orderSchema = new mongoose.Schema(
     delivery_date: { type: Date },
 
     status: { type: String, 
-        enum: ["Pending", "Shipped", "OutForDelivery", "Delivered", "Cancelled"], default: "Pending" },
+        enum: ["Pending", "Processing", "Shipped", "OutForDelivery", "Delivered", "Cancelled"], default: "Pending" },
     paymentMethod: { type: String, 
-        enum: ["COD", "ONLINE"], default: "ONLINE" },
+        enum: ["COD", "ONLINE", "Wallet"], default: "ONLINE" },
     paymentStatus: { type: String,
         enum: ["Pending", "Completed", "Failed"],default: "Pending"},
     payment_id: { type: String },
-
+    
+    amount: {type:Number, default: 0},
     total: { type: Number, required: true },
     discount: { type: Number, default: 0 },
+    productDiscount: { type: Number, default: 0 },
+    couponDiscount: { type: Number, default: 0 },
     shipping_chrg: { type: Number, default: 0 },
     taxes: { type: Number, default: 0, min: 0 },
     netAmount: { type: Number, required: true },

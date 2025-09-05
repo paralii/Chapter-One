@@ -8,6 +8,6 @@ export const applyCoupon = (data) => {
   return userAxios.post("/coupons/apply", data);
 };
 
-export const removeCoupon = () => {
-  return userAxios.post("/coupons/remove");
+export const removeCoupon = (data) => {
+  return userAxios.post("/coupons/remove", data);
 };

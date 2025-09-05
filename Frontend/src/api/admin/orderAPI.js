@@ -73,7 +73,7 @@ export const downloadAdminInvoice = async (orderId) => {
 
 export const verifyReturnRequest = async (orderId, productId, returnApproved) => {
   try {
-    const response = await adminAxios.post('/orders/return/verify', {
+    const response = await adminAxios.post('/orders/returns/verify', {
       orderId,
       productId,
       returnApproved,

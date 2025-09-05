@@ -6,6 +6,22 @@ export const addAddress = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    const existing = await Address.findOne({
+      user_id: userId,
+      place: req.body.place,
+      city: req.body.city,
+      district: req.body.district,
+      state: req.body.state,
+      country: req.body.country,
+      pin: req.body.pin,
+    });
+
+    if (existing) {
+      return res
+        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
+        .json({ message: "This address already exists in your account." });
+    } 
+
     if (req.body.isDefault) {
       await Address.updateMany({ user_id: userId }, { isDefault: false });
     }

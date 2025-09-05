@@ -11,7 +11,7 @@ const addressSchema = new mongoose.Schema(
     state: { type: String, required: true },
     country: { type: String, required: true },
     pin: { type: Number, required: true },
-    type: { type: String, enum: ["Home", "Office"], default: "Home" },
+    type: { type: String, enum: ["Home", "Work"], default: "Home" },
     isDefault: { type: Boolean, default: false },
   },
   { timestamps: true }

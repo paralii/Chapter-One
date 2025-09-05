@@ -10,7 +10,7 @@ import * as userAddressController from "../controllers/user/userAddressControlle
 import * as userCartController from "../controllers/user/userCartController.js";
 import * as userOrderController from "../controllers/user/userOrderController.js";
 import * as paymentController from "../controllers/user/paymentController.js";
-import checkout from "../controllers/user/userCheckoutController.js";
+import { checkout } from "../controllers/user/userCheckoutController.js";
 import * as userCouponController from "../controllers/user/userCouponController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import * as userValidation from "../middlewares/validators.js";
@@ -79,7 +79,6 @@ router.post("/checkout", verifyToken("user"), userValidation.validateCheckout, c
 
 // ===================== ORDERS =====================
 router.get("/orders", verifyToken("user"), userOrderController.getUserOrders);
-router.post("/orders/temp", verifyToken("user"), userOrderController.createTempOrder);
 router.post("/orders", verifyToken("user"), userOrderController.placeOrder);
 router.get("/orders/status/pending", verifyToken("user"), userOrderController.getPendingOrder);
 router.get("/orders/:id", verifyToken("user"), userOrderController.getOrderDetails);

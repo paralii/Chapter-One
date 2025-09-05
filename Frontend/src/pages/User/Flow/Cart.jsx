@@ -10,6 +10,7 @@ const MAX_ALLOWED = 5;
 const CartPage = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
+  const [cartTotal, setCartTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -34,10 +35,12 @@ const CartPage = () => {
         return;
       }
       setCart(response.data.cart.items);
+      setCartTotal(response.data.total);
     } catch (err) {
       console.error("Cart fetch error:", err);
       setError(err?.response?.data?.message || err?.message || "Failed to load cart.");
       setCart([]);
+      setCartTotal(0);
     } finally {
       setLoading(false);
     }
@@ -98,19 +101,9 @@ const CartPage = () => {
     );
   }, [cart]);
 
-const totalFinalPrice = useMemo(() => {
-  return (cart || []).reduce(
-    (acc, item) => {
-      const { discountPrice } = calculateDiscountPrice(item.product_id, item);
-      return acc + discountPrice * item.quantity;
-    },
-    0
-  );
-}, [cart]);
-
   const totalDiscount = useMemo(() => {
-    return totalOriginalPrice - totalFinalPrice;
-  }, [totalOriginalPrice, totalFinalPrice]);
+    return totalOriginalPrice - cartTotal;
+  }, [totalOriginalPrice, cartTotal]);
 
   const hasOutOfStock = cart.some(
     (item) => item.quantity > item.product_id.available_quantity
@@ -237,7 +230,7 @@ const totalFinalPrice = useMemo(() => {
                   <div className="border-t my-2 lg:my-3"></div>
                   <div className="flex justify-between items-center py-1 lg:py-2">
                     <span className="text-sm lg:text-base xl:text-lg font-medium">Total Amount</span>
-                    <span className="text-sm lg:text-base xl:text-lg font-bold">₹{totalFinalPrice.toFixed(2)}</span>
+                    <span className="text-sm lg:text-base xl:text-lg font-bold">₹{cartTotal.toFixed(2)}</span>
                   </div>
                   {totalDiscount > 0 && (
                     <div className="flex justify-between items-center text-xs lg:text-sm text-green-600 mt-1">
