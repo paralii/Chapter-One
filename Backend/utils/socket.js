@@ -4,6 +4,8 @@ let io;
 
 const userSockets = new Map();
 
+const allowedOrigins = process.env.CORS_URLS.split(',');
+
 export const initSocket = (server) => {
   io = new Server(server, {
     cors: {
