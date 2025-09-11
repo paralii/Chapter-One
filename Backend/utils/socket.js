@@ -8,6 +8,7 @@ const allowedOrigins = process.env.CORS_URLS.split(',');
 
 export const initSocket = (server) => {
   io = new Server(server, {
+    path: "/socket.io/",
     cors: {
       origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
