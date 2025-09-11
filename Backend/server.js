@@ -30,8 +30,7 @@ app.use(express.json());
     },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+  });
 app.use(cookieParser());
 app.use(passport.initialize());
 
