@@ -11,30 +11,31 @@ const getImageUrl = (url) => url || "https://via.placeholder.com/150x200?text=No
 // ⭐ Home Page Card - Simple, Small, Clean
 export const HomeProductCard = ({ product }) => {
   const imgUrl = getImageUrl(product.product_imgs?.[0]);
-  const discount = product.discountPercentage || 0;
+  const discount = product.discount || 0;
 
   return (
-    <div className="relative flex flex-col items-center bg-white rounded-lg shadow-md p-3 transition-transform duration-200 hover:scale-105 w-full max-w-[200px] sm:max-w-[220px] lg:max-w-[230px] mx-auto">
+    <div className="relative flex flex-col items-center bg-white rounded-lg shadow-md p-3 transition-transform duration-200 hover:scale-105 w-full max-w-[200px] sm:max-w-[220px] lg:max-w-[230px] mx-auto h-full">
       {discount > 0 && (
-        <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-md animate-bounce">
+        <div className="absolute top-2 left-2 bg-[#3c2712] text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm animate-pulse">
           {discount}% OFF
         </div>
       )}
+
       <img
         src={imgUrl}
         alt={product.title || "Book Cover"}
         className="w-[120px] h-[160px] sm:w-[140px] sm:h-[180px] rounded-md object-cover"
       />
-      <div className="text-center mt-3">
-        <h3 className="text-[14px] sm:text-[13px] font-semibold truncate w-full max-w-[180px]">
+      <div className="flex flex-col text-center mt-3 flex-1 w-full">
+        <h3 className="text-[14px] sm:text-[13px] font-semibold break-words text-center mb-2">
           {product.title || "Untitled Book"}
         </h3>
-        <div className="text-[#ffd700] mt-1 mb-1 text-xs flex justify-center gap-0.5">
+        <div className="text-[#ffd700] mb-2 text-xs flex justify-center gap-0.5">
           {[...Array(5)].map((_, i) => (
             <i key={i} className={`ti ti-star ${i < (product.rating || 0) ? "" : "opacity-50"}`}></i>
           ))}
         </div>
-        <div className="font-medium text-[13px]">
+        <div className="font-medium text-[13px] mb-2">
           {discount > 0 ? (
             <div>
               <span className="text-gray-500 line-through text-[12px]">₹{product.originalPrice}</span>{" "}
@@ -46,16 +47,19 @@ export const HomeProductCard = ({ product }) => {
             </span>
           )}
         </div>
-        <Link
-          to={`/products/${product._id}`}
-          className="inline-block mt-2 px-3 py-1 bg-[#3c2712] text-white rounded text-[11px] sm:text-[12px] font-medium transition-all hover:bg-[#5a3a1a]"
-        >
-          View Details
-        </Link>
+        <div className="mt-auto">
+          <Link
+            to={`/products/${product._id}`}
+            className="inline-block px-3 py-1 bg-[#3c2712] text-white rounded text-[11px] sm:text-[12px] font-medium transition-all hover:bg-[#5a3a1a]"
+          >
+            View Details
+          </Link>
+        </div>
       </div>
     </div>
   );
 };
+
 
 export const ListProductCard = ({ product }) => {
   const imgUrl = getImageUrl(product.product_imgs?.[0]);
