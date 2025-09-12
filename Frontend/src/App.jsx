@@ -137,8 +137,8 @@ function App() {
       {/* --- Modal Routes (Background Routes Handling) --- */}
       {state?.backgroundLocation && (
         <Routes>
-          <Route path="/signup" element={<Signup onClose={() => navigate(state.backgroundLocation)} />} />
-          <Route path="/login" element={<Login onClose={() => navigate(state.backgroundLocation)} />} />
+          <Route path="/signup" element={<Signup onClose={() => navigate("/")} />} />
+          <Route path="/login" element={<Login onClose={() => navigate("/")} />} />
           <Route path="/verify-otp" element={<OTPVerification onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/forgot-password" element={<ForgotPassword onClose={() => navigate(state.backgroundLocation)} />} />
           <Route path="/reset-password" element={<ResetPassword onClose={() => navigate(state.backgroundLocation)} />} />
