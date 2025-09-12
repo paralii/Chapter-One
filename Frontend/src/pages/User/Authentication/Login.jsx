@@ -95,111 +95,97 @@ function Login({ onClose = () => {}}) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-lg flex flex-col items-center relative">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4 sm:px-6 lg:px-8">
+    <div className="w-full max-w-[90vw] sm:max-w-sm md:max-w-sm lg:max-w-md xl:max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-lg flex flex-col items-center relative">
+      
+      <button
+        className="absolute top-4 right-4 text-xl text-gray-500 hover:text-black"
+        onClick={onClose}
+      >
+        &times;
+      </button>
 
-        <button
-          className="absolute top-4 right-4 text-xl text-gray-500 hover:text-black"
-          onClick={onClose}
-        >
-          &times;
-        </button>
-
-
-        <form onSubmit={handleSubmit} className="w-full">
-
+      <form onSubmit={handleSubmit} className="w-full">
         <h1 className="text-[22px] sm:text-[26px] font-bold text-center mb-5 font-Outfit">
-            Sign In
-          </h1>
+          Sign In
+        </h1>
 
-          <div className="mb-4">
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setErrors(prev => ({ ...prev, email: "" }));
-              }}
-            />
-            {errors.email && (
-              <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>
-            )}
-          </div>
+        <div className="mb-4">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 text-[16px] outline-none font-Inter"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setErrors(prev => ({ ...prev, email: "" }));
+            }}
+          />
+          {errors.email && (
+            <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>
+          )}
+        </div>
 
-          <div className="mb-4 relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 pr-12 text-[16px] outline-none font-Inter"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setErrors(prev => ({ ...prev, password: "" }));
-              }}
-            />
-            <button
-              type="button"
-              className="absolute right-4 top-6 transform -translate-y-1/2 text-gray-500"
-              onClick={() => setShowPassword((prev) => !prev)}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-            {errors.password && (
-              <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>
-            )}
-          </div>
-
-          {/* <div className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              id="remember"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              className="mr-2 accent-[#3c2712]"
-            />
-            <label htmlFor="remember" className="text-sm text-gray-700">
-              Remember me
-            </label>
-          </div> */}
-
+        <div className="mb-4 relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            className="w-full h-[50px] rounded-[20px] bg-[#edece9] px-5 pr-12 text-[16px] outline-none font-Inter"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setErrors(prev => ({ ...prev, password: "" }));
+            }}
+          />
           <button
-            type="submit"
-            className="w-full h-12 rounded-xl mb-4 bg-[#3c2712] text-white font-semibold text-base font-Outfit disabled:opacity-60"
-            disabled={loading || isLocked}
+            type="button"
+            className="absolute right-4 top-6 transform -translate-y-1/2 text-gray-500"
+            onClick={() => setShowPassword((prev) => !prev)}
           >
-            {isLocked
-              ? "Temporarily Locked"
-              : loading
-              ? "Signing in..."
-              : "Sign in"}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
-        </form>
+          {errors.password && (
+            <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>
+          )}
+        </div>
 
         <button
-          className="text-sm text-[#8e4700] cursor-pointer mb-3"
-          onClick={() => openModalRoute("/forgot-password")}
+          type="submit"
+          className="w-full h-12 rounded-xl mb-4 bg-[#3c2712] text-white font-semibold text-base font-Outfit disabled:opacity-60"
+          disabled={loading || isLocked}
         >
-          Forgot Password?
+          {isLocked
+            ? "Temporarily Locked"
+            : loading
+            ? "Signing in..."
+            : "Sign in"}
         </button>
+      </form>
 
-        <div className="text-sm text-black font-Inter">
-          Don’t have an account?
-          <span
-            className="text-[#8e4700] cursor-pointer ml-1"
-            onClick={() => openModalRoute("/signup",)}
-          >
-            Sign up
-          </span>
-        </div>
+      <button
+        className="text-sm text-[#8e4700] cursor-pointer mb-3"
+        onClick={() => openModalRoute("/forgot-password")}
+      >
+        Forgot Password?
+      </button>
 
-        <div className="mt-4">
-          <GoogleAuthHandler type="signin"/>
-        </div>
+      <div className="text-sm text-black font-Inter">
+        Don’t have an account?
+        <span
+          className="text-[#8e4700] cursor-pointer ml-1"
+          onClick={() => openModalRoute("/signup")}
+        >
+          Sign up
+        </span>
+      </div>
+
+      <div className="mt-4 w-full">
+        <GoogleAuthHandler type="signin"/>
       </div>
     </div>
-  );
+  </div>
+);
+
 }
 
 export default Login;
