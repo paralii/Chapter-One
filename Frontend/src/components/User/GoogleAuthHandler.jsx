@@ -36,6 +36,7 @@ const urlParams = new URLSearchParams(location.search);
   return (
     <div className="flex justify-center">
       <button
+        type="button"
         onClick={handleGoogleAuth}
         className="flex items-center gap-3 bg-white text-gray-700 font-medium px-5 py-2 border border-gray-300 rounded-lg shadow-md hover:bg-gray-100 transition-all duration-300"
       >
