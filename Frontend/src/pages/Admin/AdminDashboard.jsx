@@ -6,9 +6,9 @@ import { TotalUsersCard, TotalOrdersCard, TotalSalesCard } from "../../component
 import { adminLogout } from "../../redux/adminSlice";
 import adminAxios from "../../api/adminAxios";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, Tooltip, Legend } from "chart.js";
+import { Chart as ChartJS, LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, Tooltip, Legend, Filler } from "chart.js";
 
-ChartJS.register(LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, Tooltip, Legend);
+ChartJS.register(LineController, LineElement, PointElement, LinearScale, Title, CategoryScale, Tooltip, Legend, Filler);
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -149,13 +149,13 @@ function AdminDashboard() {
   };
 
   const mappedRecentOrders = recentOrders.map(order => ({
-  id: order.orderID,
-  name: `${order.user_id.firstname} ${order.user_id.lastname}`,
-  address: `${order.address_id.name}, ${order.address_id.place}, ${order.address_id.city}, ${order.address_id.state} - ${order.address_id.pin}`,
-  date: new Date(order.order_date).toLocaleDateString("en-GB"),
-  status: order.status,
-  statusColor: getStatusColor(order.status), 
-}));
+    id: order.orderID,
+    name: `${order.user_id?.firstname || 'Unknown'} ${order.user_id?.lastname || ''}`,
+    address: `${order.address_id?.name || 'Unknown'}, ${order.address_id?.place || ''}, ${order.address_id?.city || ''}, ${order.address_id?.state || ''} - ${order.address_id?.pin || ''}`,
+    date: new Date(order.order_date).toLocaleDateString("en-GB"),
+    status: order.status,
+    statusColor: getStatusColor(order.status), 
+  }));
 
 
   return (
