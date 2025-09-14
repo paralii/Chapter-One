@@ -427,7 +427,7 @@ export const verifyReturnRequest = async (req, res) => {
 
         const creditResult = await creditWallet(
           order.user_id,
-          item.total,
+          item.total - (order.discount / item.quantity) + (order.taxes / item.quantity),
           `Refund for returned product in Order ${order.orderID}`
         );
         if (!creditResult.success) {
