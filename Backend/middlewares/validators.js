@@ -124,7 +124,7 @@ export const validateAddress = [
   body("state").notEmpty().withMessage("State is required"),
   body("country").notEmpty().withMessage("Country is required"),
   body("pin").isNumeric().withMessage("PIN code must be numeric"),
-  body("type").optional().isIn(["Home", "Office"]).withMessage("Invalid address type"),
+  body("type").optional().isIn(["Home", "Work"]).withMessage("Invalid address type"),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
