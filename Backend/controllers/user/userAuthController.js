@@ -210,13 +210,17 @@ export const resendOtpForVerify = async (req, res) => {
   const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    const user = await User.findOne({ email: normalizedEmail });
-    if (user) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "User already exists" });
+    const otpData = await getOtpFromRedis(`signup:${normalizedEmail}`);
+    if (!otpData) {
+      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "No signup session found for this email" });
     }
 
+    const parsed = JSON.parse(otpData);
+
     const otp = generateOTP();
-    await storeOtpInRedis(`signup:${normalizedEmail}`, JSON.stringify({ otp }));
+    parsed.otp = otp;
+
+    await storeOtpInRedis(`signup:${normalizedEmail}`, JSON.stringify(parsed));
 
     await resendOtpForVerifyEmail(normalizedEmail, otp);
     console.log("Resend OTP:", otp);
@@ -398,5 +402,4 @@ try {
     });
       return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "OTP expired" });
     }
-    return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ message: "OTP expired or invalid" });
 };
