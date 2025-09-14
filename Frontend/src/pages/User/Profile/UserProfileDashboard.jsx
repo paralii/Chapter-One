@@ -150,7 +150,7 @@ const UserProfileDashboard = () => {
             <div className="w-full lg:w-1/2">
               <h3 className="text-2xl font-semibold mb-3 text-[#3c2712]">Your Wallet</h3>
               <div className="text-gray-700 text-lg">
-                <p>Here’s what you have in your wallet: <strong>${walletBalance}</strong></p>
+                <p>Here’s what you have in your wallet: <strong>₹{walletBalance}</strong></p>
               </div>
             </div>
             <div className="w-full lg:w-1/2 text-right mt-4 lg:mt-0">

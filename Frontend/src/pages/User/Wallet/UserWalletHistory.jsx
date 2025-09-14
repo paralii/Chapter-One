@@ -44,7 +44,7 @@ const UserWalletHistory = () => {
                 Current Balance
               </p>
               <p className="text-[24px] font-bold font-Inter text-[#f4a261]">
-                ${walletBalance.toFixed(2)}
+                ₹{walletBalance.toFixed(2)}
               </p>
             </div>
 
@@ -82,8 +82,8 @@ const UserWalletHistory = () => {
                                 : 'text-yellow-600'
                             }`}
                           >
-                            {transaction.type === 'credit' ? '+' : '-'}$
-                            {transaction.amount.toFixed(2)}
+                            {/* {transaction.type === 'credit' ? '+' : '-'} */}
+                            ₹{transaction.amount.toFixed(2)}
                           </p>
                           <p className="font-Inter text-[12px] text-gray-500 capitalize">
                             {transaction.type}
