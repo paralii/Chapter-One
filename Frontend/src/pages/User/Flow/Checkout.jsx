@@ -200,7 +200,9 @@ function Checkout() {
         await userAxios.post(`/addresses`, addressForm);
         dispatch(showAlert({ message: "Address added", type: "success" }));
       }
-      await getAllUserAddresses();
+      const res = await getAllUserAddresses();
+      setAddresses(res.data.addresses || []);
+      setSelectedAddress(res.data.addresses || []);
       setShowAddressForm(false);
       setEditingAddress(null);
       setAddressForm({
