@@ -44,8 +44,6 @@ export const validateForgotPassword = [
 ];
 
 export const validateResetPassword = [
-  body("otp").notEmpty().withMessage("OTP is required"),
-  body("otpToken").notEmpty().withMessage("OTP token is required"),
   body("newPassword")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters long")
@@ -53,13 +51,16 @@ export const validateResetPassword = [
     .withMessage("Password must contain at least one number")
     .matches(/[a-zA-Z]/)
     .withMessage("Password must contain letters"),
+  body("token")
+    .notEmpty()
+    .withMessage("Reset token is required"),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
     next();
-  },
+  }
 ];
 
 export const validateProfileUpdate = [
@@ -105,7 +106,6 @@ export const validateEmailChangeRequest = [
 
 export const validateConfirmEmailChange = [
   body("otp").notEmpty().withMessage("OTP is required"),
-  body("emailChangeToken").notEmpty().withMessage("Token is required"),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { forgotPassword } from "../../../redux/authSlice";
+import { forgotPassword } from "../../../api/user/authenticationAPI";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -25,31 +25,32 @@ function ForgotPassword() {
   }, [email]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const isValidEmail = /\S+@\S+\.\S+/.test(email);
-    if (!isValidEmail) {
-      setEmailError("Please enter a valid email address.");
-      return;
+  const isValidEmail = /\S+@\S+\.\S+/.test(email);
+  if (!isValidEmail) {
+    setEmailError("Please enter a valid email address.");
+    return;
+  }
+
+  try {
+    const res = await forgotPassword(email);
+
+    if (res?.data?.message) {
+      toast.success("OTP sent to your email for password reset");
+      navigate("/verify-otp", {
+        state: {
+          email,
+          from: "forgot-password",
+          backgroundLocation: location.state?.backgroundLocation || "/",
+        },
+        replace: true,
+      });
+    } else {
+      throw new Error(res?.data?.message || "Failed to send reset instructions.");
     }
-
-    const resultAction = await dispatch(forgotPassword({ email }));
-    if (forgotPassword.fulfilled.match(resultAction)) {
-    toast.success("OTP sent to your email for password reset");
-    navigate("/verify-otp", {
-      state: {
-        email,
-        from: "forgot-password",
-        backgroundLocation: location.state?.backgroundLocation || "/",
-      },
-      replace: true,
-    });
-  } else {
-    toast.error(
-      resultAction.payload?.message ||
-      resultAction.error?.message ||
-      "Failed to send reset instructions."
-    );
+  } catch (error) {
+    toast.error(error.message || "Something went wrong");
   }
 };
 

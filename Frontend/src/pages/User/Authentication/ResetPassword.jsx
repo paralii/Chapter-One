@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { resetPassword, resetResetPasswordMessage } from "../../../redux/authSlice";
+import { resetPassword, resetResetPasswordMessage, clearResetToken } from "../../../redux/authSlice";
 import { Eye, EyeOff } from "lucide-react";
 
 const ResetPassword = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { token } = location.state || {};
+  const resetToken = useSelector((state) => state.auth.resetToken);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -55,13 +55,20 @@ const ResetPassword = () => {
     }
   }, [error, navigate]);
 
+    useEffect(() => {
+      if (!resetToken) {
+        toast.error("Session expired. Please request a new reset OTP.");
+        navigate("/forgot-password", { replace: true });
+      }
+    }, [resetToken, navigate]);
+
   const isStrongPassword = (password) => {
     const regex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     return regex.test(password);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async(e) => {
     e.preventDefault();
 
     if (newPassword !== confirmPassword) {
@@ -76,7 +83,26 @@ const ResetPassword = () => {
       return;
     }
 
-    dispatch(resetPassword({ token, newPassword }));
+    try {
+    await dispatch(resetPassword({ token: resetToken, newPassword })).unwrap();
+
+    toast.success("Password reset successfully!");
+    dispatch(clearResetToken());
+    navigate("/login", {
+      state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+      replace: true,
+    });
+  } catch (err) {
+    toast.error(err.message || "Failed to reset password.");
+    if (err.message.toLowerCase().includes("token") || err.message.toLowerCase().includes("expired")) {
+      setTimeout(() => {
+        navigate("/forgot-password", {
+          state: { backgroundLocation: location.state?.backgroundLocation || "/" },
+          replace: true,
+        });
+      }, 2000);
+    }
+  }
   };
 
   return (
