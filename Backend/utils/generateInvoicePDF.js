@@ -195,20 +195,20 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
   const safeShipping = Number.isFinite(order.shipping_chrg) ? order.shipping_chrg : 0;
   const safeDiscount = Number.isFinite(order.discount) ? order.discount : 0;
   const safeNetAmount = Number.isFinite(order.netAmount) ? order.netAmount : 0;
-
+  const formattedNetAmount = parseFloat(safeNetAmount.toFixed(2));
   doc
     .font('Helvetica-Bold')
     .fontSize(10)
     .text(`Subtotal: Rs.${safeTotal}`, { align: 'right' })
     .text(`Shipping Charges: Rs.${safeShipping}`, { align: 'right' })
     .text(`Discount: Rs.${safeDiscount}`, { align: 'right' })
-    .text(`Net Amount: Rs.${safeNetAmount}`, { align: 'right' })
+    .text(`Net Amount: Rs.${formattedNetAmount}`, { align: 'right' })
     .moveDown(1);
 
   doc
     .font('Helvetica')
     .fontSize(10)
-    .text(`Amount in Words: ${numberToWords(safeNetAmount)}`, { align: 'right' });
+    .text(`Amount in Words: ${numberToWords(formattedNetAmount)}`, { align: 'right' });
 
   doc.moveDown(2);
 
