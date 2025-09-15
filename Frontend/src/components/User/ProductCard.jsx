@@ -63,7 +63,7 @@ export const HomeProductCard = ({ product }) => {
 
 export const ListProductCard = ({ product }) => {
   const imgUrl = getImageUrl(product.product_imgs?.[0]);
-  const discount = product.discountPercentage || 0;
+  const discount = product.discount || 0;
   const dispatch = useDispatch();
   const [isInWishlist, setIsInWishlist] = useState(false);
 
@@ -154,7 +154,7 @@ export const ListProductCard = ({ product }) => {
 
 export const RelatedProductCard = ({ product }) => {
   const imgUrl = getImageUrl(product.product_imgs?.[0]);
-  const discount = product.discountPercentage || 0;
+  const discount = product.discount || 0;
 
   return (
     <div className="relative flex flex-col items-center bg-white rounded-lg shadow-md p-3 transition-transform duration-200 hover:scale-105 w-full max-w-[200px] sm:max-w-[220px] lg:max-w-[230px] mx-auto">
