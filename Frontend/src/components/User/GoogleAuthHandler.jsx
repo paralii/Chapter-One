@@ -1,37 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCurrentUser } from "../../redux/authSlice";
-import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const GoogleAuthHandler = ({ type = "signin" }) => {
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth);  
-  const [isFetching, setIsFetching] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
-const urlParams = new URLSearchParams(location.search);
+    const urlParams = new URLSearchParams(location.search);
     const isGoogleCallback = urlParams.get("code");
 
-    if (user && isGoogleCallback) {
+    if (isGoogleCallback) {
       setIsFetching(true);
       dispatch(fetchCurrentUser())
         .unwrap()
         .then((userData) => {
           localStorage.setItem("user", JSON.stringify(userData));
-          setIsFetching(false);
+          navigate("/");
         })
         .catch((error) => {
           console.error("Failed to fetch user after Google auth:", error);
           setIsFetching(false);
         });
     }
-  }, [dispatch, user, location]);
+  }, [dispatch, navigate, location]);
   
   const handleGoogleAuth = async () => {
     window.location.href = `${import.meta.env.VITE_API_BASE_URL}/user/auth/google`;
   };
-
 
   return (
     <div className="flex justify-center">

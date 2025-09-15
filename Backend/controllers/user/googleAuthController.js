@@ -18,5 +18,8 @@ export default function googleAuthCallback(req, res) {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  res.redirect(process.env.CORS_URL || "/");
+  const corsUrls = process.env.CORS_URLS.split(',');
+  const redirectUrl = corsUrls[0];
+
+  res.redirect(redirectUrl);
 }
