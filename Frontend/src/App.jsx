@@ -27,6 +27,7 @@ import ProductDetail from "./pages/User/Product/ProductDetail";
 import UserProfileDashboard from "./pages/User/Profile/UserProfileDashboard";
 import UserEditProfile from "./pages/User/Profile/UserEditProfile";
 import UserAddresses from "./pages/User/Address/UserAddresses";
+import UserAddEditAddresses from './pages/User/Address/AddEditAddress';
 import UserOrder from "./pages/User/Order/UserOrder";
 import UserWallet from "./pages/User/Wallet/UserWalletHistory";
 import Cart from "./pages/User/Flow/Cart";
@@ -59,6 +60,7 @@ import withAdminAuth from "./hoc/withAdminAuth";
 const ProtectedUserProfileDashboard = withUserAuth(UserProfileDashboard);
 const ProtectedUserEditProfile = withUserAuth(UserEditProfile);
 const ProtectedUserAddresses = withUserAuth(UserAddresses);
+const ProtectedUserAddEditAddresses = withUserAuth(UserAddEditAddresses);
 const ProtectedUserWallet = withUserAuth(UserWallet);
 const ProtectedCart = withUserAuth(Cart);
 const ProtectedCheckout = withUserAuth(Checkout);
@@ -110,6 +112,8 @@ function App() {
         <Route path="/profile" element={<ProtectedUserProfileDashboard />} />
         <Route path="/profile/edit" element={<ProtectedUserEditProfile />} />
         <Route path="/profile/addresses" element={<ProtectedUserAddresses />} />
+        <Route path="/profile/addresses/add" element={<ProtectedUserAddEditAddresses />} />
+        <Route path="/profile/addresses/edit/:id" element={<ProtectedUserAddEditAddresses />} />
         <Route path="/profile/wallet" element={<ProtectedUserWallet />} />
         <Route path="/cart" element={<ProtectedCart />} />
         <Route path="/checkout" element={<ProtectedCheckout />} />
