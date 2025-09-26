@@ -21,14 +21,14 @@ async function calculateCartItems(items) {
     const [productOffer, categoryOffer] = await Promise.all([
       Offer.findOne({
         type: "PRODUCT",
-        product_id: item.product_id,
+        product_id: product._id,
         is_active: true,
         start_date: { $lte: currentDate },
         end_date: { $gte: currentDate }
       }),
       Offer.findOne({
         type: "CATEGORY",
-        category_id: product.category_id,
+        category_id: product.category_id._id,
         is_active: true,
         start_date: { $lte: currentDate },
         end_date: { $gte: currentDate }

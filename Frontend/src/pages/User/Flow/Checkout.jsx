@@ -59,19 +59,19 @@ function Checkout() {
     }, 0);
   }, [cart]);
 
-  // Calculate totals from checkout details or cart
   const totals = useMemo(() => {
     if (checkoutDetails) {
       console.log(`checkout details:`, checkoutDetails);
       return {
-        subtotal: checkoutDetails.total ?? 0,    // backend: total = subtotal
+        amount: checkoutDetails.amount ?? 0,
+        subtotal: checkoutDetails.total ?? 0,
         discount: checkoutDetails.discount ?? 0,
         shipping: checkoutDetails.shipping_chrg ?? 0,
         taxes: checkoutDetails.taxes ?? 0,
         final: checkoutDetails.netAmount ?? 0,
       };
     }
-    // fallback (rarely used; mainly until /checkout returns the first time)
+
     const original = cart.reduce((a, i) => a + (i.product_id?.price || 0) * i.quantity, 0);
     const final = totalFinalPrice;
     const taxes = final * 0.1;
@@ -149,13 +149,11 @@ function Checkout() {
           }),
         ]);
 
-        // Set state with fallback values
         setWalletBalance(walletRes.data.balance || 0);
         setCart(cartRes.data.cart?.items || []);
         setAvailableCoupons(couponsRes.data.coupons || []);
         setAddresses(addressesRes.data.addresses || []);
         
-        // Handle default address
         const def = addressesRes.data.addresses?.find((a) => a.isDefault);
         if (def) setSelectedAddress(def);
         else if (addressesRes.data.addresses?.length) setSelectedAddress(addressesRes.data.addresses[0]);
@@ -210,7 +208,6 @@ function Checkout() {
         district: "", state: "", country: "", pin: "",
         type: "Home", isDefault: false,
       });
-      // recalc with (possibly) new default address
       setTimeout(() => fetchCheckout(), 0);
     } catch (err) {
       console.error("Address save failed:", err);
@@ -273,7 +270,6 @@ function Checkout() {
     const order = data.order;
 
     if (paymentMethod === "ONLINE") {
-      // Step 2: create Razorpay order
       const { data: razor } = await userAxios.post("/payment/create-order", {
         amount: order.netAmount,
         order_id: order._id,
@@ -505,20 +501,38 @@ function Checkout() {
                 <div className="text-sm text-gray-600 mt-1">
                   Quantity: <span className="font-medium">{item.quantity}</span>
                 </div>
-                <div className="text-sm text-gray-600">
-                  ₹{((item.final_price || (item.product_id?.price * (1 - (item.product_id?.discount || 0) / 100)) || 0)).toFixed(2)} × {item.quantity}
-                  <span className="text-black font-semibold ml-1">
-                    = ₹{((item.final_price || (item.product_id?.price * (1 - (item.product_id?.discount || 0) / 100)) || 0) * item.quantity).toFixed(2)}
-                  </span>
-                  {item.applied_offer && (
-                    <span className="text-sm text-green-600 ml-2">({item.applied_offer} Offer)</span>
-                  )}
-                  {item.final_price < item.product_id?.price && (
-                    <span className="text-sm text-gray-500 line-through ml-2">
-                      ₹{(item.product_id?.price * item.quantity).toFixed(2)}
-                    </span>
-                  )}
-                </div>
+                <div className="text-sm text-gray-600 mt-1">
+  <div className="flex flex-col xs:flex-row xs:items-center xs:gap-2">
+    {/* Final price */}
+    <span className="text-base font-bold text-lime-700">
+      ₹{(item.final_price * item.quantity).toFixed(2)}
+    </span>
+
+    {/* Show original strikethrough price if discounted */}
+    {item.final_price < item.product_id?.price && (
+      <span className="text-sm text-red-500 line-through">
+        ₹{(item.product_id?.price * item.quantity).toFixed(2)}
+      </span>
+    )}
+  </div>
+
+  {/* Show quantity */}
+  <span className="text-xs text-gray-600">
+    (₹{item.final_price.toFixed(2)} × {item.quantity})
+  </span>
+
+  {/* Discount label */}
+  {item.applied_offer && (
+    <div className="text-xs text-green-700 font-semibold mt-1">
+      {item.applied_offer === "PRODUCT"
+        ? "Product Offer Applied"
+        : item.applied_offer === "CATEGORY"
+        ? "Category Offer Applied"
+        : "Product Discount"}
+    </div>
+  )}
+</div>
+
               </div>
             </div>
           ))}
@@ -650,6 +664,16 @@ function Checkout() {
             <div className="text-xl font-semibold text-center mb-3 text-gray-800">Price Details</div>
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
+                <span>Price Rs.</span>
+                <span>₹{totals.amount.toFixed(2)}</span>
+              </div>
+              {checkoutDetails?.discount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>{appliedCoupon ? "Coupon" : "Total "} Discount</span>
+                  <span>-₹{(checkoutDetails.discount).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
                 <span>Subtotal ({cart.length} item{cart.length !== 1 ? "s" : ""})</span>
                 <span>₹{totals.subtotal.toFixed(2)}</span>
               </div>
@@ -667,12 +691,6 @@ function Checkout() {
                 <span>Shipping</span>
                 <span>₹{totals.shipping.toFixed(2)}</span>
               </div>
-              {checkoutDetails?.discount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>{appliedCoupon ? "Coupon" : "Total "} Discount</span>
-                  <span>-₹{(checkoutDetails.discount).toFixed(2)}</span>
-                </div>
-              )}
               <hr className="my-2 border-gray-200" />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>

@@ -45,7 +45,7 @@ const OrderDetails = () => {
         try {
           await cancelOrderOrItem({
             orderId: order._id,
-            productId: item.product_id._id,
+            itemId: item._id,
             reason,
           })
           fetchOrder()
@@ -263,15 +263,20 @@ const OrderDetails = () => {
                     />
                     <div className="flex flex-col text-xs sm:text-sm text-gray-700 flex-1 space-y-1 sm:space-y-0.5">
                       <p className="font-semibold text-sm sm:text-base break-words">{item.product_id.title}</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-1 gap-1 sm:gap-0">
+                      <div className="grid grid-cols-2 sm:grid-cols-1 gap-1 sm:gap-0"> 
                         <p>
                           <strong>Quantity:</strong> {item.quantity}
                         </p>
                         <p>
-                          <strong>Price:</strong> ₹{item.price.toFixed(2)}
+                          <strong>Unit Price:</strong> ₹{item.price.toFixed(2)}
                         </p>
+                        {item.discountAmount > 0 && (
+                          <p>
+                            <strong>Discount:</strong> -₹{item.discountAmount.toFixed(2)}
+                          </p>
+                        )}
                         <p>
-                          <strong>Total:</strong> ₹{item.total.toFixed(2)}
+                          <strong>Final Price:</strong> ₹{item.finalPrice.toFixed(2)}
                         </p>
                         <p>
                           <strong>Status:</strong> {item.status}
@@ -336,16 +341,19 @@ const OrderDetails = () => {
           <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Summary</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm text-gray-700">
             <p>
-              <strong>Subtotal:</strong> ₹{order.total.toFixed(2)}
+              <strong>Total</strong> ₹{order.amount.toFixed(2)}
             </p>
             <p>
-              <strong>Shipping:</strong> ₹{order.shipping_chrg.toFixed(2)}
+              <strong className="text-green-700 font-semibold">Discount:</strong> - ₹{order.discount.toFixed(2)}
+            </p>
+            <p>
+              <strong>Subtotal:</strong> ₹{order.total.toFixed(2)}
             </p>
             <p>
               <strong>Taxes:</strong> ₹{order.taxes.toFixed(2)}
             </p>
             <p>
-              <strong>Discount:</strong> ₹{order.discount.toFixed(2)}
+              <strong>Shipping:</strong> ₹{order.shipping_chrg.toFixed(2)}
             </p>
             <p className="sm:col-span-2 lg:col-span-1">
               <strong>Total Paid:</strong>{" "}

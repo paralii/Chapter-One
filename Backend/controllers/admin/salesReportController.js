@@ -11,15 +11,11 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
   if (type === "custom" && fromDate && toDate) {
     const from = new Date(fromDate);
     const to = new Date(toDate);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    if (isNaN(from.getTime()) || isNaN(to.getTime()))
       throw new Error("Invalid date format");
-    }
-    if (from > now || to > now) {
+    if (from > now || to > now)
       throw new Error("Dates cannot be in the future");
-    }
-    if (to < from) {
-      throw new Error("To date must be after from date");
-    }
+    if (to < from) throw new Error("To date must be after from date");
     matchStage.createdAt = { $gte: from, $lte: to };
   } else if (type === "daily") {
     const start = new Date(now.setHours(0, 0, 0, 0));
@@ -52,7 +48,7 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
   logger.info(
     `Fetching orders for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
   );
-  return await Order.find(matchStage).populate("user_id", "name email");
+  return await Order.find(matchStage).populate("user_id", "firstname lastname email");
 };
 
 export const getSalesReport = async (req, res) => {
@@ -60,22 +56,22 @@ export const getSalesReport = async (req, res) => {
     const { type, fromDate, toDate } = req.query;
     const orders = await getFilteredOrders(type, fromDate, toDate);
 
-    const totalSales = orders.reduce((acc, order) => acc + order.total, 0);
-    const totalDiscount = orders.reduce(
-      (acc, order) => acc + order.discount,
-      0
-    );
-    const netRevenue = orders.reduce((acc, order) => acc + order.netAmount, 0);
+    const totalPrice = orders.reduce((acc, order) => acc + (order.amount || 0), 0);
+    const totalSales = orders.reduce((acc, order) => acc + (order.total || 0), 0);
+    const totalDiscount = orders.reduce((acc, order) => acc + (order.discount || 0), 0);
+    const totalShipping = orders.reduce((acc, order) => acc + (order.shipping_chrg || 0), 0);
+    const totalGST = orders.reduce((acc, order) => acc + (order.taxes || 0), 0);
+    const netRevenue = orders.reduce((acc, order) => acc + (order.netAmount || 0), 0);
 
-    logger.info(
-      `Sales report generated for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
-    );
     res.json({
       success: true,
       data: {
         totalOrders: orders.length,
+        totalPrice,
         totalSales,
         totalDiscount,
+        totalShipping,
+        totalGST,
         netRevenue,
         orders,
       },
@@ -111,9 +107,9 @@ export const generateSalesReportPDF = async (req, res) => {
     doc.pipe(res);
 
     const pageWidth = doc.page.width || 612;
-    const leftColumnX = 50;
-    const rightColumnX = pageWidth / 2;
+    const leftColumnX = 30;
 
+    // Header
     doc
       .fontSize(24)
       .font("Helvetica-Bold")
@@ -121,143 +117,58 @@ export const generateSalesReportPDF = async (req, res) => {
       .text("CHAPTER ONE", leftColumnX, 50)
       .fillColor("black")
       .fontSize(14)
-      .font("Helvetica-Bold")
       .text("Sales Report", pageWidth - 250, 50, { align: "right" })
       .text(
-        `Generated on: ${new Date()
-          .toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .join(".")}`,
+        `Generated on: ${new Date().toLocaleDateString("en-GB").split("/").join(".")}`,
         pageWidth - 250,
         doc.y,
         { align: "right" }
       )
       .moveDown(2);
 
-    const reportTypeText =
-      type.charAt(0).toUpperCase() + type.slice(1) || "Custom";
-    let dateRangeText = "";
-    if (type === "daily") {
-      dateRangeText = new Date()
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .split("/")
-        .join(".");
-    } else if (type === "custom" && fromDate && toDate) {
-      dateRangeText = `${new Date(fromDate)
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .split("/")
-        .join(".")} - ${new Date(toDate)
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .split("/")
-        .join(".")}`;
-    } else {
-      const start = orders[0]?.createdAt
-        ? new Date(orders[0].createdAt)
-        : new Date();
-      const end =
-        type === "weekly"
-          ? new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000)
-          : type === "monthly"
-          ? new Date(start.getFullYear(), start.getMonth(), 1)
-          : type === "yearly"
-          ? new Date(start.getFullYear(), 0, 1)
-          : start;
-      dateRangeText = `${end
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .split("/")
-        .join(".")} - ${start
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .split("/")
-        .join(".")}`;
-    }
+    // Report Details
+    const reportTypeText = type.charAt(0).toUpperCase() + type.slice(1) || "Custom";
+    let dateRangeText = fromDate && toDate
+      ? `${new Date(fromDate).toLocaleDateString("en-GB").split("/").join(".")} - ${new Date(toDate).toLocaleDateString("en-GB").split("/").join(".")}`
+      : "All Time";
 
     doc
       .fontSize(10)
       .font("Helvetica-Bold")
-      .text("Report Details:", leftColumnX, doc.y)
-      .font("Helvetica")
       .text(`Report Type: ${reportTypeText}`, leftColumnX)
       .text(`Date Range: ${dateRangeText}`, leftColumnX);
 
-    doc
-      .font("Helvetica-Bold")
-      .text("Company:", rightColumnX, doc.y - 30)
-      .font("Helvetica")
-      .text("ChapterOne", rightColumnX)
-      .text("24 D Street", rightColumnX)
-      .text("Dubai, Al Rashidiya", rightColumnX)
-      .text("Dubai, United Arab Emirates", rightColumnX)
-      .text("PAN No: ABCDE1234F", rightColumnX)
-      .text("GST Registration No: 29ABCDE1234F1Z5", rightColumnX);
-
     doc.moveDown(2);
 
+    // Table Data (order-level)
     const tableData = orders.map((order, index) => ({
       siNo: index + 1,
       orderID: order.orderID || "UNKNOWN",
-      user: order.user_id?.name || "N/A",
-      date: order.createdAt
-        ? new Date(order.createdAt)
-            .toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .join(".")
-        : "N/A",
-      total: `Rs.${
-        Number.isFinite(order.total) ? order.total.toFixed(2) : "0.00"
-      }`,
-      discount: `Rs.${
-        Number.isFinite(order.discount) ? order.discount.toFixed(2) : "0.00"
-      }`,
-      netAmount: `Rs.${
-        Number.isFinite(order.netAmount) ? order.netAmount.toFixed(2) : "0.00"
-      }`,
+      email: order.user_id?.email || "-",
+      date: order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-GB").split("/").join(".") : "N/A",
+      price: parseFloat((order.amount || 0).toFixed(2)),
+      salePrice: parseFloat((order.total || 0).toFixed(2)),
+      discount: parseFloat((order.discount || 0).toFixed(2)),
+      GST: parseFloat((order.taxes || 0).toFixed(2)),
+      netAmount: parseFloat((order.netAmount || 0).toFixed(2)),
       status: order.status || "N/A",
     }));
 
+    // Table Headers with proper widths & alignment
     const headers = [
-      { label: "SI No", property: "siNo", width: 40, align: "center" },
+      { label: "SI No", property: "siNo", width: 30, align: "center" },
       { label: "Order ID", property: "orderID", width: 80 },
-      { label: "User", property: "user", width: 100 },
-      { label: "Date", property: "date", width: 80, align: "center" },
-      { label: "Total", property: "total", width: 80, align: "right" },
-      { label: "Discount", property: "discount", width: 80, align: "right" },
-      {
-        label: "Net Payable",
-        property: "netAmount",
-        width: 80,
-        align: "right",
-      },
-      { label: "Status", property: "status", width: 80, align: "center" },
+      { label: "User - Email", property: "email", width: 100 },
+      { label: "Date", property: "date", width: 50, align: "center" },
+      { label: "Price (Rs.)", property: "price", width: 50, align: "right" },
+      { label: "Discount (Rs.)", property: "discount", width: 50, align: "right" },
+      { label: "Sale Price (Rs.)", property: "salePrice", width: 50, align: "right" },
+      { label: "GST (Rs.)", property: "GST", width: 50, align: "right" },
+      { label: "Net Payable (Rs.)", property: "netAmount", width: 70, align: "right" },
+      { label: "Status", property: "status", width: 70, align: "center" },
     ];
 
+    // Render Table
     await doc.table(
       {
         title: "Sales Report - Orders",
@@ -265,63 +176,46 @@ export const generateSalesReportPDF = async (req, res) => {
         datas: tableData,
       },
       {
-        prepareHeader: () => doc.font("Helvetica-Bold").fontSize(10),
-        prepareRow: () => doc.font("Helvetica").fontSize(9),
+        prepareHeader: () => doc.font("Helvetica-Bold").fontSize(9),
+        prepareRow: () => doc.font("Helvetica").fontSize(8),
         divider: {
           header: { disabled: false, width: 0.5, opacity: 0.5 },
           horizontal: { disabled: false, width: 0.5, opacity: 0.3 },
         },
-        columnSpacing: 10,
+        columnSpacing: 8,
         padding: 5,
         width: pageWidth - 100,
       }
     );
 
-    doc.moveDown(1.5);
-
-    const totalSales = orders.reduce(
-      (acc, order) => acc + (Number.isFinite(order.total) ? order.total : 0),
-      0
-    );
-    const totalDiscount = orders.reduce(
-      (acc, order) =>
-        acc + (Number.isFinite(order.discount) ? order.discount : 0),
-      0
-    );
-    const netRevenue = orders.reduce(
-      (acc, order) =>
-        acc + (Number.isFinite(order.netAmount) ? order.netAmount : 0),
-      0
-    );
+    // Totals
+    const totalSales = orders.reduce((acc, order) => acc + (order.total || 0), 0);
+    const totalDiscount = orders.reduce((acc, order) => acc + (order.discount || 0), 0);
+    const totalShipping = orders.reduce((acc, order) => acc + (order.shipping_chrg || 0), 0);
+    const totalGST = orders.reduce((acc, order) => acc + (order.taxes || 0), 0);
+    const netRevenue = orders.reduce((acc, order) => acc + (order.netAmount || 0), 0);
 
     doc
       .font("Helvetica-Bold")
       .fontSize(10)
-      .text(`Total Orders: ${orders.length}`, { align: "right" })
-      .text(`Total Sales: Rs.${totalSales.toFixed(2)}`, { align: "right" })
-      .text(`Total Discount: Rs.${totalDiscount.toFixed(2)}`, {
-        align: "right",
-      })
-      .text(`Net Revenue: Rs.${netRevenue.toFixed(2)}`, { align: "right" })
-      .moveDown(1);
+      .text(`Total Orders: ${orders.length}`, { align: "left" })
+      .text(`Total Sales: Rs.${totalSales.toFixed(2)}`, { align: "left" })
+      .text(`Total Discount: Rs.${totalDiscount.toFixed(2)}`, { align: "left" })
+      .text(`Total Shipping: Rs.${totalShipping.toFixed(2)}`, { align: "left" })
+      .text(`Total GST: Rs.${totalGST.toFixed(2)}`, { align: "left" })
+      .text(`Net Revenue: Rs.${netRevenue.toFixed(2)}`, { align: "left" })
+      .moveDown(2);
 
-    doc
-      .fontSize(10)
-      .font("Helvetica-Oblique")
-      .text("Generated by ChapterOne", { align: "center" });
+    doc.fontSize(10).font("Helvetica-Oblique").text("Generated by ChapterOne", { align: "center" });
 
     doc.end();
-    logger.info(
-      `PDF report generated successfully for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
-    );
+    logger.info(`PDF report generated successfully for type: ${type}`);
   } catch (err) {
     errorLogger.error("Error generating sales report PDF", {
       message: err.message,
       stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
-    res
-      .status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR)
-      .json({ success: false, message: "PDF download failed" });
+    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "PDF download failed" });
   }
 };
 
@@ -344,8 +238,10 @@ export const generateSalesReportExcel = async (req, res) => {
       { header: "User", key: "user", width: 20 },
       { header: "Email", key: "email", width: 25 },
       { header: "Date", key: "date", width: 15 },
-      { header: "Total", key: "total", width: 10 },
-      { header: "Discount", key: "discount", width: 10 },
+      { header: "Total", key: "total", width: 12 },
+      { header: "Discount", key: "discount", width: 12 },
+      { header: "Shipping", key: "shipping", width: 12 },
+      { header: "GST", key: "GST", width: 12 },
       { header: "Net Payable", key: "net", width: 12 },
       { header: "Status", key: "status", width: 15 },
     ];
@@ -353,30 +249,42 @@ export const generateSalesReportExcel = async (req, res) => {
     orders.forEach((order) => {
       sheet.addRow({
         orderID: order.orderID,
-        user: order.user_id?.name || "N/A",
+        user: `${order.user_id?.firstname || "N/A"} ${order.user_id?.lastname || ""}`,
         email: order.user_id?.email || "-",
         date: order.createdAt.toISOString().split("T")[0],
-        total: order.total,
-        discount: order.discount,
-        net: order.netAmount,
+        total: order.total || 0,
+        discount: order.discount || 0,
+        shipping: order.shipping_chrg || 0,
+        GST: order.taxes || 0,
+        net: order.netAmount || 0,
         status: order.status,
       });
     });
 
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=sales-report-${type || "custom"}.xlsx`
-    );
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.getCell("total").numFmt = '₹#,##0.00';
+        row.getCell("discount").numFmt = '₹#,##0.00';
+        row.getCell("shipping").numFmt = '₹#,##0.00';
+        row.getCell("GST").numFmt = '₹#,##0.00';
+        row.getCell("net").numFmt = '₹#,##0.00';
+      }
+    });
 
-    await workbook.xlsx.write(res);
-    logger.info(
-      `Excel report generated successfully for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
-    );
-    res.status(STATUS_CODES.SUCCESS.OK).end();
+    const buffer = await workbook.xlsx.writeBuffer();
+    res
+      .setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      )
+      .setHeader(
+        "Content-Disposition",
+        `attachment; filename="Sales-Report-${type || "custom"}.xlsx"`
+      )
+      .status(STATUS_CODES.SUCCESS.OK)
+      .send(buffer);
+
+    logger.info(`Excel report generated successfully for type: ${type}`);
   } catch (err) {
     errorLogger.error("Error generating sales report Excel", {
       message: err.message,
@@ -387,3 +295,4 @@ export const generateSalesReportExcel = async (req, res) => {
       .json({ success: false, message: "Excel download failed" });
   }
 };
+

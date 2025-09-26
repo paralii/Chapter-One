@@ -149,25 +149,37 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
   doc.y = startY + leftColumnHeight + 20; 
   doc.x = leftColumnX; 
 
-  const tableData = [];
+    const tableData = [];
   (order.items || []).forEach((item, index) => {
     const productId = item.product_id?._id?.toString() || item.product_id?.toString() || 'UNKNOWN';
     const product = productMap[productId] || { title: 'Unknown Product' };
+
+    const qty = Number.isFinite(item.quantity) ? item.quantity : 0;
+    const unitPrice = Number.isFinite(item.price) ? item.price : 0;
+    const discount = Number.isFinite(item.discountAmount) ? item.discountAmount : 0;
+    const finalPrice = Number.isFinite(item.finalPrice) ? item.finalPrice : unitPrice * qty;
+
+    const gstAmount = parseFloat((finalPrice * 0.18).toFixed(2));
+
     tableData.push({
       siNo: index + 1,
       title: product.title,
-      unitPrice: `Rs.${Number.isFinite(item.price) ? item.price : 0}`,
-      quantity: Number.isFinite(item.quantity) ? item.quantity : 0,
-      total: `Rs.${Number.isFinite(item.total) ? item.total : 0}`,
+      quantity: qty,
+      unitPrice: `Rs.${unitPrice.toFixed(2)}`,
+      discount: `Rs.${discount.toFixed(2)}`,
+      gst: `Rs.${gstAmount.toFixed(2)}`,
+      lineTotal: `Rs.${(finalPrice + gstAmount).toFixed(2)}`
     });
   });
 
   const headers = [
-    { label: 'SI No', property: 'siNo', width: 50, align: 'center' },
-    { label: 'Title', property: 'title', width: 250 },
-    { label: 'Unit Price', property: 'unitPrice', width: 80, align: 'right' },
-    { label: 'Qty', property: 'quantity', width: 50, align: 'center' },
-    { label: 'Total', property: 'total', width: 80, align: 'right' },
+    { label: 'SI No', property: 'siNo', width: 40, align: 'center' },
+    { label: 'Product Title', property: 'title', width: 150 },
+    { label: 'Qty', property: 'quantity', width: 40, align: 'center' },
+    { label: 'Unit Price (Rs.)', property: 'unitPrice', width: 65, align: 'right' },
+    { label: 'Discount (Rs.)', property: 'discount', width: 65, align: 'right' },
+    { label: 'GST (18%) (Rs.)', property: 'gst', width: 65, align: 'right' },
+    { label: 'Line Total (Rs.)', property: 'lineTotal', width: 80, align: 'right' }
   ];
 
   await doc.table(
@@ -177,13 +189,13 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
       datas: tableData,
     },
     {
-      prepareHeader: () => doc.font('Helvetica-Bold').fontSize(10),
-      prepareRow: () => doc.font('Helvetica').fontSize(9),
+      prepareHeader: () => doc.font('Helvetica-Bold').fontSize(9),
+      prepareRow: () => doc.font('Helvetica').fontSize(8),
       divider: {
         header: { disabled: false, width: 0.5, opacity: 0.5 },
         horizontal: { disabled: false, width: 0.5, opacity: 0.3 },
       },
-      columnSpacing: 10,
+      columnSpacing: 8,
       padding: 5,
       width: pageWidth - 100,
     }
@@ -192,16 +204,19 @@ export const generateInvoicePDF = async (order, user, address, productMap, fileP
   doc.moveDown(1.5);
 
   const safeTotal = Number.isFinite(order.total) ? order.total : 0;
+  const formattedTotal = parseFloat(safeTotal.toFixed(2));
   const safeShipping = Number.isFinite(order.shipping_chrg) ? order.shipping_chrg : 0;
+  const formattedShipping = parseFloat(safeShipping.toFixed(2));
   const safeDiscount = Number.isFinite(order.discount) ? order.discount : 0;
+  const formattedDiscount = parseFloat(safeDiscount.toFixed(2));
   const safeNetAmount = Number.isFinite(order.netAmount) ? order.netAmount : 0;
   const formattedNetAmount = parseFloat(safeNetAmount.toFixed(2));
   doc
     .font('Helvetica-Bold')
     .fontSize(10)
-    .text(`Subtotal: Rs.${safeTotal}`, { align: 'right' })
-    .text(`Shipping Charges: Rs.${safeShipping}`, { align: 'right' })
-    .text(`Discount: Rs.${safeDiscount}`, { align: 'right' })
+    .text(`Subtotal: Rs.${formattedTotal}`, { align: 'right' })
+    .text(`Shipping Charges: Rs.${formattedShipping}`, { align: 'right' })
+    .text(`Discount: Rs.${formattedDiscount}`, { align: 'right' })
     .text(`Net Amount: Rs.${formattedNetAmount}`, { align: 'right' })
     .moveDown(1);
 

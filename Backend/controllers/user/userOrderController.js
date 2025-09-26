@@ -219,46 +219,79 @@ export const getOrderDetails = async (req, res) => {
 export const cancelOrderOrItem = async (req, res) => {
   try {
     const { orderId, itemId, reason } = req.body;
+
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: "Invalid order ID format" });
+      return res.status(400).json({ success: false, message: "Invalid order ID format" });
     }
+
     const order = await Order.findById(orderId).populate("items.product_id");
     if (!order || order.user_id.toString() !== req.user._id.toString()) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Order not found or unauthorized" });
+      return res.status(404).json({ success: false, message: "Order not found or unauthorized" });
     }
+
     if (["Delivered", "Returned", "Cancelled"].includes(order.status)) {
-      return res.status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST).json({ success: false, message: `Order cannot be cancelled, current status: ${order.status}` });
+      return res.status(400).json({ success: false, message: `Order cannot be cancelled, current status: ${order.status}` });
     }
+
+    // --- Cancel individual item ---
     if (itemId) {
       const item = order.items.find(i => i._id.toString() === itemId);
       if (!item) {
-        return res.status(STATUS_CODES.CLIENT_ERROR.NOT_FOUND).json({ success: false, message: "Item not found in order" });
+        return res.status(404).json({ success: false, message: "Item not found in order" });
       }
+
+      if (item.status === "Cancelled") {
+        return res.status(400).json({ success: false, message: "Item already cancelled" });
+      }
+
       item.status = "Cancelled";
       item.cancellation_reason = reason || "No reason provided";
-      order.total -= item.price * item.quantity;
-      order.netAmount = order.total + (order.taxes || 0) + (order.shipping_chrg || 0) - (order.discount || 0);
+
+      // Restore stock
       await Product.findByIdAndUpdate(item.product_id._id, {
         $inc: { available_quantity: item.quantity },
       });
-      if (order.items.every(i => i.status === "Cancelled")) {
-        order.status = "Cancelled";
+
+      // Refund if prepaid
+      if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Completed") {
+        const refundAmount = item.finalPrice * item.quantity;
+        await refundToWallet(order.user_id, refundAmount, `Refund for cancelled item ${item.product_id._id}`);
+        item.refundProcessed = true;
       }
+
+      // Recalculate order netAmount
+      const activeItems = order.items.filter(i => i.status !== "Cancelled");
+      if (activeItems.length === 0) {
+        order.status = "Cancelled"; // all items cancelled
+      }
+
     } else {
+      // --- Cancel whole order ---
       order.status = "Cancelled";
       order.cancellation_reason = reason || "No reason provided";
-for (const item of order.items) {
-    item.status = "Cancelled";
-    item.cancellation_reason = reason || "No reason provided";
-    await Product.findByIdAndUpdate(item.product_id._id, {
-      $inc: { available_quantity: item.quantity },
-    });
-      };
+
+      for (const item of order.items) {
+        if (item.status !== "Cancelled") {
+          item.status = "Cancelled";
+          item.cancellation_reason = reason || "No reason provided";
+          await Product.findByIdAndUpdate(item.product_id._id, {
+            $inc: { available_quantity: item.quantity },
+          });
+
+          if (order.paymentMethod === "ONLINE" && order.paymentStatus === "Completed") {
+            const refundAmount = item.finalPrice * item.quantity;
+            await refundToWallet(order.user_id, refundAmount, `Refund for cancelled item ${item.product_id._id}`);
+            item.refundProcessed = true;
+          }
+        }
+      }
     }
+
     await order.save();
     res.json({ success: true, message: "Cancellation processed successfully" });
+
   } catch (err) {
-    res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to cancel order", error: err.message });
+    res.status(500).json({ success: false, message: "Failed to cancel order", error: err.message });
   }
 };
 
@@ -382,4 +415,3 @@ export const downloadInvoice = async (req, res) => {
     res.status(STATUS_CODES.SERVER_ERROR.INTERNAL_SERVER_ERROR).json({ message: "Error generating invoice" });
   }
 };
-
