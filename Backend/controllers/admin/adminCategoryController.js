@@ -8,36 +8,34 @@ export const createCategory = async (req, res) => {
   try {
     const validName = /^[a-zA-Z0-9\s&-]+$/;
     const trimmedName = req.body.name.trim();
-    const desc = req.body.description?.trim() || "";
+    const normalizedName = trimmedName.toLowerCase();
 
     if (!validName.test(trimmedName)) {
       return res
         .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
         .json({ error: validationMessages.category.invalidName });
     }
-    if (desc && desc.length < 3) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-        .json({ error: validationMessages.category.descTooShort });
-    }
-    if (desc.length > 300) {
-      return res
-        .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
-        .json({ error: validationMessages.category.descTooLong });
-    }
-    const existing = await Category.findOne({ name: trimmedName });
-    if (existing)
+
+    // Check duplicate (case-insensitive)
+    const existing = await Category.findOne({ name: normalizedName });
+    if (existing) {
       return res
         .status(STATUS_CODES.CLIENT_ERROR.BAD_REQUEST)
         .json({ error: validationMessages.category.alreadyExists });
+    }
 
-    const category = new Category({ ...req.body, name: trimmedName });
+    const category = new Category({
+      ...req.body,
+      name: normalizedName, // store normalized version
+    });
+
     await category.save();
-
     logger.info(`Category ${category.name} created successfully`);
-    res
-      .status(STATUS_CODES.SUCCESS.CREATED)
-      .json({ message: validationMessages.category.added, category });
+
+    res.status(STATUS_CODES.SUCCESS.CREATED).json({
+      message: "Category created successfully",
+      category,
+    });
   } catch (err) {
     errorLogger.error("Error creating category", {
       message: err.message,
@@ -48,6 +46,7 @@ export const createCategory = async (req, res) => {
       .json({ error: err.message });
   }
 };
+
 
 export const getCategories = async (req, res) => {
   const { search = "", sort = "desc", page = 1, limit, isDeleted } = req.query;
@@ -119,6 +118,7 @@ export const updateCategory = async (req, res) => {
   try {
     const validName = /^[a-zA-Z0-9\s&-]+$/;
     const trimmedName = req.body.name.trim();
+    const normalizedName = trimmedName.toLowerCase();
 
     if (!validName.test(trimmedName)) {
       return res
@@ -127,7 +127,7 @@ export const updateCategory = async (req, res) => {
     }
 
     const existing = await Category.findOne({
-      name: trimmedName,
+      name: normalizedName,
       _id: { $ne: req.params.id },
     });
     if (existing)

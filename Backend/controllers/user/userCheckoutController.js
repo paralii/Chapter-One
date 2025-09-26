@@ -122,9 +122,9 @@ export const checkout = async (req, res) => {
 
     const existingCouponDiscount = order && (order.coupon 
     ? (order.discount - productDiscountTotal) 
-    : 0) + productDiscountTotal;      
+    : 0);
+
     const netAmount = +(subtotal + taxes + shipping_chrg) -(existingCouponDiscount);
-    console.log(`net amount`, netAmount);
     if (paymentMethod === "COD" && netAmount > 1000) {
       return res.status(400).json({ success: false, message: "Cash on Delivery is not allowed for orders above Rs 1000" });
     }
@@ -142,7 +142,6 @@ export const checkout = async (req, res) => {
       order.taxes = taxes;
       order.total = baseAmount - productDiscountTotal;
       order.netAmount = netAmount;
-            console.log(`order checkout 1:`, order);
 
       await order.save();
 
@@ -152,7 +151,6 @@ export const checkout = async (req, res) => {
         order,
       });
     } else {
-      // create new draft
       order = new Order({
         orderID: generateOrderID(),
         user_id: req.user._id,
@@ -169,7 +167,6 @@ export const checkout = async (req, res) => {
         paymentStatus: "Pending",
         isDeleted: false,
       });
-      console.log(`checkout order:`,order);
       await order.save();
       return res.json({
         success: true,

@@ -1,13 +1,15 @@
 import Offer from "../../models/Offer.js";
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
+import mongoose from "mongoose";
 
 export const getActiveOffers = async (req, res) => {
   try {
     const { type, productId, categoryId } = req.query;
-    const query = { is_active: true, end_date: { $gte: new Date() } };
+    const query = { is_active: true, end_date: { $gte: new Date() }, start_date: { $lte: new Date() } };
     if (type && ["PRODUCT", "CATEGORY"].includes(type)) query.type = type;
-    if (productId) query.product_id = productId;
-    if (categoryId) query.category_id = categoryId;
+    if (productId) query.product_id = new mongoose.Types.ObjectId(productId);
+    if (categoryId) query.category_id = new mongoose.Types.ObjectId(categoryId);
+
 
     const offers = await Offer.find(query)
       .populate("product_id", "title price")

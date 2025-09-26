@@ -1,4 +1,4 @@
-import React,{ useEffect, useState } from "react";
+import React,{ useEffect, useState, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
@@ -34,7 +34,9 @@ function ProductDetail() {
   const [relatedLoading, setRelatedLoading] = useState(true);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [animationDone, setAnimationDone] = useState(false);
-  const [offers, setOffers] = useState([]);
+
+  const [productOffers, setProductOffers] = useState([]);
+  const [categoryOffers, setCategoryOffers] = useState([]);
 
   const getImageUrl = (url) =>
     url
@@ -47,14 +49,16 @@ function ProductDetail() {
       const res = await getProductById(id);
       const prod = res.data;
 
+      if (!prod) {
+        setError("Product not found");
+        return;
+      }
       if (prod.status === "blocked" || prod.available === false) {
         navigate("/products");
         return;
       }
       setProduct(prod);
-      // Fetch offers
-      const offerRes = await userAxios.get(`/offers?productId=${id}&type=PRODUCT`);
-      setOffers(offerRes.data.offers || []);
+      setError(null);
     } catch (err) {
       setError(
         err.response?.data?.message || err.message || "Error fetching product"
@@ -77,6 +81,31 @@ function ProductDetail() {
   };
 
   useEffect(() => {
+    if (!product) return;
+
+    const fetchOffers = async () => {
+      try {
+        // product offers
+        const pRes = await userAxios.get(`/offers?productId=${product._id}&type=PRODUCT`);
+        setProductOffers(pRes.data.offers || []);
+
+        // category offers (if category exists)
+        if (product.category_id?._id) {
+          const cRes = await userAxios.get(`/offers?categoryId=${product.category_id._id}&type=CATEGORY`);
+          setCategoryOffers(cRes.data.offers || []);
+        } else {
+          setCategoryOffers([]);
+        }
+      } catch (err) {
+        console.error("Error fetching offers:", err);
+        // don't set global error; offers failing shouldn't block the product view
+      }
+    };
+
+    fetchOffers();
+  }, [product]);
+
+  useEffect(() => {
     fetchProductDetails();
     fetchWishlistStatus();
   }, [id]);
@@ -96,24 +125,69 @@ function ProductDetail() {
     fetchRelated();
   }, [id]);
 
-  if (!animationDone || !initialDataLoaded) {
-    return <BookLoader onFinish={() => setAnimationDone(true)} />;
-  }
-  if (error)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fff8e5] text-red-500">
-        {error}
-      </div>
-    );
-  if (!product)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fff8e5]">
-        Product not found.
-      </div>
-    );
+    // merged offers list for display and calculation
+  const allOffers = useMemo(() => {
+    // Keep original offer objects (with type field populated by backend)
+    const merged = [
+      ...((productOffers && Array.isArray(productOffers)) ? productOffers : []),
+      ...((categoryOffers && Array.isArray(categoryOffers)) ? categoryOffers : []),
+    ];
+    return merged;
+  }, [productOffers, categoryOffers]);
 
-  const mainImage = getImageUrl(product.product_imgs?.[0]);
-  const smallImages = product.product_imgs?.slice(1, 3).map(getImageUrl) || [];
+  // Compute finalPrice and appliedOffer (best discount)
+  const { finalPrice, appliedOffer } = useMemo(() => {
+    if (!product) return { finalPrice: 0, appliedOffer: null };
+
+    const basePrice = Number(product.price) || 0;
+    let bestPrice = basePrice;
+    let bestOffer = null;
+
+    // consider productOffers and categoryOffers
+    allOffers.forEach((offer) => {
+      if (!offer || (!offer.discount_type && offer.discount_value == null)) return;
+
+      const type = offer.discount_type; // "PERCENTAGE" or "FLAT"
+      const value = Number(offer.discount_value) || 0;
+      let candidatePrice = basePrice;
+
+      if (type === "PERCENTAGE") {
+        candidatePrice = basePrice - (basePrice * value) / 100;
+      } else {
+        // FLAT
+        candidatePrice = basePrice - value;
+      }
+
+      if (candidatePrice < bestPrice) {
+        bestPrice = candidatePrice;
+        bestOffer = {
+          kind: offer.type || "OFFER", // "PRODUCT" or "CATEGORY" (backend)
+          offerObject: offer,
+        };
+      }
+    });
+
+    // also consider product.discount field (legacy product-level discount field)
+    if (product.discount && Number(product.discount) > 0) {
+      const pd = Number(product.discount);
+      const prodDiscPrice = basePrice - (basePrice * pd) / 100;
+      if (prodDiscPrice < bestPrice) {
+        bestPrice = prodDiscPrice;
+        bestOffer = {
+          kind: "PRODUCT_FIELD",
+          offerObject: {
+            discount_type: "PERCENTAGE",
+            discount_value: pd,
+          },
+        };
+      }
+    }
+
+    // never go below 0
+    if (bestPrice < 0) bestPrice = 0;
+
+    return { finalPrice: bestPrice, appliedOffer: bestOffer };
+  }, [product, allOffers]);
 
   const incrementQuantity = () => {
     if (quantity < MAX_ALLOWED_QUANTITY && quantity < product.available_quantity) {
@@ -192,17 +266,24 @@ function ProductDetail() {
     navigate("/checkout", { state: { fromBuyNow: true } });
   };
 
-  const hasDiscount = product.discount > 0 || offers.length > 0;
-  const discountPrice = product.discount > 0
-    ? product.price - (product.price * product.discount) / 100
-    : offers.length > 0
-    ? offers.reduce((minPrice, offer) => {
-        const offerPrice = offer.discount_type === "PERCENTAGE"
-          ? product.price - (product.price * offer.discount_value) / 100
-          : product.price - offer.discount_value;
-        return Math.min(minPrice, offerPrice);
-      }, product.price)
-    : product.price;
+    if (!animationDone || !initialDataLoaded) {
+    return <BookLoader onFinish={() => setAnimationDone(true)} />;
+  }
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fff8e5] text-red-500">
+        {error}
+      </div>
+    );
+  if (!product)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fff8e5]">
+        Product not found.
+      </div>
+    );
+
+  const mainImage = getImageUrl(product.product_imgs?.[0]);
+  const smallImages = product.product_imgs?.slice(1, 3).map(getImageUrl) || [];
 
   return (
     <div className="min-h-screen bg-[#fff8e5] font-Inter text-[#3c2712]">
@@ -293,37 +374,55 @@ function ProductDetail() {
             )}
           </div>
 
-          {/* Price */}
+          {/* Price (finalPrice & appliedOffer shown) */}
           <div className="flex items-center gap-2">
-            {hasDiscount && (
+            {finalPrice < Number(product.price) && (
               <span className="text-lg font-bold text-red-600 line-through">
-                ₹{product.price}
+                ₹{Number(product.price).toFixed(2)}
               </span>
             )}
-            <span className="text-2xl font-semibold">
-              ₹{discountPrice.toFixed(2)}
-            </span>
-            {hasDiscount && (
+            <span className="text-2xl font-semibold">₹{Number(finalPrice).toFixed(2)}</span>
+
+            {finalPrice < Number(product.price) && appliedOffer && (
               <span className="text-sm text-green-600">
-                {product.discount > 0
-                  ? `(${product.discount}% OFF)`
-                  : offers.length > 0
-                  ? `(${offers[0].discount_type === "PERCENTAGE" ? `${offers[0].discount_value}% OFF` : `₹${offers[0].discount_value} OFF`})`
-                  : ""}
+                {appliedOffer.kind === "PRODUCT_FIELD"
+                  ? `(${appliedOffer.offerObject.discount_value}% OFF – Product Discount)`
+                  : appliedOffer.offerObject.discount_type === "PERCENTAGE"
+                    ? `(${appliedOffer.offerObject.discount_value}% OFF – ${appliedOffer.offerObject.type === "CATEGORY" ? "Category Offer" : "Product Offer"})`
+                    : `(${appliedOffer.offerObject.discount_value}₹ OFF – ${appliedOffer.offerObject.type === "CATEGORY" ? "Category Offer" : "Product Offer"})`}
               </span>
             )}
           </div>
-          {offers.length > 0 && (
+
+          {/* Available Offers: list all offers (product offers + category offers + product field discount if any) */}
+          {(allOffers.length > 0 || (product.discount && Number(product.discount) > 0)) && (
             <div className="space-y-2 mt-4 text-sm">
               <h2 className="font-semibold">Available Offers</h2>
               <ul className="list-disc pl-5">
-                {offers.map((offer) => (
+                {/* product.discount field */}
+                {product.discount && Number(product.discount) > 0 && (
+                  <li>
+                    {product.discount}% off on this product (Product discount)
+                  </li>
+                )}
+
+                {/* product offers */}
+                {productOffers.map((offer) => (
                   <li key={offer._id}>
                     {offer.discount_type === "PERCENTAGE"
                       ? `${offer.discount_value}% off`
                       : `₹${offer.discount_value} off`}{" "}
-                    on {offer.product_id?.title || "this product"} (Expires{" "}
-                    {new Date(offer.end_date).toLocaleDateString()})
+                    on {offer.product_id?.title || "this product"} (Expires {new Date(offer.end_date).toLocaleDateString()})
+                  </li>
+                ))}
+
+                {/* category offers */}
+                {categoryOffers.map((offer) => (
+                  <li key={offer._id}>
+                    {offer.discount_type === "PERCENTAGE"
+                      ? `${offer.discount_value}% off`
+                      : `₹${offer.discount_value} off`}{" "}
+                    on category {offer.category_id?.name || "this category"} (Expires {new Date(offer.end_date).toLocaleDateString()})
                   </li>
                 ))}
               </ul>

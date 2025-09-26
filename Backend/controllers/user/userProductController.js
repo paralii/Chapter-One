@@ -1,4 +1,5 @@
 import Product from "../../models/Product.js";
+import Offer from '../../models/Offer.js';
 import STATUS_CODES from "../../utils/constants/statusCodes.js";
 
 export const getProducts = async (req, res) => {
@@ -109,5 +110,40 @@ export const getRelatedProducts = async (req, res) => {
       success: false,
       message: "Internal server error",
     });
+  }
+};
+
+export const getProductsWithActiveDiscounts = async (req, res) => {
+  try {
+    const products = await Product.find({ isDeleted: false });
+    const now = new Date();
+    const productIds = products.map(p => p._id);
+
+    // Fetch active product offers
+    const offers = await Offer.find({
+      is_active: true,
+      start_date: { $lte: now },
+      end_date: { $gte: now },
+      product_id: { $in: productIds }
+    });
+
+    const productsWithDiscount = products.map(p => {
+      const offer = offers.find(o => o.product_id?.toString() === p._id.toString());
+      const discount = offer ? offer.discount_value : 0;
+      const discountedPrice =
+        discount > 0 && offer?.discount_type === "PERCENTAGE"
+          ? p.price - (p.price * discount) / 100
+          : p.price;
+
+      return {
+        ...p._doc,
+        activeDiscount: discount,
+        discountedPrice
+      };
+    });
+
+    res.json({ success: true, products: productsWithDiscount });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 };

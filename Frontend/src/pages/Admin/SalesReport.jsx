@@ -241,7 +241,7 @@ function SalesReport() {
               {reportData.orders.map((order) => (
                 <tr key={order._id} className="bg-[#eee9dc] border-b border-b-white">
                   <td className="p-[10px]">{order.orderID}</td>
-                  <td className="p-[10px]">{order.user_id?.name || "N/A"}</td>
+                  <td className="p-[10px]">{`${order.user_id.firstname}`}</td>
                   <td className="p-[10px]">{new Date(order.createdAt).toLocaleDateString()}</td>
                   <td className="p-[10px]">₹{order.total.toFixed(2)}</td>
                   <td className="p-[10px]">₹{order.discount.toFixed(2)}</td>

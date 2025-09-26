@@ -45,6 +45,7 @@ router.get("/auth/me", verifyToken, (req, res) => {
 router.get("/products", userProductController.getProducts);
 router.get("/products/:id", userProductController.getProductById);
 router.get("/products/:id/related", userProductController.getRelatedProducts);
+router.get("/products/with-discounts", userProductController.getProductsWithActiveDiscounts);
 
 // ===================== CATEGORY =====================
 router.get("/categories",  userCategoryController.getCategoriesUser);
