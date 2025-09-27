@@ -665,7 +665,7 @@ function Checkout() {
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
                 <span>Price Rs.</span>
-                <span>₹{totals.amount.toFixed(2)}</span>
+                <span>₹{totals.amount}</span>
               </div>
               {checkoutDetails?.discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
