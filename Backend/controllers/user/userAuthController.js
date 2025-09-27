@@ -70,11 +70,18 @@ export const login = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  logger.info(`User ${req.user.email} logged out successfully`);
-  res.clearCookie('accessToken_user');
-  res.clearCookie('refreshToken_user');
-  res.status(STATUS_CODES.SUCCESS.OK).json({ message: 'Logged out successfully' });
+  try {
+    res.clearCookie("accessToken_user");
+    res.clearCookie("refreshToken_user");
+
+    logger.info(`User logged out successfully`);
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    logger.error("Logout failed", err);
+    res.status(500).json({ error: "Logout failed" });
+  }
 };
+
 
 export const refreshUserToken = (req, res) => refreshAccessToken(req, res, 'user');
 

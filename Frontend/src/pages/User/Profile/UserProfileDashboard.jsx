@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useDispatch } from "react-redux"
-
+import { persistor } from "../../../redux/store";
 import { toast } from "react-toastify"
 
 import { getUserProfile } from "../../../api/user/UserAPI"
@@ -15,6 +15,8 @@ import { logoutUser } from "../../../redux/authSlice"
 import BookLoader from "../../../components/common/BookLoader"
 import Footer from "../../../components/common/Footer"
 import Navbar from "../../../components/common/Navbar"
+
+import userAxios from "../../../api/userAxios";
 
 const UserProfileDashboard = () => {
   const navigate = useNavigate()
@@ -74,9 +76,11 @@ const UserProfileDashboard = () => {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank")
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    
     dispatch(logoutUser())
       .then(() => {
+        persistor.purge();
         navigate("/")
         toast.success("Logged out successfully!")
       })
