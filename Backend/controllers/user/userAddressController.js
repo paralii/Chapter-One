@@ -52,7 +52,8 @@ export const getAddressById = async (req, res) => {
     const address = await Address.findOne({
       _id: id,
       user_id: userId,
-    }).populate("user_id", "name email");
+    })
+    .select("-__v").populate("user_id", "name email");
 
     if (!address)
       return res

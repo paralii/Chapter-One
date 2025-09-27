@@ -38,7 +38,7 @@ router.get("/auth/google", passport.authenticate("google", { scope: ["profile", 
 router.get("/auth/google/callback", passport.authenticate("google", { session: false }), googleAuthCallback);
 router.get("/auth/me", verifyToken, (req, res) => {
     const { _id, firstname, lastname, email, profileImage, isVerified } = req.user;
-    res.status(200).json({ _id, firstname, lastname, email, profileImage, isVerified });
+    res.status(200).json({user:{ _id, firstname, lastname, email, profileImage, isVerified }});
   });
 
 // ===================== PRODUCT =====================
@@ -84,8 +84,8 @@ router.get("/orders", verifyToken("user"), userOrderController.getUserOrders);
 router.post("/orders", verifyToken("user"), userOrderController.placeOrder);
 router.get("/orders/status/pending", verifyToken("user"), userOrderController.getPendingOrder);
 router.get("/orders/:id", verifyToken("user"), userOrderController.getOrderDetails);
-router.put("/orders/cancel", verifyToken("user"), userOrderController.cancelOrderOrItem);
-router.put("/orders/return", verifyToken("user"), userOrderController.returnOrderItem);
+router.patch("/orders/cancel", verifyToken("user"), userOrderController.cancelOrderOrItem);
+router.patch("/orders/return", verifyToken("user"), userOrderController.returnOrderItem);
 router.get("/orders/:id/invoice", verifyToken("user"), userOrderController.downloadInvoice);
 
 // ===================== RAZORPAY =====================

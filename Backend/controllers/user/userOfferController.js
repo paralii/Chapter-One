@@ -12,7 +12,7 @@ export const getActiveOffers = async (req, res) => {
 
 
     const offers = await Offer.find(query)
-      .populate("product_id", "title price")
+      .select("-__v").populate("product_id", "title price")
       .populate("category_id", "name")
     res.json({ success: true, offers });
   } catch (err) {

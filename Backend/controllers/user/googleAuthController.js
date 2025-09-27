@@ -21,5 +21,5 @@ export default function googleAuthCallback(req, res) {
   const corsUrls = process.env.CORS_URLS.split(',');
   const redirectUrl = corsUrls[0];
 
-  res.redirect(redirectUrl);
+  res.redirect(`${redirectUrl}?user=${encodeURIComponent(JSON.stringify(req.user))}`);
 }

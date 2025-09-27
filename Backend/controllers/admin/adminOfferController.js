@@ -105,7 +105,7 @@ export const getOffers = async (req, res) => {
     const query = includeInactive === "true" ? {} : { is_active: true };
     if (type && ["PRODUCT", "CATEGORY"].includes(type)) query.type = type;
     const offers = await Offer.find(query)
-      .populate("product_id", "title price")
+      .select("-__v").populate("product_id", "title price")
       .populate("category_id", "name")
       .sort({ createdAt: -1 });
     const currentDate = new Date();
@@ -141,7 +141,7 @@ export const getOfferById = async (req, res) => {
         .json({ success: false, message: "Invalid offer ID" });
     }
     const offer = await Offer.findById(offerId)
-      .populate("product_id", "title price")
+      .select("-__v").populate("product_id", "title price")
       .populate("category_id", "name")
       .populate("user_id", "firstname email");
     if (!offer)

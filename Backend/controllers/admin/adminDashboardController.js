@@ -216,7 +216,7 @@ export const getRecentOrders = async (req, res) => {
     // Fetch recent orders, sorted by order_date descending, limit to 10
     const recentOrders = await Order.find({ isDeleted: false })
       .sort({ order_date: -1 })
-      .limit(10)
+      .limit(10).select("-__v")
       .populate("user_id", "firstname lastname email")
       .populate("address_id", "name phone place city district state country pin type");
 
@@ -248,7 +248,7 @@ export const generateLedgerBook = async (req, res) => {
     const orders = await Order.find({
       createdAt: { $gte: startDate, $lte: endDate },
       status: "Delivered",
-    }).populate("user_id", "firstname lastname email");
+    }).select("-__v").populate("user_id", "firstname lastname email");
 
     if (!orders.length) {
       return res

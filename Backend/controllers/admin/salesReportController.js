@@ -48,7 +48,7 @@ const getFilteredOrders = async (type, fromDate, toDate) => {
   logger.info(
     `Fetching orders for type: ${type}, fromDate: ${fromDate}, toDate: ${toDate}`
   );
-  return await Order.find(matchStage).populate("user_id", "firstname lastname email");
+  return await Order.find(matchStage).select("-__v").populate("user_id", "firstname lastname email");
 };
 
 export const getSalesReport = async (req, res) => {

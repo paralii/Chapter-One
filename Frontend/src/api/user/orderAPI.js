@@ -31,11 +31,11 @@ export const getOrderDetails = (orderID) => {
 };
 
 export const cancelOrderOrItem = (data) => {
-  return userAxios.put("/orders/cancel", data, { withCredentials: true });
+  return userAxios.patch("/orders/cancel", data, { withCredentials: true });
 };
 
 export const returnOrderItem = (data) => {
-  return userAxios.put("/orders/return", data, { withCredentials: true });
+  return userAxios.patch("/orders/return", data, { withCredentials: true });
 };
 
 export const downloadInvoice = (orderID) => {

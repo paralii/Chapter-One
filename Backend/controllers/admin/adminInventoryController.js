@@ -25,7 +25,7 @@ export const getAllInventory = asyncHandler(async (req, res) => {
     Product.find(
       filter,
       "title available_quantity price category_id author_name"
-    )
+    ).select("-__v")
       .populate("category_id", "name")
       .skip(skip)
       .limit(limitNum)
