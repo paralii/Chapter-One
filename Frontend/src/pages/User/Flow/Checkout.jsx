@@ -61,7 +61,6 @@ function Checkout() {
 
   const totals = useMemo(() => {
     if (checkoutDetails) {
-      console.log(`checkout details:`, checkoutDetails);
       return {
         amount: checkoutDetails.amount ?? 0,
         subtotal: checkoutDetails.total ?? 0,
@@ -104,7 +103,7 @@ function Checkout() {
         paymentMethod,
       };
       try {
-        setIsLoading(true);
+        // setIsLoading(true);
         const { data } = await userAxios.post("/checkout", payload);
         const ord = data.order || data.checkoutDetails || null;
         if (!ord) throw new Error("Invalid /checkout response");

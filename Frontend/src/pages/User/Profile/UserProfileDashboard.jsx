@@ -136,7 +136,7 @@ const UserProfileDashboard = () => {
                   <span className="text-[#4caf50] text-lg sm:text-xl">₹</span>
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold text-[#4caf50] mb-2">₹{walletBalance || 0}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-[#4caf50] mb-2">₹{walletBalance?.(toFixed(2))|| 0}</p>
               <Link to="/profile/wallet" className="text-xs sm:text-sm text-[#3c2712] hover:text-[#2a1b0c] font-medium">
                 View History →
               </Link>
