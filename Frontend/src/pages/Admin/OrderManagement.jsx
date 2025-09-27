@@ -256,7 +256,7 @@ function OrdersDashboard({ onEdit, onView, onLogout }) {
                   <tr key={order._id} className="bg-[#eee9dc] border-b border-b-white">
                     <td className="p-[10px]">{order.orderID}</td>
                     <td className="p-[10px]">
-                      {order.user_id.firstname} {order.user_id.lastname}
+                      {order.user_id?.firstname} {order.user_id?.lastname}
                     </td>
                     <td className="p-[10px]">{new Date(order.order_date).toLocaleString()}</td>
                     <td className="p-[10px]">{order.status}</td>
