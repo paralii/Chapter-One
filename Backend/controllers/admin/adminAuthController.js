@@ -53,7 +53,7 @@ export const adminLogin = async (req, res, next) => {
 export const adminLogout = (req, res) => {
   res.clearCookie("accessToken_admin");
   res.clearCookie("refreshToken_admin");
-  logger.info(`Admin ${req.user.email} logged out successfully`);
+  logger.info(`Admin logged out successfully`);
   res
     .status(STATUS_CODES.SUCCESS.OK)
     .json({ message: validationMessages.adminAuth.logoutSuccess });

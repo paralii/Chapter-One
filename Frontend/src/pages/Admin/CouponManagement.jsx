@@ -41,7 +41,6 @@ function CouponManagement() {
 
     const handleLogout = async () => {
     try {
-      await adminAxios.post("/logout", {}, { withCredentials: true });
       dispatch(adminLogout());
       navigate("/admin/login");
     } catch (err) {

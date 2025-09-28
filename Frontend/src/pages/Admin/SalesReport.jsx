@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import AdminSidebar from "../../components/Admin/AdminSideBar";
 import PageHeader from "../../components/Admin/AdminPageHeader";
 import adminAxios from "../../api/adminAxios";
+import { adminLogout } from "../../redux/adminSlice";
+import { useDispatch } from "react-redux";
 
 function SalesReport() {
   const [reportData, setReportData] = useState({
@@ -21,6 +23,7 @@ function SalesReport() {
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const validateDates = () => {
     const today = new Date().toISOString().split("T")[0];
@@ -122,7 +125,7 @@ function SalesReport() {
 
   const handleLogout = async () => {
     try {
-      await adminAxios.post("/logout", {}, { withCredentials: true });
+      dispatch(adminLogout());
       navigate("/admin/login");
     } catch (err) {
       console.error("Logout failed:", err.response?.data?.message || err.message);
