@@ -16,6 +16,7 @@ export default defineConfig({
         'android-chrome-512x512.png'
       ],
       manifest: {
+        id:"/",
         name: 'Chapter One',
         short_name: 'ChapterOne',
         start_url: '/',
@@ -32,9 +33,22 @@ export default defineConfig({
             src: '/android-chrome-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+        ],
+        screenshots: [
+          {
+            src: "/desktop.png",
+            sizes: "540x720",
+            type: "image/png",
+            form_factor: "wide"
+          },
+          {
+            src: "/mobile.png",
+            sizes: "540x720",
+            type: "image/png"
           }
         ]
-      }
+      },
     })
   ],
   server: {
