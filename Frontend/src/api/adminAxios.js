@@ -3,7 +3,7 @@ import store from "../redux/store";
 import { refreshAdminSession, logoutAdmin } from "../redux/adminSlice";
 
 const adminAxios = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/admin`,
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api/admin`,
   withCredentials: true, 
 });
 

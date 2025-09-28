@@ -84,21 +84,16 @@ export const toggleBlockCustomer = async (req, res) => {
       forceLogoutUser(user._id.toString())
     };
 
-    res
-      .status(STATUS_CODES.SUCCESS.OK)
-      .json({
-        _id: user._id,
-        firstname: user.firstname,
-        isBlock: user.isBlock,
-        message: `User ${user.isBlock ? "blocked" : "unblocked"} successfully`,
-      });
-    logger.info(`User ${user._id} block status updated to ${user.isBlock}`);
-    res.status(STATUS_CODES.SUCCESS.OK).json({
+    const responsePayload = {
       _id: user._id,
       firstname: user.firstname,
       isBlock: user.isBlock,
       message: `User ${user.isBlock ? "blocked" : "unblocked"} successfully`,
-    });
+    };
+
+    logger.info(`User ${user._id} block status updated to ${user.isBlock}`);
+    res.status(STATUS_CODES.SUCCESS.OK).json(responsePayload);
+    
   } catch (err) {
     errorLogger.error("Error toggling block status", {
       message: err.message,

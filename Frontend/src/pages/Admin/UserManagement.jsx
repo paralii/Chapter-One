@@ -8,6 +8,7 @@ import showConfirmDialog from "../../components/common/ConformationModal";
 import useDebounce from "../../hooks/useDebounce";
 import {validateUserInput} from "../../utils/userValidator.js";
 import {getAllCustomers, toggleBlockCustomer, updateCustomer, deleteCustomer} from "../../api/admin/userAPI";
+
 function UserManagement() {
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
@@ -71,7 +72,10 @@ function UserManagement() {
       onConfirm: async () => {
         try {
           await toggleBlockCustomer(id);
-          fetchUsers();
+          
+          setUsers((prevUsers) => 
+          prevUsers.map((user) => user._id === id ? {...user, isBlock: !isBlock} : user));
+
           toast.success(`User ${isBlock ? "Unblocked" : "Blocked"} successfully`);
         } catch (err) {
           toast.error(err.message || "Failed to update block status.");
@@ -95,7 +99,7 @@ function UserManagement() {
         onConfirm: async () => {
         try {
           await deleteCustomer(id);
-          fetchUsers();
+          setUsers((prevUsers) => prevUsers.filter((user) => user._id !== id));
           toast.success("User deleted successfully!");
         } catch (err) {
           toast.error(err.message ||"Failed to delete user.");
@@ -241,7 +245,10 @@ function UserManagement() {
         onClose={closeModal}
         mode="edit"
         userData={selectedUser}
-        onUserUpdated={fetchUsers}
+        onUserUpdated={(updatedUser) => {
+          setUsers(prev => prev.map(u => u._id === updatedUser._id ? updatedUser : u));
+          setSelectedUser(updatedUser);
+        }}
       />
     </>
   );
@@ -267,6 +274,16 @@ function UserModal({ isOpen, onClose, mode, userData, onUserUpdated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const hasChanges =
+      firstname !== userData.firstname ||
+      lastname !== userData.lastname ||
+      email !== userData.email;
+
+    if (!hasChanges) {
+      toast.info("No changes detected");
+      return;
+    }
+    
     const validationErrors = validateUserInput({
       firstname,
       lastname,
@@ -280,9 +297,10 @@ function UserModal({ isOpen, onClose, mode, userData, onUserUpdated }) {
     }
 
     try {
-      await updateCustomer(userData._id, { firstname, lastname, email });
+      const updated = await updateCustomer(userData._id, { firstname, lastname, email });
+      const updatedUser = updated?.data || { ...userData, firstname, lastname, email };
       toast.success("User updated successfully!");
-      onUserUpdated();
+      onUserUpdated(updatedUser);
       onClose();
       setError([]);
     } catch (err) {
@@ -354,7 +372,19 @@ function UserModal({ isOpen, onClose, mode, userData, onUserUpdated }) {
             </button>
             <button
               type="submit"
-              className="bg-[#f5deb3] hover:bg-[#e5c49b] text-black px-3 xs:px-4 sm:px-5 py-1 xs:py-2 rounded-lg text-xs xs:text-sm sm:text-base"
+              disabled={
+                firstname === userData.firstname &&
+                lastname === userData.lastname &&
+                email === userData.email
+              }
+              className={`px-3 xs:px-4 sm:px-5 py-1 xs:py-2 rounded-lg text-xs xs:text-sm sm:text-base
+                ${
+                  firstname === userData.firstname &&
+                  lastname === userData.lastname &&
+                  email === userData.email
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-[#f5deb3] hover:bg-[#e5c49b] text-black"
+                }`}
             >
               Update User
             </button>

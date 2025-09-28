@@ -24,14 +24,10 @@ function CategoryManagement() {
     name: "",
     description: "",
   });
-
-  // Error state
   const [error, setError] = useState(null);
-
   const [searchInput, setSearchInput] = useState(search);
   const debouncedSearch = useDebounce(searchInput, 500);
 
-  // Fetch categories from API
   const fetchCategories = async () => {
     try {
       const response = await getCategories({
@@ -53,17 +49,25 @@ function CategoryManagement() {
     fetchCategories();
   }, [page, search, showListedOnly]);
 
-  // Handle add or edit submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmedName = formData.name.trim();
     const trimmedDescription = formData.description.trim();
 
     const validName = /^[a-zA-Z0-9\s&-]+$/;
-    if (!validName.test(trimmedName)) {
+    if (trimmedName && !validName.test(trimmedName)) {
       toast.error("Category name contains invalid characters.");
       return;
     }
+    if (trimmedName && trimmedName.length < 3) {
+      toast.error("Name is too short (minimum 3 characters).");
+      return;
+    }
+    if (trimmedName.length > 20) {
+      toast.error("Name is too long (maximum 20 characters).");
+      return;
+    }
+
     const validDesc = /^[a-zA-Z0-9\s.,'’\-()&!]*$/;
     if (trimmedDescription && !validDesc.test(trimmedDescription)) {
       toast.error("Description contains invalid characters.");
@@ -73,8 +77,18 @@ function CategoryManagement() {
       toast.error("Description is too short (minimum 3 characters).");
       return;
     }
-    if (trimmedDescription.length > 300) {
-      toast.error("Description is too long (maximum 300 characters).");
+    if (trimmedDescription.length > 20) {
+      toast.error("Description is too long (maximum 20 characters).");
+      return;
+    }
+
+    if (
+      editingCategory &&
+      trimmedName === editingCategory.name &&
+      trimmedDescription === editingCategory.description
+    ) {
+      toast.info("No changes detected");
+      setModalOpen(false);
       return;
     }
 
@@ -85,29 +99,34 @@ function CategoryManagement() {
 
     if (editingCategory) {
       try {
-        await updateCategory(editingCategory._id, cleanedData);
+        const  response  = await updateCategory(editingCategory._id, cleanedData);
+        const { category } = response.data;
+        setCategories((prev) =>
+          prev.map((cat) =>
+            cat._id === editingCategory._id ? category : cat
+          )
+        );
+
         toast.success("Category updated successfully!");
         setModalOpen(false);
         setEditingCategory(null);
         setFormData({ name: "", description: "" });
-        fetchCategories();
       } catch (err) {
         toast.error(err.response?.data?.error || "Error updating category");
       }
     } else {
       try {
-        await createCategory(cleanedData);
-        toast.success("Category added successfully!");
-        setModalOpen(false);
-        setFormData({ name: "", description: "" });
-        fetchCategories();
+         await createCategory(cleanedData);
+         toast.success("Category added successfully!");
+         setModalOpen(false);
+         setFormData({ name: "", description: "" });
+         fetchCategories(); 
       } catch (err) {
         toast.error(err.response?.data?.error || "Error adding category");
       }
     }
   };
 
-  // Open the modal for editing
   const openEditModal = (cat) => {
     setEditingCategory(cat);
     setFormData({
@@ -117,14 +136,12 @@ function CategoryManagement() {
     setModalOpen(true);
   };
 
-  // Open modal for adding a new category
   const openAddModal = () => {
     setEditingCategory(null);
     setFormData({ name: "", description: "" });
     setModalOpen(true);
   };
 
-  // Delete/Restore handler
   const handleDelete = async (id, isDeleted, isListed) => {
     confirmAlert({
       title: "Confirm Action",
@@ -139,8 +156,15 @@ function CategoryManagement() {
               className="bg-[#654321] text-white px-3 py-1 sm:px-4 sm:py-2 rounded text-sm sm:text-base"
               onClick={async () => {
                 try {
-                  await deleteCategory(id, { params: { isDeleted: !isDeleted, isListed: !isListed } });
-                  fetchCategories();
+                  const response  = await deleteCategory(id, {
+                    params: { isDeleted: !isDeleted, isListed: !isListed },
+                  });
+                  const {category} = response.data;
+                  setCategories((prev) =>
+                    prev.map((cat) =>
+                      cat._id === id ? category : cat
+                    )
+                  );
                   toast.success(`${isDeleted ? "Category Restored" : "Category deleted!"}`);
                   onClose();
                 } catch (err) {
@@ -234,10 +258,10 @@ function CategoryManagement() {
                         {index + 1 + (page - 1) * limit}
                       </td>
                       <td className="p-2 sm:p-3 lg:p-4 text-xs sm:text-sm lg:text-base font-medium w-[25%] truncate">
-                        {cat.name}
+                        {cat.name || "unnamed"}
                       </td>
                       <td className="p-2 sm:p-3 lg:p-4 text-xs sm:text-sm lg:text-base font-medium w-[35%] truncate">
-                        {cat.description}
+                        {cat.description || "-"}
                       </td>
                       <td className="p-2 sm:p-3 lg:p-4 text-xs sm:text-sm lg:text-base font-medium w-[15%]">
                         {cat.isDeleted ? "Deleted" : "Listed"}

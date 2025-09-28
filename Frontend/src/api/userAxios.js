@@ -4,7 +4,7 @@ import { logoutUser } from "../redux/authSlice";
 import store from "../redux/store.js";
 
 const userAxios = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL}/user`,
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api/user`,
   withCredentials: true,
 });
 

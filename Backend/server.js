@@ -36,8 +36,8 @@ app.use(cookieParser());
 app.use(passport.initialize());
 
 // Routes
-app.use('/admin', adminRoutes);
-app.use('/user', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/user', userRoutes);
 
 // Error handling middleware
 app.use(errorMiddleware);
