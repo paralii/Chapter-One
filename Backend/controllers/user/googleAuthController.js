@@ -1,25 +1,22 @@
+import setAuthCookies from "../../utils/setAuthCookies.js";
+import { logger } from "../../utils/logger.js";
+
 export default function googleAuthCallback(req, res) {
   if (!req.user || !req.user.tokens) {
     return res.status(401).json({ message: "Authentication failed" });
   }
 
   const { accessToken, refreshToken } = req.user.tokens;
-  res.cookie("accessToken_user", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "Lax",
-    maxAge: 60 * 60 * 1000,
-  });
 
-  res.cookie("refreshToken_user", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setAuthCookies(res, accessToken, refreshToken, "user");
 
-  const corsUrls = process.env.CORS_URLS.split(',');
-  const redirectUrl = corsUrls[0];
+  const corsUrls = (process.env.CORS_URLS || "").split(",").map((u) => u.trim()).filter(Boolean);
+  const baseFromEnv = process.env.FRONTEND_URL && process.env.FRONTEND_URL.trim();
+  const frontendBaseRaw = baseFromEnv || corsUrls[0] || "";
+  const frontendBase = frontendBaseRaw.replace(/\/+$/, "");
 
-  res.redirect(`${redirectUrl}?user=${encodeURIComponent(JSON.stringify(req.user))}`);
+  const redirectUrl = `${frontendBase}/login?auth=google`;
+
+  logger.info(`Google auth successful, redirecting to frontend: ${redirectUrl}`);
+  return res.redirect(redirectUrl);
 }

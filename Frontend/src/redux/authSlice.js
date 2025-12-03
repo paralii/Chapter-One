@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import userAxios from '../api/userAxios';
 
 axios.defaults.withCredentials = true;
 
@@ -83,9 +84,7 @@ export const fetchCurrentUser = createAsyncThunk(
   "auth/fetchCurrentUser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/user/auth/me`, {
-        withCredentials: true,
-      });
+      const response = await userAxios.get("/auth/me");
       return response.data;
     } catch (err) {
       console.error("fetchCurrentUser error:", err.response?.data || err.message);
@@ -214,7 +213,9 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.error = null;
-        localStorage.setItem("user", JSON.stringify(action.payload));
+        if (action.payload?.user) {
+          localStorage.setItem("user", JSON.stringify(action.payload.user));
+        }
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
         state.loading = false;

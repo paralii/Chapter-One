@@ -62,17 +62,19 @@ export const refreshAccessToken = async (req, res, type = "user") => {
         type === "admin"
       );
 
+      const isProd = process.env.NODE_ENV === "production";
+
       res.cookie(accessCookieName, accessToken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "Lax",
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
         maxAge: 60 * 60 * 1000,
       });
 
       res.cookie(refreshCookieName, newRefreshToken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "Lax",
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 

@@ -20,13 +20,13 @@ userAxios.interceptors.response.use(
       return Promise.reject(error);
     }
     if (
-      (error.response?.status === 401) &&
+      error.response?.status === 401 &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
       try {
         await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/user/refresh-token`,
+          `${import.meta.env.VITE_API_BASE_URL}/api/user/auth/refresh-token`,
           {},
           { withCredentials: true }
         );

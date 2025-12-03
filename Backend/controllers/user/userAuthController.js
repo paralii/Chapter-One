@@ -12,6 +12,7 @@ import STATUS_CODES from '../../utils/constants/statusCodes.js';
 import { generateOTP, storeOtpInRedis, getOtpFromRedis, deleteOtpFromRedis } from '../../utils/services/otpService.js';
 import { creditWallet } from './userWalletController.js';
 import { logger, errorLogger } from '../../utils/logger.js';
+import { ensureUserOnboarding } from '../../utils/services/userOnboardingService.js';
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -168,24 +169,17 @@ export const verifyOTP = async (req, res) => {
       });
 
       await user.save();
-      
-      const ops = [
-        Wallet.create({ user_id: user._id, balance: 0 }),
-        Cart.create({ user_id: user._id, items: [] }),
-        Wishlist.create({ user_id: user._id, products: [] })
-      ];
 
-      if (parsedData.referred_by) {
-        ops.push(
-          creditWallet(user._id, 50, "Referral bonus for signing up"),
-          creditWallet(parsedData.referred_by, 100, `Referral reward for inviting ${parsedData.firstname}`)
-        );
-      }  
-        await Promise.all(ops);
-
+      await ensureUserOnboarding(user, {
+        referred_by: parsedData.referred_by,
+        firstNameForMessage: parsedData.firstname,
+      });
     } else {
       user.isVerified = true;
       await user.save();
+
+      // Ensure existing users also have wallet/cart/wishlist
+      await ensureUserOnboarding(user);
     }
 
     await deleteOtpFromRedis(`signup:${normalizedEmail}`);

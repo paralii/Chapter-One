@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { FcGoogle } from "react-icons/fc";
 import PropTypes from "prop-types";
 import { useDispatch } from "react-redux";
 import { fetchCurrentUser } from "../../redux/authSlice";
+import { registerSocket } from "../../utils/socketClient";
+import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const GoogleAuthHandler = ({ type = "signin" }) => {
@@ -10,27 +12,40 @@ const GoogleAuthHandler = ({ type = "signin" }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-useEffect(() => {
-  console.log("GoogleAuthHandler useEffect fired", location.search);
-  const urlParams = new URLSearchParams(location.search);
-  if (urlParams.get("code")) {
-    console.log("authSuccess detected, fetching user");
-    dispatch(fetchCurrentUser())
-      .unwrap()
-      .then((userData) => {
-        console.log("Fetched user:", userData);
-        localStorage.setItem("user", JSON.stringify(userData));
-        navigate("/",{replace:true});
-      })
-      .catch((error) => {
-        console.error("Failed to fetch user after Google auth:", error);
-      });
-  }
-}, [dispatch, navigate, location.search]);
-  
-  const handleGoogleAuth = async () => {
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/user/auth/google`;
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const authSource = urlParams.get("auth");
+
+    if (authSource === "google") {
+      dispatch(fetchCurrentUser())
+        .unwrap()
+        .then((res) => {
+          const user = res?.user;
+
+          if (user?._id) {
+            registerSocket(user._id);
+            localStorage.setItem("user", JSON.stringify(user));
+            toast.success("Signed in with Google");
+          }
+
+          navigate("/", { replace: true });
+        })
+        .catch((error) => {
+          console.error("Google auth failed:", error);
+          toast.error("Failed to complete Google sign-in");
+          navigate("/login", { replace: true });
+        });
+    }
+  }, [dispatch, location.search, navigate]);
+
+  const handleGoogleAuth = () => {
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/user/auth/google`;
   };
+
+  const isCallback = new URLSearchParams(location.search).get("auth") === "google";
+  if (isCallback) {
+    return <p className="text-center mt-10">Signing you in…</p>;
+  }
 
   return (
     <div className="flex justify-center">

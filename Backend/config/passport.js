@@ -2,6 +2,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/User.js";
 import { generateTokens } from "../utils/auth/generateTokens.js";
+import { ensureUserOnboarding } from "../utils/services/userOnboardingService.js";
 import { logger, errorLogger } from "../utils/logger.js";
 
 
@@ -29,6 +30,11 @@ passport.use(
             message: "Please verify your email first.",
           });
         }
+
+        await ensureUserOnboarding(user, {
+          firstNameForMessage: user.firstname,
+        });
+
         const tokens = generateTokens(user, false);
         logger.info(`User ${user.email} authenticated via Google`);
         return done(null, { user, tokens });
