@@ -112,7 +112,7 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/products`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/admin/products`, {
         params: {
           search,
           page,
@@ -150,7 +150,7 @@ function ManageProducts({ onAdd, onEdit, onLogout }) {
               onClick={async () => {
                 try {
                   await axios.patch(
-                    `${import.meta.env.VITE_API_BASE_URL}/admin/products/${id}/toggle`,
+                    `${import.meta.env.VITE_API_BASE_URL}/api/admin/products/${id}/toggle`,
                     { isDeleted: !isDeleted },
                     { withCredentials: true }
                   );
@@ -443,7 +443,7 @@ function AddProduct({ onCancel, onLogout }) {
       formData.append("images", imgObj.croppedImage);
     });
     try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/products`, formData, {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/admin/products`, formData, {
         withCredentials: true,
       });
       toast.success("Product added successfully!");
@@ -746,7 +746,7 @@ function EditProduct({ productId, onCancel, onLogout }) {
   useEffect(() => {
     setProductLoading(true);
     axios
-      .get(`${import.meta.env.VITE_API_BASE_URL}/admin/products/${productId}`, {
+      .get(`${import.meta.env.VITE_API_BASE_URL}/api/admin/products/${productId}`, {
         withCredentials: true,
       })
       .then((res) => {
@@ -873,7 +873,7 @@ function EditProduct({ productId, onCancel, onLogout }) {
       });
     }
     try {
-      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/admin/products/${productId}`, formData, {
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/admin/products/${productId}`, formData, {
         withCredentials: true,
       });
       toast.success("Product updated successfully!");

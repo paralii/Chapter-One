@@ -16,21 +16,20 @@ import errorMiddleware from './middlewares/errorMiddleware.js';
 
 const app = express();
 
-const allowedOrigins = process.env.CORS_URLS.split(',');
 
 // Middleware
 app.use(express.json());
+const allowedOrigins = process.env.CORS_URLS.split(',');
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: allowedOrigins,
+  credentials: true
 }));
+
+app.options("*", cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 
 app.use(cookieParser());
 app.use(passport.initialize());

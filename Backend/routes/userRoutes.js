@@ -36,7 +36,7 @@ router.post("/auth/reset-password", userValidation.validateResetPassword, userAu
 // ===================== USER SSO (google) AUTHENTICATION =====================
 router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 router.get("/auth/google/callback", passport.authenticate("google", { session: false }), googleAuthCallback);
-router.get("/auth/me", verifyToken, (req, res) => {
+router.get("/auth/me", verifyToken("user"), (req, res) => {
     const { _id, firstname, lastname, email, profileImage, isVerified } = req.user;
     res.status(200).json({user:{ _id, firstname, lastname, email, profileImage, isVerified }});
   });
